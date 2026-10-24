@@ -1,14 +1,18 @@
 # TODO
 
-## After the base implementation
+## Container flow tests
 
-- [ ] Add application and integration tests using Testcontainers for .NET. Follow ASCO's separation of hosted application tests and service-level integration tests, with small local fixtures. Do not depend on SGP libraries or introduce a general testing framework.
-- [ ] Add an integration test project that composes the real feature bootstrappers, generated Mediator handlers, HTTP adapters, projection store, and filesystem. Use a disposable SQLite file, a real Transmission container, and controlled Radarr/Sonarr HTTP responses. Exercise discovery, exact import matching, persistence across restart, and failure handling through public contracts.
-- [ ] Add an application test project that starts a disposable Jellyfin container with the built plugin and drives its HTTP API. Give each scenario fresh configuration, plugin state, library data, and synthetic media. Verify plugin discovery and DI as part of startup.
-- [ ] Exercise the download flow with a real Transmission daemon and a private synthetic torrent served by a controlled local seed. Keep peers within the test network, disable public trackers/DHT/PEX, and control piece availability so buffering assertions do not depend on Internet traffic or download timing.
-- [ ] Verify discovery before completion, correct HEAD/range responses, waiting for missing pieces without returning zeros, resumption when pieces arrive, cancellation and stall handling. Complete and import the file, remove the torrent, then verify unchanged playback URL and Jellyfin item identity, including after restart.
-- [ ] Verify two users retain watched state, resume position, play count, and favorites through completion. Cover a native duplicate appearing during a scan and reconciliation without deleting the media file.
-- [ ] Keep fixture ownership explicit with xUnit async lifecycle, dynamic host ports, container readiness checks, bounded condition polling, and automatic cleanup. Capture useful logs on failure without recording credentials or stream secrets. Share container startup only where each test's state can still be reset safely.
-- [ ] Document the Docker prerequisite and separate commands for unit, integration, and application tests. Pin tested container versions when implementing the fixtures. Keep the existing host smoke test until its assertions have equivalent automated coverage. Do not add CI.
+- [x] Add application and integration tests with Testcontainers for .NET and small local fixtures, without SGP libraries.
+- [x] Compose real application handlers, HTTP adapters, projection storage, and filesystem in integration tests. Exercise discovery, exact import matching, persisted state, disabled discovery, and upstream failures with real Transmission.
+- [x] Start disposable Jellyfin instances with the built plugin and fresh configuration, library state, and synthetic video. Verify plugin discovery and dependency injection through its API.
+- [x] Transfer a private synthetic torrent through a controlled C# peer and real Transmission. Release pieces explicitly, with public trackers, DHT, PEX, and local peer discovery disabled.
+- [x] Check partial playback, HEAD and ranges, missing-piece waits, cancellation, stalls, completion, import, torrent removal, stable playback URLs, and server restart.
+- [x] Retain two users' watched state, resume positions, play counts, and favorites. Reconcile a native duplicate without deleting its media file.
+- [x] Use explicit async ownership, dynamic host ports, readiness checks, bounded polling, automatic cleanup, and sanitized failure logs.
+- [x] Replace the Python smoke test with C# application coverage. Document test isolation and separate commands in `doc/`.
 
-These are planned tests. The current validation consists of the unit/adapter tests and the isolated Jellyfin host smoke test described in the README.
+## Installation and distribution
+
+- [x] Verify local build-and-load and ZIP packaging commands.
+- [x] Verify installation through Jellyfin's Catalog API, including checksum rejection.
+- [ ] Run CI, publish the first tagged release, and verify the stable repository manifest and ZIP download.

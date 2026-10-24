@@ -71,13 +71,15 @@ internal sealed class LibraryProjection(
         // before removing that duplicate database entry; never delete the media itself.
         foreach (var user in users.GetUsers())
         {
-            var source = userData.GetUserData(user, native);
-            if (source is null)
+            // Path queries do not necessarily hydrate user data. The batch API loads saved
+            // rows; the single-item accessor can otherwise return an empty default here.
+            var saved = userData.GetUserDataBatch([native, projected], user);
+            if (!saved.TryGetValue(native.Id, out var source))
             {
                 continue;
             }
 
-            var target = userData.GetUserData(user, projected);
+            saved.TryGetValue(projected.Id, out var target);
             userData.SaveUserData(user, projected, watchStates.Merge(source, target), UserDataSaveReason.Import);
         }
         library.DeleteItem(native, new DeleteOptions { DeleteFileLocation = false });
@@ -100,8 +102,10 @@ internal sealed class LibraryProjection(
 
     private BaseItem? Find(string path)
     {
-        return library.GetItemList(new InternalItemsQuery { Path = path, Recursive = true })
+        var match = library.GetItemList(new InternalItemsQuery { Path = path, Recursive = true })
             .FirstOrDefault(item => string.Equals(item.Path, path, StringComparison.Ordinal));
+        // Update the canonical cached item so API reads see the imported user data immediately.
+        return match is null ? null : library.GetItemById(match.Id) ?? match;
     }
 
     private static bool IsWithin(string root, string path)

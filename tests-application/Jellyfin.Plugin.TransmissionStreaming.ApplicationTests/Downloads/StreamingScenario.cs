@@ -1,0 +1,87 @@
+namespace Jellyfin.Plugin.TransmissionStreaming.ApplicationTests.Downloads;
+
+using global::TransmissionStreaming.TestSupport.Arr;
+using global::TransmissionStreaming.TestSupport.Torrents;
+using Hosting;
+
+/// <summary>Controls download settings and the simulated arr import, without bypassing the plugin's HTTP endpoints.</summary>
+internal sealed class StreamingScenario(string workspace, JellyfinApi api, TorrentSwarm swarm, ArrStub arr)
+{
+    private const string RemoteRoot = "/data";
+    private const string ProjectionDirectory = "projection";
+    private const string ImportedDirectory = "movies";
+    private string LocalProjection => Path.Combine(workspace, ProjectionDirectory);
+    private string RemoteImportedFile => $"{RemoteRoot}/{ImportedDirectory}/{swarm.FileName}";
+
+    public async Task ConfigureAsync(bool enabled = true, int waitSeconds = 5)
+    {
+        await api.RequestAsync($"/Plugins/{PluginBundle.BuildOutput.Id}/Configuration", new
+        {
+            Enabled = enabled,
+            TransmissionUrl = swarm.ContainerRpcUrl.ToString(),
+            RadarrUrl = arr.ContainerUrl.ToString(),
+            RadarrApiKey = arr.Key,
+            SonarrUrl = "",
+            SonarrApiKey = "",
+            TransmissionUsername = "",
+            TransmissionPassword = "",
+            RemoteMediaRoot = RemoteRoot,
+            LocalMediaRoot = RemoteRoot,
+            ProjectionRoot = $"{RemoteRoot}/{ProjectionDirectory}",
+            JellyfinPublicUrl = JellyfinContainer.InternalAddress.ToString(),
+            PollSeconds = 2,
+            PieceWaitSeconds = waitSeconds,
+            PrioritizePlayback = true,
+            ShowDownloadStatus = true
+        });
+        var saved = await api.RequestAsync("/TransmissionStreaming/status");
+        if (JellyfinApi.Value<bool>(saved, "Enabled") != enabled)
+        {
+            throw new InvalidOperationException("Jellyfin did not apply the plugin configuration.");
+        }
+    }
+
+    public async Task<string> WaitForStreamAsync()
+    {
+        string? path = null;
+        await TestWait.UntilAsync(() =>
+        {
+            path = Directory.Exists(LocalProjection)
+                ? Directory.EnumerateFiles(LocalProjection, "*.strm", SearchOption.AllDirectories).FirstOrDefault() : null;
+            return Task.FromResult(path is not null);
+        }, "automatic download discovery");
+        return (await File.ReadAllTextAsync(path!)).Trim();
+    }
+
+    public static string StreamForHost(string permanentUrl, Uri hostAddress)
+    {
+        var uri = new Uri(permanentUrl);
+        if (uri.Host != JellyfinContainer.NetworkAlias || uri.Port != JellyfinContainer.HttpPort)
+        {
+            throw new InvalidOperationException("Unexpected stream origin in disposable test.");
+        }
+        return new Uri(hostAddress, uri.PathAndQuery).ToString();
+    }
+
+    public async Task StageImportedFileAsync()
+    {
+        await swarm.AllowAllPiecesAsync(CancellationToken.None);
+        var importedRoot = Directory.CreateDirectory(Path.Combine(workspace, ImportedDirectory)).FullName;
+        File.Move(swarm.LocalDownloadPath, Path.Combine(importedRoot, swarm.FileName));
+    }
+
+    public async Task ImportAsync()
+    {
+        if (File.Exists(swarm.LocalDownloadPath))
+        {
+            await StageImportedFileAsync();
+        }
+        await arr.PublishImportAsync(RemoteImportedFile, CancellationToken.None);
+        await TestWait.UntilAsync(async () =>
+        {
+            var status = await api.RequestAsync("/TransmissionStreaming/status");
+            return JellyfinApi.Field(status, "Entries")!.AsArray().Any(entry => JellyfinApi.Value<string>(entry, "Status") == "Complete");
+        }, "exact arr import handoff");
+        await swarm.RemoveAsync(CancellationToken.None);
+    }
+}

@@ -1,160 +1,74 @@
 # Transmission Streaming for Jellyfin
 
-A prototype Jellyfin plugin that makes arr-managed Transmission downloads playable before they finish. Playback stays inside Jellyfin, including each user's watched status and
-resume position. A finished download keeps the same Jellyfin entry.
+A prototype Jellyfin plugin that makes Radarr- and Sonarr-managed Transmission downloads playable before they finish. Playback stays in Jellyfin, including watched status and
+resume positions. Once arr imports the completed download, the same library entry reads the imported file.
 
-Targets **Jellyfin 12.3**, **.NET 10**, and **Transmission 4.1.3**. This is a development prototype. All 71 automated tests pass. An isolated real Jellyfin instance also passed
-synthetic-media tests for discovery, buffering, completion, and two-user watch-state retention. Actual torrent swarms, native-client playback, and transcoding remain unverified.
+Targets Jellyfin 12.3, .NET 10, and Transmission 4.1.3. Forward playback is the priority; seeking is best effort. Native clients, transcoding, and public-swarm performance still
+need a trial with the intended player.
 
-## How it works
+## Install a published release
 
-```mermaid
-flowchart LR
-    A[Radarr or Sonarr] -->|starts download| T[Transmission]
-    T -->|file list and verified pieces| P[Jellyfin plugin]
-    P -->|permanent stream entry| J[Jellyfin library and players]
-    A -->|imports completed file| F[Local media library]
-    F -->|same playback entry, new backing path| P
-```
+Back up Jellyfin's database and configuration before the first trial. Start with one small test download and a dedicated projection folder.
 
-1. The plugin polls Transmission and matches video files to Radarr or Sonarr queue entries using the download's torrent hash. Standard episode filenames identify individual episodes within season packs.
-2. It creates a permanent, small stream link and metadata sidecars in a dedicated projection folder. Jellyfin scans these as ordinary movies and episodes.
-3. Pressing Play opens a stable URL served by the plugin. The reader serves downloaded, verified pieces and waits for missing bytes. It never fills a missing range with zeros or treats the current partial file size as the finished size.
-4. By default, playback enables sequential downloading for that torrent and moves the sequential cursor toward missing playback pieces. Transmission remains the only torrent engine.
-5. After arr imports the file, the plugin verifies the import history against the original torrent hash, source filename, byte size, and imported file identity. Playback then reads from the imported local file through the same stream link.
+1. Open **Dashboard → Plugins → Manage Repositories** and add this repository URL:
 
-The projection's path and Jellyfin entry stay stable across completion. The completed native file is hidden from Jellyfin's resolver while the plugin manages its projection,
-preventing a second library item. If a scan catches the native item before reconciliation, the plugin merges its user state into the projection before removing that duplicate
-database entry. It does not delete the media file, and an active session on the native item is allowed to finish first.
+   ```text
+   https://github.com/Heehaaw/jellyfin-plugin-transmission-streaming/releases/latest/download/manifest.json
+   ```
 
-### Design boundaries
+2. Open the Catalog, select **Transmission Streaming**, and install a compatible version.
+3. Restart Jellyfin, then open **Dashboard → Plugins → Transmission Streaming → Settings**.
 
-The domain defines media identities, playback state, and the contracts for external services. Application requests coordinate discovery, authorization, streaming, and completion
-through source-generated Mediator handlers. Infrastructure implements the HTTP clients, verified file reads, path mapping, and persistent state. The plugin composes those layers
-and adapts them to Jellyfin configuration, HTTP, indexing, and user metadata.
+The repository URL becomes available after the first tagged release is published. See [installation and releases](doc/installation.md) for downloading a ZIP directly or using a CI artifact.
 
-Each layer uses feature folders. Feature bootstrappers compose through dependency injection, and service implementations remain internal behind their interfaces. The public
-Jellyfin entry points are the exceptions required by its plugin and controller discovery. No separate server, torrent engine, or database service is required.
+## Build and load for development
 
-### Resource use and network traffic
-
-The plugin reads media from the shared filesystem and talks to Transmission, Radarr, and Sonarr over their APIs. It does not contact torrent peers, download a second copy, or run
-another torrent client. Existing Transmission VPN isolation and seeding ownership remain with the download stack.
-
-Each active copy uses a pooled **128 KiB** buffer, plus runtime, request, and metadata overhead. Video is streamed from disk rather than loaded into memory. Readers check piece
-availability about every half second. Discovery defaults to every 10 seconds and can be configured from 2 to 300 seconds.
-
-## Build and install
-
-Install the .NET 10 SDK, clone this repository, then run from the repository root:
+Install the .NET 10 SDK and clone this repository. With your development Jellyfin server stopped, run:
 
 ```sh
-dotnet build -c Release
-dotnet test -c Release
+dotnet run --file scripts/Install.cs --plugins-dir "/path/to/jellyfin/plugins"
 ```
 
-Back up Jellyfin's database and configuration before the first trial. Use one small test download and a dedicated projection folder before enabling a wider library.
+This builds Debug and copies the complete plugin bundle into the chosen plugin directory. Add `--configuration Release` for a Release build. Make sure the Jellyfin service account
+can read the resulting directory, then start Jellyfin. Typical plugin roots are `/var/lib/jellyfin/plugins/` on native Linux and `/config/plugins/` in a container.
 
-For a manual install:
+To compile a distributable Release ZIP without installing it:
 
-1. Stop Jellyfin.
-2. Create a `TransmissionStreaming_0.1.0` directory under Jellyfin's plugin directory. A typical native Linux install uses `/var/lib/jellyfin/plugins/`; a typical container uses `/config/plugins/`.
-3. Copy these files from the Release build output into that directory:
-   - `Jellyfin.Plugin.TransmissionStreaming.dll`
-   - `TransmissionStreaming.Core.dll`
-   - `TransmissionStreaming.Logic.dll`
-   - `TransmissionStreaming.Infrastructure.dll`
-   - `Mediator.dll`
-   - `meta.json`
-4. Make the plugin directory and its files owned by the Jellyfin service account, then start Jellyfin.
-5. Open **Dashboard → Plugins → Transmission Streaming → Settings**.
+```sh
+dotnet run --file scripts/Package.cs
+```
 
-The plugin uses the matching SQLite runtime already supplied by Jellyfin 12.3. Do not replace Jellyfin's assemblies or copy the entire build output into its installation directory.
+The ZIP is written beneath `artifacts/`. Use the matching Jellyfin version; the package reuses the SQLite runtime supplied by Jellyfin.
 
-## Configure it
+## First download
 
-The plugin starts disabled. Configure connections and paths before enabling discovery.
+The plugin starts disabled. Configure the Transmission RPC endpoint, Radarr or Sonarr, a shared media-root mapping, a new empty projection folder, and a Jellyfin URL reachable by
+both the server and its players. Jellyfin needs read access to incomplete downloads, completed downloads, and imported media. Its plugin data and projection folders must be writable.
 
-| Setting | What to enter |
-| --- | --- |
-| Transmission RPC URL | An address Jellyfin can reach, including `/transmission/rpc`, such as `http://download-host:9091/transmission/rpc` |
-| Transmission credentials | The existing RPC username and password |
-| Radarr and Sonarr | Each application's base URL and API key; configure whichever manages the media you want to expose |
-| Media root seen by Transmission and arr | The common remote path, for example `/data` |
-| Same media root seen by Jellyfin | The matching local mount, for example `/mnt/media` |
-| Dedicated streaming library folder | A new, empty folder writable by Jellyfin, for example `/srv/jellyfin-streaming` |
-| Jellyfin URL | A URL reachable from **both the Jellyfin server and every player**, including any reverse-proxy base path |
+Enable discovery, then add the projection's `movies` folder to a Movies library and its `shows` folder to a Shows library. Start an arr-managed download, wait for torrent metadata
+and the next discovery poll, and play the new Jellyfin item. The settings page reports discovery and download status.
 
-The root mapping translates paths without moving files. For example, `/data/downloads/incomplete/movie.mkv.part` maps to `/mnt/media/downloads/incomplete/movie.mkv.part`. Jellyfin
-needs read access to incomplete downloads, completed downloads, and the final arr libraries. A read-only media mount is sufficient. Its projection folder and plugin data folder
-must be writable.
+See [configuration](doc/configuration.md) for the settings, path examples, and sequential-download requirements.
 
-Use the same shared media layout in Transmission and arr. Independent remote roots or different arr download mappings are outside this prototype's configuration model. Connection
-URLs must identify the service directly rather than redirecting to a login page or another host.
+## Tests and CI
 
-After saving and enabling discovery:
+With a local Docker-compatible daemon running:
 
-1. The plugin creates `movies` and `shows` beneath the projection folder.
-2. Add the `movies` folder to a Jellyfin Movies library, and the `shows` folder to a Shows library. They can be additional folders in your existing libraries.
-3. Start a download through Radarr or Sonarr. Wait for its torrent metadata and the next discovery poll.
-4. Check the plugin settings page for discovery status, then open the new item in Jellyfin and press Play.
+```sh
+dotnet test TransmissionStreaming.slnx -c Release
+```
 
-Leaving the projection folder setting empty uses a library folder beneath the plugin's Jellyfin data directory. An explicit dedicated folder is easier to locate and back up. A
-nonempty folder is refused on first use so the plugin cannot adopt unrelated contents.
+CI runs the same suites and uploads an installable plugin ZIP. Version tags also publish a GitHub Release and update the Jellyfin repository manifest. See [testing](doc/testing.md)
+for separate test commands and coverage boundaries, and [installation and releases](doc/installation.md) for the two installation flows.
 
-### Sequential downloading and write-cache safety
+## Further reading
 
-Keep **Enable sequential download and prioritize missing playback pieces** enabled for the normal setup. Transmission 4.1.3 flushes completed pieces to the filesystem before
-publishing their availability in sequential mode. Without that behavior, a verified piece can still exist only in Transmission's application write cache.
-
-If playback prioritization is disabled, the torrent must already use sequential downloading or Transmission's application write cache must be disabled. Otherwise, the reader
-refuses progressive playback. The plugin does not silently change the global cache setting.
-
-### Status and buffering
-
-With status display enabled, downloading items receive a temporary title suffix such as `[Downloading 23%]`. Other states include waiting for import, an unavailable download, and a
-download error. Completion removes the temporary suffix while retaining the entry.
-
-The player controls its own buffering indicator. There is no custom badge that every native Jellyfin client understands. The plugin settings page provides a separate
-discovery/status view.
-
-An item can appear once the torrent's file list is known, but playback still needs the file headers and enough data to start. Some formats require bytes from the end of the file
-for probing. Continued playback requires a swarm fast enough to keep up with the video's bitrate.
-
-## Completion, privacy, and rollback
-
-The stream URL is a capability URL: possession of its secret is enough to read that entry while the plugin is enabled. Treat generated stream links, sidecars that contain them, and
-plugin state as private. Use a private network or HTTPS for remote playback. Jellyfin and player logs may record stream URLs, so keep those logs private too.
-
-Credentials live in local Jellyfin plugin settings. They are not bundled into the repository or generated stream URLs. The persistent database stores stream identities, per-entry
-secrets, and backing paths. Back it up together with Jellyfin and the projection folder; regenerating projections is not a substitute for retaining the existing library identity.
-
-Disabling the plugin stops its stream endpoints and stops hiding managed native files. A later Jellyfin scan can expose completed physical media normally, but this is not an
-automatic watch-history migration back to native entries. For an exact rollback after a trial, stop Jellyfin and restore its pre-trial database/configuration and plugin state
-together. Do not delete the projection folder or its database if you intend to resume the existing projected library.
-
-## Prototype boundaries
-
-- Only downloads associated with a configured Radarr or Sonarr queue are discovered. Manually added torrents without an arr identity are skipped.
-- Samples, unsupported video formats, ambiguous movie mappings, and ambiguous multi-episode files are skipped. Standard single-episode `S01E02` and `1x02` names are supported inside season packs; absolute-numbered anime names are not resolved.
-- Seeking is best effort. Transmission exposes one sequential cursor per torrent, so simultaneous viewers at different positions can compete. Forward playback is the initial priority.
-- A continuous stall defaults to a 120-second deadline, configurable from 5 to 600 seconds. Missing or slow peers can still cause a player timeout or playback failure.
-- Import matching is deliberately strict. An older library copy, a differently sized replacement, or an ambiguous history match is not accepted as the completed download.
-- There is one stable projection per movie or episode. A new upgrade does not take over an existing projection automatically.
-- Permanent links continue to route through the plugin after completion. Removing the plugin requires a library migration or restoring the pre-trial backup.
-- An isolated Jellyfin 12.3 test verifies HTTP playback and completion with synthetic media and fake Transmission/Radarr APIs. Real swarm behavior, native clients, transcoding, and duplicate reconciliation under a normal library workload still need validation.
-
-## Validation
-
-The [TODO list](TODO.md) tracks the planned Testcontainers application and integration tests after the base implementation.
-
-The automated tests cover domain ranges, application handlers, HTTP/RPC adapters, safe paths, piece-gated reads, import proof, and watch-state merging.
-
-The host test runs against a separate Jellyfin instance with a fresh database and synthetic video. A fake download has its full allocated length but only its first piece available.
-The test checks that available ranges are correct and a full response waits for missing pieces without sending sparse zeros. It then simulates the exact arr import, removes the
-torrent, and verifies the same playback URL and Jellyfin item identity. Two users retain watched status, resume position, play count, and favorites.
-
-The test uses only its fixed loopback ports and disposable media directory. It does not connect to the normal Jellyfin server or real download services.
+- [Installation, development, and releases](doc/installation.md)
+- [Design and playback flow](doc/design.md)
+- [Configuration and buffering](doc/configuration.md)
+- [Completion, watch history, and rollback](doc/operations.md)
+- [Testing and isolation](doc/testing.md)
+- [TODO list](TODO.md)
 
 ## License
 

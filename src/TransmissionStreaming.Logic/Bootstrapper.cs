@@ -6,6 +6,7 @@ using TransmissionStreaming.Logic.Discovery;
 /// <summary>Composes host-independent feature services into the outer application's container.</summary>
 public static class Bootstrapper
 {
+    /// <summary>Adds host-independent discovery services used by the generated application handlers.</summary>
     public static IServiceCollection AddTransmissionStreamingLogic(this IServiceCollection services)
     {
         return services.AddDiscoveryLogic();

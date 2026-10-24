@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <IsPackable>false</IsPackable>
+    </PropertyGroup>
+    <ItemGroup>
+        <PackageReference Include="Testcontainers" />
+        <InternalsVisibleTo Include="TransmissionStreaming.IntegrationTests" />
+        <InternalsVisibleTo Include="Jellyfin.Plugin.TransmissionStreaming.ApplicationTests" />
+        <Compile Remove="Torrents/Seed/**/*.cs" />
+        <EmbeddedResource Include="Torrents/Seed/**/*.cs" />
+    </ItemGroup>
+</Project>

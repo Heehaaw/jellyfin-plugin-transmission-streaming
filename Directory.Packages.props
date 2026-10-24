@@ -12,6 +12,8 @@
         <PackageVersion Include="Jellyfin.Model" Version="12.3.0" />
         <PackageVersion Include="Microsoft.Data.Sqlite.Core" Version="10.0.12" />
         <PackageVersion Include="Microsoft.Data.Sqlite" Version="10.0.12" />
+        <PackageVersion Include="Testcontainers" Version="4.16.0" />
+        <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.12" />
         <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
         <PackageVersion Include="xunit" Version="2.9.3" />
         <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
