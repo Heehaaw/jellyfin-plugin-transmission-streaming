@@ -146,6 +146,8 @@ together. Do not delete the projection folder or its database if you intend to r
 
 ## Validation
 
+The [TODO list](TODO.md) tracks the planned Testcontainers application and integration tests after the base implementation.
+
 The automated tests cover domain ranges, application handlers, HTTP/RPC adapters, safe paths, piece-gated reads, import proof, and watch-state merging.
 
 The host test runs against a separate Jellyfin instance with a fresh database and synthetic video. A fake download has its full allocated length but only its first piece available.
