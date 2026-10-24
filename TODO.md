@@ -23,11 +23,11 @@
 - [x] Advance virtual time in unit tests for poll boundaries, retries, expiry, cancellation, and stall reset.
 - [x] Reuse download containers and networks through assembly fixtures while resetting scenario state.
 - [x] Measure complete-suite runtime after reuse and rerun Linux CI.
-- [ ] Publish and verify the release containing the timer and fixture improvements.
+- [x] Publish and verify the release containing the timer and fixture improvements.
 
 ## Business tests and testability
 
 - [x] Exercise each behavior-bearing unit on its happy path and test meaningful branches, loops, main failures, and obvious edges with AutoFixture.
 - [x] Add component scenarios for competing releases, late import recovery, completed downloads awaiting import, and rejected payloads.
 - [x] Verify progressive video decoding against the complete original in the Jellyfin application flow.
-- [ ] Audit test readability, run the expanded suites, and publish the verified result.
+- [x] Audit test readability, run the expanded suites, and publish the verified result.
