@@ -9,7 +9,7 @@
 - [x] Check partial playback, HEAD and ranges, missing-piece waits, cancellation, stalls, completion, import, torrent removal, stable playback URLs, and server restart.
 - [x] Retain two users' watched state, resume positions, play counts, and favorites. Reconcile a native duplicate without deleting its media file.
 - [x] Use explicit async ownership, dynamic host ports, readiness checks, bounded polling, automatic cleanup, and sanitized failure logs.
-- [x] Replace the Python smoke test with C# application coverage. Document test isolation and separate commands in `doc/`.
+- [x] Document test isolation and separate commands in `doc/`.
 
 ## Installation and distribution
 
@@ -24,3 +24,10 @@
 - [x] Reuse download containers and networks through assembly fixtures while resetting scenario state.
 - [ ] Measure complete-suite runtime after reuse and rerun Linux CI.
 - [ ] Publish and verify the release containing the timer and fixture improvements.
+
+## Business coverage and testability
+
+- [x] Cover each production feature's behavior with AutoFixture-based unit tests, including host adapters, persistence, projection ownership, status, and composition.
+- [x] Add component scenarios for competing releases, late import recovery, completed downloads awaiting import, and rejected payloads.
+- [x] Verify progressive video decoding against the complete original in the Jellyfin application flow.
+- [ ] Audit test readability, run the expanded suites, and publish the verified result.

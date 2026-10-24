@@ -7,7 +7,7 @@ using MediaBrowser.Model.Plugins;
 using MediaBrowser.Model.Serialization;
 
 /// <summary>Progressive Transmission playback hosted inside Jellyfin.</summary>
-public sealed class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
+public sealed class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages, IPluginSettings
 {
     public static readonly Guid PluginId = new(PluginConstants.Id);
     public static Plugin? Instance { get; private set; }

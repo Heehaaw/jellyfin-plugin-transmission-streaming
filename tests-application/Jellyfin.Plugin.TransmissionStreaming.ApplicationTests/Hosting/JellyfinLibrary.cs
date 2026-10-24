@@ -18,8 +18,10 @@ internal sealed class JellyfinLibrary(JellyfinApi api, string administrator, str
             EnableTrickplayImageExtraction = false,
             TypeOptions = new[] { new { Type = "Movie", MetadataFetchers = Array.Empty<string>(), ImageFetchers = Array.Empty<string>() } }
         };
-        var query = $"name={Uri.EscapeDataString(name)}&collectionType=movies&refreshLibrary=true&paths={Uri.EscapeDataString(path)}";
+        var query = $"name={Uri.EscapeDataString(name)}&collectionType=movies&refreshLibrary=false&paths={Uri.EscapeDataString(path)}";
+        // A refresh requested during an existing scan can be dropped before the new root is included.
         await api.RequestAsync($"/Library/VirtualFolders?{query}", new { LibraryOptions = options });
+        await new JellyfinLibraryScan(api).StartAfterFolderChangeAsync();
     }
 
     public async Task<JsonNode?> FindAsync(bool projected)

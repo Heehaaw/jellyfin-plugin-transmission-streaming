@@ -67,6 +67,11 @@ internal sealed class ProjectionFiles(IStreamingOptionsProvider options) : IProj
         }
 
         var marker = Path.Combine(full, OwnershipMarker);
+        if (File.Exists(marker) && File.ReadAllText(marker) != OwnershipValue)
+        {
+            throw new InvalidOperationException("The projection directory ownership marker does not match this plugin.");
+        }
+
         if (Directory.Exists(full) && !File.Exists(marker) && Directory.EnumerateFileSystemEntries(full).Any())
         {
             throw new InvalidOperationException("The projection directory must be empty on first use.");

@@ -49,17 +49,42 @@ Run everything:
 dotnet test TransmissionStreaming.slnx -c Release
 ```
 
+## Business coverage
+
+The suites divide responsibilities so failures point to a specific behavior:
+
+| Layer | Behaviors |
+| --- | --- |
+| Unit | Range and piece boundaries, ownership and video selection, import validation, authorization, reader cleanup, virtual deadlines and caches, status, history merging, and host adapters. |
+| Component integration | Real handlers, HTTP adapters, SQLite, projection files, and Transmission working together across discovery, playback, import, and application restart. |
+| Jellyfin application | Actual plugin loading and DI, indexing unfinished media, HTTP delivery and video decoding, duplicate reconciliation, per-user history, server restart, and installation. |
+
+Integration scenarios cover competing releases for one title, a removed torrent followed by a late import, completed bytes awaiting import, recovery after an arr outage, and
+rejection of samples and ambiguous episode payloads. A completed import reports full progress even when its torrent has already disappeared.
+
+Tests use generated inputs and inject concrete subjects with frozen collaborator mocks. Each test states one behavior, with scenario-specific setup kept in its Arrange block.
+Small helpers own external setup or protocol details when that makes the flow easier to read; short arrangements remain inline. Records and interfaces are exercised through
+mapping, persistence, authorization, and service composition rather than tests that repeat property assignments.
+
+The unit coverage audit records execution in all 55 production C# files containing executable code. Interface declarations, enums, and compile-time constants have no executable
+sequence points; their contracts are exercised through consumers and composition tests. This is a file-coverage check, not a claim that every branch has been tested.
+
 ## Measured runtime
 
-The same six scenarios were measured before and after assembly reuse, including fixture setup and teardown:
+
+Before the additional business coverage, the same six scenarios were measured before and after assembly reuse, including fixture setup and teardown:
 
 | Suite | Before | After | Reduction |
 | --- | ---: | ---: | ---: |
 | Application | 158.1 s | 136.1 s | 14% |
 | Integration | 72.9 s | 52.7 s | 28% |
 
-These are local Docker measurements, not CI guarantees. Transmission still schedules real peer requests on its own clock. The unit-only command completed all 78 tests in
+These are local Docker measurements, not CI guarantees. Transmission still schedules real peer requests on its own clock. At that point, the unit-only command completed all 78 tests in
 3.44 seconds with warmed dependencies, including SDK/build overhead; virtual-time test bodies complete in milliseconds.
+
+The expanded suite now has 180 unit tests, 11 integration tests, and 6 Jellyfin application tests. A complete local run passed all 197 in 133.04 seconds. The warmed unit-only
+command completed in 2.37 seconds, including build overhead. The additional integration scenarios and video-decoding check change the workload, so these figures are separate
+from the like-for-like reuse comparison above.
 
 ## Virtual time
 
@@ -71,7 +96,6 @@ The observer waits until a timer is registered before advancing it. Its real-tim
 Container tests use the real clocks of Jellyfin and Transmission and bounded condition polling to observe their progress.
 
 ## Service integration flow
-
 
 The integration suite composes real application handlers, HTTP adapters, filesystem access, and the SQLite store through dependency injection. Jellyfin's indexing boundary is
 replaced for these tests, so they can exercise discovery and playback without starting a media server.
@@ -98,7 +122,6 @@ permanent URL inside the test network stays unchanged. Failure diagnostics inclu
 
 These suites exercise service contracts, HTTP playback, and library state. They do not establish native-player compatibility, transcoding behavior, public-swarm performance, or
 behavior under a normal multi-library workload. Test the intended client with a small real download before widening deployment.
-
 
 ## Installation flows
 

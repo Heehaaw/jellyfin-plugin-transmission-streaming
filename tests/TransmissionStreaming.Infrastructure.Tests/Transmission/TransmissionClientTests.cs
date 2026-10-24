@@ -7,6 +7,7 @@ using FluentAssertions;
 using global::TransmissionStreaming.Core.Transmission;
 using global::TransmissionStreaming.Infrastructure.Transmission;
 using System.Net;
+using System.Text;
 using System.Text.Json;
 using Xunit;
 
@@ -73,4 +74,129 @@ public sealed class TransmissionClientTests
         // Assert
         await action.Should().ThrowAsync<IOException>();
     }
+    [Theory, AutoMoqData]
+    internal async Task Should_ReadSessionCacheAndIncompleteDirectorySettings(TransmissionConnection connection, TransmissionSessionSnapshot source,
+        [Frozen] ScriptedHandler handler, TransmissionClient sut)
+    {
+        // Arrange
+        var authenticated = false;
+        handler.Respond = request =>
+        {
+            var expected = Convert.ToBase64String(Encoding.UTF8.GetBytes(connection.Username + ":" + connection.Password));
+            authenticated = request.Headers.Authorization?.Scheme == "Basic" && request.Headers.Authorization.Parameter == expected;
+            return Task.FromResult(RpcResponse(source));
+        };
+
+        // Act
+        var session = await sut.GetSessionAsync(connection);
+
+        // Assert
+        authenticated.Should().BeTrue("RPC credentials must be scoped to the configured endpoint");
+        session.Should().BeEquivalentTo(source);
+    }
+
+    [Theory, AutoMoqData]
+    internal async Task Should_SelectOnlyTheRequestedTorrent(TransmissionConnection connection, TorrentSnapshot source,
+        [Frozen] ScriptedHandler handler, TransmissionClient sut)
+    {
+        // Arrange
+        JsonElement parameters = default;
+        handler.Respond = async request =>
+        {
+            using var payload = JsonDocument.Parse(await request.Content!.ReadAsStringAsync());
+            parameters = payload.RootElement.GetProperty("params").Clone();
+            return RpcResponse(new { torrents = new[] { source } });
+        };
+
+        // Act
+        var torrent = await sut.GetTorrentAsync(connection, source.Hash);
+
+        // Assert
+        parameters.GetProperty("ids").EnumerateArray().Single().GetString().Should().Be(source.Hash);
+        torrent!.Hash.Should().Be(source.Hash);
+    }
+
+    [Theory, AutoMoqData]
+    internal async Task Should_EnableSequentialDownloadingOnlyForThePlayedTorrent(TransmissionConnection connection, TorrentSnapshot source,
+        [Frozen] ScriptedHandler handler, TransmissionClient sut)
+    {
+        // Arrange
+        JsonElement parameters = default;
+        handler.Respond = async request =>
+        {
+            using var payload = JsonDocument.Parse(await request.Content!.ReadAsStringAsync());
+            parameters = payload.RootElement.GetProperty("params").Clone();
+            return RpcResponse(new { });
+        };
+
+        // Act
+        await sut.EnableSequentialAsync(connection, source.Hash);
+
+        // Assert
+        parameters.GetProperty("ids").EnumerateArray().Single().GetString().Should().Be(source.Hash);
+        parameters.GetProperty("sequential_download").GetBoolean().Should().BeTrue();
+        parameters.EnumerateObject().Should().HaveCount(2, "global cache or unrelated torrent settings must not change");
+    }
+
+    [Theory, AutoMoqData]
+    internal async Task Should_MoveTheCursorForOnlyTheSelectedTorrent(TransmissionConnection connection, TorrentSnapshot source, byte piece,
+        [Frozen] ScriptedHandler handler, TransmissionClient sut)
+    {
+        // Arrange
+        JsonElement parameters = default;
+        handler.Respond = async request =>
+        {
+            using var payload = JsonDocument.Parse(await request.Content!.ReadAsStringAsync());
+            parameters = payload.RootElement.GetProperty("params").Clone();
+            return RpcResponse(new { });
+        };
+
+        // Act
+        await sut.SetSequentialStartAsync(connection, source.Hash, piece);
+
+        // Assert
+        parameters.GetProperty("ids").EnumerateArray().Single().GetString().Should().Be(source.Hash);
+        parameters.GetProperty("sequential_download_from_piece").GetInt32().Should().Be(piece);
+    }
+
+    [Theory, AutoMoqData]
+    internal async Task Should_SurfaceRpcRejectionWithoutItsMessage(TransmissionConnection connection, string upstreamMessage,
+        [Frozen] ScriptedHandler handler, TransmissionClient sut)
+    {
+        // Arrange
+        handler.Respond = _ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(JsonSerializer.Serialize(new { error = upstreamMessage }))
+        });
+
+        // Act
+        var action = () => sut.GetSessionAsync(connection);
+
+        // Assert
+        var failure = await action.Should().ThrowAsync<IOException>();
+        failure.Which.Message.Contains(upstreamMessage, StringComparison.Ordinal).Should().BeFalse();
+    }
+
+    [Theory, AutoMoqData]
+    internal async Task Should_RejectInvalidRpcResultShapes(TransmissionConnection connection,
+        [Frozen] ScriptedHandler handler, TransmissionClient sut)
+    {
+        // Arrange
+        handler.Respond = _ => Task.FromResult(RpcResponse(Array.Empty<string>()));
+
+        // Act
+        var action = () => sut.GetSessionAsync(connection);
+
+        // Assert
+        await action.Should().ThrowAsync<IOException>();
+    }
+
+    private static HttpResponseMessage RpcResponse<T>(T result)
+    {
+        return new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(JsonSerializer.Serialize(new { jsonrpc = "2.0", id = 1, result }))
+        };
+    }
+
 }

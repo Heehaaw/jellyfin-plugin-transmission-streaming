@@ -11,6 +11,7 @@
         <PackageReference Include="AutoFixture.Xunit2" />
         <PackageReference Include="AutoFixture.AutoMoq" />
         <PackageReference Include="Moq" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
         <PackageReference Include="FluentAssertions" />
     </ItemGroup>
 </Project>

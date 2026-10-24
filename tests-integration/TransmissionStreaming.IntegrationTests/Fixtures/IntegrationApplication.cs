@@ -2,6 +2,7 @@ namespace TransmissionStreaming.IntegrationTests.Fixtures;
 
 using Core.Configuration;
 using Core.Projection;
+using Core.Transmission;
 using Infrastructure;
 using Logic;
 using Logic.Discovery;
@@ -56,8 +57,16 @@ internal sealed class IntegrationApplication(DownloadServices containers) : IAsy
             {
                 Console.Error.WriteLine(await DiagnosticsAsync());
             }
+
             throw;
         }
+    }
+
+    public Task<IReadOnlyList<TorrentSnapshot>> TorrentsAsync(CancellationToken cancellationToken)
+    {
+        var settings = _settings!.Value;
+        var connection = new TransmissionConnection(settings.TransmissionUrl, settings.TransmissionUsername, settings.TransmissionPassword);
+        return _provider!.GetRequiredService<ITransmissionClient>().GetTorrentsAsync(connection, cancellationToken);
     }
 
     public void SetEnabled(bool enabled)
@@ -130,6 +139,7 @@ internal sealed class IntegrationApplication(DownloadServices containers) : IAsy
     private sealed class SettingsProvider(StreamingOptions value) : IStreamingOptionsProvider
     {
         public StreamingOptions Value { get; set; } = value;
+
         public StreamingOptions Get()
         {
             return Value;

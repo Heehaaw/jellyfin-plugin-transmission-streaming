@@ -26,6 +26,10 @@ public sealed class JellyfinTestServer(DownloadServices containers, JellyfinBase
     internal Uri Address => server!.Address;
     internal JellyfinApi Api => api;
     internal string Administrator => administrator;
+    internal VideoDecoder Decoder => server!.Decoder;
+    internal string ReferenceVideoPath => Swarm.RemotePath(Path.Combine(workspace, "reference.mkv"));
+    internal string ProjectionFilePath => Swarm.RemotePath(Directory.EnumerateFiles(
+        Path.Combine(workspace, "projection"), "*.strm", SearchOption.AllDirectories).Single());
 
     public async ValueTask InitializeAsync()
     {

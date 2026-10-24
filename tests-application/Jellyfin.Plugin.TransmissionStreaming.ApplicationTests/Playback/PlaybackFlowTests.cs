@@ -5,9 +5,6 @@ using AutoFixture.AutoMoq;
 using FluentAssertions;
 using global::TransmissionStreaming.TestSupport.Testing;
 using Hosting;
-using System.Net;
-using System.Net.Http.Headers;
-using System.Text.Json.Nodes;
 using Xunit;
 
 /// <summary>Exercises the public plugin and Jellyfin APIs with real, locally downloaded torrent bytes.</summary>
@@ -30,8 +27,6 @@ public sealed class PlaybackFlowTests(JellyfinTestServer sut, ITestOutputHelper 
         using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(60) };
         var permanentUrl = await sut.WaitForStreamAsync();
         var hostUrl = sut.HostStream(permanentUrl);
-        using var available = new HttpRequestMessage(HttpMethod.Get, hostUrl);
-        available.Headers.Range = new RangeHeaderValue(0, sut.Swarm.PieceSize - 1);
 
         try
         {
@@ -44,32 +39,10 @@ public sealed class PlaybackFlowTests(JellyfinTestServer sut, ITestOutputHelper 
             var sources = JellyfinApi.Field(playbackInfo, "MediaSources")!.AsArray();
             var advertisedPath = JellyfinApi.Value<string>(sources[0], "Path");
 
-            using var head = await client.SendAsync(new HttpRequestMessage(HttpMethod.Head, hostUrl), cancellationToken);
-            using var range = await client.SendAsync(available, cancellationToken);
-            var firstPiece = await range.Content.ReadAsByteArrayAsync(cancellationToken);
-            using var playback = await client.GetAsync(hostUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-            await using var body = await playback.Content.ReadAsStreamAsync(cancellationToken);
-            var prefix = new byte[sut.Swarm.PieceSize];
-            await body.ReadExactlyAsync(prefix, cancellationToken);
-            var nextByte = new byte[1];
-            var pendingRead = body.ReadAsync(nextByte, cancellationToken).AsTask();
-            var waitedForPieces = await Task.WhenAny(pendingRead, Task.Delay(700, cancellationToken)) != pendingRead;
-            await sut.Swarm.AllowAllPiecesAsync(cancellationToken);
-            var firstAfterWait = await pendingRead.WaitAsync(TimeSpan.FromSeconds(30), cancellationToken);
-            await using var received = new MemoryStream();
-            await received.WriteAsync(prefix, cancellationToken);
-            await received.WriteAsync(nextByte.AsMemory(0, firstAfterWait), cancellationToken);
-            await body.CopyToAsync(received, cancellationToken);
-
-            var viewer = await sut.Api.RequestAsync("/Users/New", new { Name = "second-viewer", Password = "Disposable-viewer-only-123!" });
-            var secondUser = JellyfinApi.Value<string>(viewer, "Id");
-            var users = new[] { sut.Administrator, secondUser };
-            var before = new Dictionary<string, JsonNode?>();
-            foreach (var (user, state) in users.Zip(states))
-            {
-                await sut.Api.RequestAsync($"/UserItems/{itemId}/UserData?userId={user}", state);
-                before[user] = await sut.Api.RequestAsync($"/UserItems/{itemId}/UserData?userId={user}");
-            }
+            // Probe requests use the short scanner deadline; sustained playback allows a real peer scheduling pulse.
+            await sut.ConfigureAsync(waitSeconds: 30);
+            var playback = await ProgressivePlayback.CaptureAsync(sut, client, hostUrl, cancellationToken);
+            var history = await ViewerHistory.SaveAsync(sut, itemId, states);
 
             await sut.ImportAsync();
             using var afterImport = await client.GetAsync(hostUrl, cancellationToken);
@@ -80,34 +53,16 @@ public sealed class PlaybackFlowTests(JellyfinTestServer sut, ITestOutputHelper 
             var restartedBytes = await afterRestart.Content.ReadAsByteArrayAsync(cancellationToken);
             var restartedId = await sut.WaitForItemAsync();
             var retainedUrl = await sut.WaitForStreamAsync();
-            var after = new Dictionary<string, JsonNode?>();
-            foreach (var user in users)
-            {
-                after[user] = await sut.Api.RequestAsync($"/UserItems/{itemId}/UserData?userId={user}");
-            }
-
             // Assert
             indexingDownload.Complete.Should().BeFalse("Jellyfin must advertise the projected item before the download finishes");
             (advertisedPath == permanentUrl).Should().BeTrue("Jellyfin playback must resolve the permanent stream link");
-            head.StatusCode.Should().Be(HttpStatusCode.OK);
-            head.Content.Headers.ContentLength.Should().Be(sut.ExpectedBytes.Length);
-            range.StatusCode.Should().Be(HttpStatusCode.PartialContent);
-            range.Content.Headers.ContentRange!.Length.Should().Be(sut.ExpectedBytes.Length);
-            firstPiece.Should().Equal(sut.ExpectedBytes.Take(sut.Swarm.PieceSize));
-            waitedForPieces.Should().BeTrue("the local seed withheld every remaining piece");
-            received.ToArray().Should().Equal(sut.ExpectedBytes);
+            playback.ShouldMatch(sut.ExpectedBytes, sut.Swarm.PieceSize);
             importedBytes.Should().Equal(sut.ExpectedBytes);
             restartedBytes.Should().Equal(sut.ExpectedBytes);
             JellyfinApi.Value<string>(afterItem, "Id").Should().Be(itemId);
             restartedId.Should().Be(itemId);
             (retainedUrl == permanentUrl).Should().BeTrue("the permanent capability must survive import and restart");
-            foreach (var user in users)
-            {
-                foreach (var field in new[] { "Played", "PlaybackPositionTicks", "PlayCount", "IsFavorite" })
-                {
-                    JsonNode.DeepEquals(JellyfinApi.Field(after[user], field), JellyfinApi.Field(before[user], field)).Should().BeTrue($"{field} belongs to each viewer");
-                }
-            }
+            await history.ShouldBeRetainedAsync(sut.Api);
         }
         catch
         {

@@ -37,6 +37,8 @@ internal sealed class JellyfinContainer : IAsyncDisposable
             .Build();
     }
 
+    public VideoDecoder Decoder => new(container);
+
     public Uri Address => new UriBuilder("http", container.Hostname, container.GetMappedPublicPort(HttpPort)).Uri;
 
     public Task StartAsync(CancellationToken cancellationToken)

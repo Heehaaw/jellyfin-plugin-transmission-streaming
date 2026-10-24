@@ -141,12 +141,17 @@ public sealed class DownloadFlowTests(ITestOutputHelper output)
             var failure = await Record.ExceptionAsync(failedDiscovery);
             await sut.RestartAsync();
             var restored = sut.Store.All().Single();
+            await sut.Arr.SetFailureAsync(false, cancellationToken);
+            await sut.Mediator.Send(source.Discover, cancellationToken);
+            var recovered = sut.Store.All().Single();
 
             // Assert
             failure.Should().BeOfType<HttpRequestException>();
             restored.Should().BeEquivalentTo(original, options => options.Excluding(projection => projection.Secret));
             string.Equals(restored.Secret, original.Secret, StringComparison.Ordinal).Should().BeTrue("failed discovery must not rotate the capability");
             File.Exists(restored.StreamPath).Should().BeTrue();
+            recovered.Should().BeEquivalentTo(original, options => options.Excluding(projection => projection.Secret));
+            string.Equals(recovered.Secret, original.Secret, StringComparison.Ordinal).Should().BeTrue("recovery must retain the original capability");
         }
         catch
         {

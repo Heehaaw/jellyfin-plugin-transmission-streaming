@@ -3,7 +3,7 @@ namespace Jellyfin.Plugin.TransmissionStreaming.Configuration;
 using global::TransmissionStreaming.Core.Configuration;
 
 /// <summary>Adapts Jellyfin's mutable plugin settings to a fresh application snapshot.</summary>
-internal sealed class OptionsProvider(Plugin plugin) : IStreamingOptionsProvider
+internal sealed class OptionsProvider(IPluginSettings plugin) : IStreamingOptionsProvider
 {
     public StreamingOptions Get()
     {

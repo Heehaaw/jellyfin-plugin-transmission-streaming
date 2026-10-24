@@ -74,6 +74,7 @@ public sealed class DiscoverDownloadsTests
 
         // Assert
         source.Existing.CompletedPath.Should().Be(source.ImportedPath);
+        source.Existing.Progress.Should().Be(1d);
         source.Existing.Id.Should().Be(id);
         source.Existing.Secret.Should().Be(secret);
         source.Existing.StreamPath.Should().Be(streamPath);
@@ -94,6 +95,78 @@ public sealed class DiscoverDownloadsTests
         // Assert
         transmission.Verify(value => value.GetTorrentsAsync(It.IsAny<TransmissionConnection>(), It.IsAny<CancellationToken>()), Times.Never);
         files.Verify(value => value.EnsureReady(), Times.Never);
+    }
+
+    [Theory, AutoMoqData]
+    internal async Task Should_ReportUnavailableDownloadWithoutLosingItsIdentity(DiscoveryScenario source,
+        [Frozen] Mock<IStreamingOptionsProvider> options, [Frozen] Mock<ITransmissionClient> transmission,
+        [Frozen] Mock<IProjectionStore> store, [Frozen] Mock<IMediator> mediator, DiscoverDownloads.Handler sut)
+    {
+        // Arrange
+        source.Existing.CompletedPath = null;
+        var previousProgress = source.Existing.Progress;
+        const string unavailable = "Download unavailable";
+        options.Setup(value => value.Get()).Returns(source.Options with { Enabled = true });
+        transmission.Setup(value => value.GetTorrentsAsync(It.IsAny<TransmissionConnection>(), It.IsAny<CancellationToken>())).ReturnsAsync([]);
+        store.Setup(value => value.All()).Returns([source.Existing]);
+        mediator.Setup(value => value.Send(It.IsAny<IQuery<string?>>(), It.IsAny<CancellationToken>())).Returns(ValueTask.FromResult<string?>(null));
+
+        // Act
+        await sut.Handle(source.Command, CancellationToken.None);
+
+        // Assert
+        source.Existing.Status.Should().Be(unavailable);
+        source.Existing.Progress.Should().Be(previousProgress);
+        store.Verify(value => value.Save(source.Existing), Times.Once);
+    }
+
+    [Theory, AutoMoqData]
+    internal async Task Should_ExposeDownloadErrorsForAnExistingStream(DiscoveryScenario source,
+        [Frozen] Mock<IStreamingOptionsProvider> options, [Frozen] Mock<ITransmissionClient> transmission,
+        [Frozen] Mock<IProjectionStore> store, [Frozen] Mock<IMediator> mediator, DiscoverDownloads.Handler sut)
+    {
+        // Arrange
+        source.Existing.CompletedPath = null;
+        source.Existing.TorrentHash = source.Torrent.Hash;
+        source.Existing.FileIndex = 0;
+        source.Existing.Length = source.Torrent.Files[0].Length;
+        const string failed = "Download error";
+        options.Setup(value => value.Get()).Returns(source.Options with { Enabled = true });
+        transmission.Setup(value => value.GetTorrentsAsync(It.IsAny<TransmissionConnection>(), It.IsAny<CancellationToken>())).ReturnsAsync([source.Torrent]);
+        store.Setup(value => value.All()).Returns([source.Existing]);
+        mediator.Setup(value => value.Send(It.IsAny<IQuery<string?>>(), It.IsAny<CancellationToken>())).Returns(ValueTask.FromResult<string?>(null));
+
+        // Act
+        await sut.Handle(source.Command, CancellationToken.None);
+
+        // Assert
+        source.Existing.Status.Should().Be(failed);
+        source.Existing.Progress.Should().Be(Math.Clamp((double)source.Torrent.Files[0].BytesCompleted / source.Existing.Length, 0, 1));
+    }
+
+    [Theory, AutoMoqData]
+    internal async Task Should_IgnoreDownloadsWithoutArrOwnership(DiscoveryScenario source,
+        [Frozen] Mock<IStreamingOptionsProvider> options, [Frozen] Mock<ITransmissionClient> transmission,
+        [Frozen] Mock<IArrClient> arr, [Frozen] Mock<IProjectionStore> store,
+        [Frozen] Mock<IProjectionFiles> files, DiscoverDownloads.Handler sut)
+    {
+        // Arrange
+        foreach (var file in source.Torrent.Files)
+        {
+            file.Name += ".mkv";
+        }
+        options.Setup(value => value.Get()).Returns(source.Options with { Enabled = true });
+        transmission.Setup(value => value.GetTorrentsAsync(It.IsAny<TransmissionConnection>(), It.IsAny<CancellationToken>())).ReturnsAsync([source.Torrent]);
+        store.Setup(value => value.All()).Returns([]);
+        arr.Setup(value => value.FindDownloadAsync(It.IsAny<ArrConnection>(), It.IsAny<MediaKind>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((MediaIdentity?)null);
+
+        // Act
+        await sut.Handle(source.Command, CancellationToken.None);
+
+        // Assert
+        store.Verify(value => value.Save(It.IsAny<Projection>()), Times.Never);
+        files.Verify(value => value.WriteFiles(It.IsAny<Projection>()), Times.Never);
     }
 
     private sealed class AutoMoqDataAttribute() : AutoDataAttribute(() =>

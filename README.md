@@ -19,7 +19,7 @@ Back up Jellyfin's database and configuration before the first trial. Start with
 2. Open the Catalog, select **Transmission Streaming**, and install a compatible version.
 3. Restart Jellyfin, then open **Dashboard → Plugins → Transmission Streaming → Settings**.
 
-The repository URL becomes available after the first tagged release is published. See [installation and releases](doc/installation.md) for downloading a ZIP directly or using a CI artifact.
+See [installation and releases](doc/installation.md) for downloading a ZIP directly or using a CI artifact.
 
 ## Build and load for development
 

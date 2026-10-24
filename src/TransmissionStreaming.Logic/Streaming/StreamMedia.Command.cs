@@ -26,6 +26,9 @@ public static class StreamMedia
         IProgressiveReader reader,
         IStreamActivity activity) : ICommandHandler<Command>
     {
+        private const int MinimumStallSeconds = 5;
+        private const int MaximumStallSeconds = 600;
+
         public async ValueTask<Unit> Handle(Command command, CancellationToken cancellationToken)
         {
             var config = options.Get();
@@ -43,7 +46,7 @@ public static class StreamMedia
             var source = sources.Create(entry);
             var settings = new ProgressiveReadOptions
             {
-                StallTimeout = TimeSpan.FromSeconds(Math.Clamp(config.PieceWaitSeconds, 5, 600)),
+                StallTimeout = TimeSpan.FromSeconds(Math.Clamp(config.PieceWaitSeconds, MinimumStallSeconds, MaximumStallSeconds)),
                 PrioritizeMissingPieces = config.PrioritizePlayback
             };
             using var lease = activity.Open(entry.Id);

@@ -14,5 +14,6 @@
         <ProjectReference Include="../../src/TransmissionStreaming.Infrastructure/TransmissionStreaming.Infrastructure.csproj" />
         <PackageReference Include="Moq" />
         <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+        <PackageReference Include="Microsoft.Data.Sqlite" />
     </ItemGroup>
 </Project>

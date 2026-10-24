@@ -75,6 +75,67 @@ public sealed class ResolveImportedFileTests
         result.Should().BeNull();
     }
 
+    [Theory, AutoMoqData]
+    internal async Task Should_ResolveEpisodesThroughSonarr(ImportScenario source,
+        [Frozen] Mock<IStreamingOptionsProvider> options, [Frozen] Mock<IProjectionPaths> paths,
+        [Frozen] Mock<IMediaFiles> media, [Frozen] Mock<IArrClient> arr, ResolveImportedFile.Handler sut)
+    {
+        // Arrange
+        var entry = source.Query.Projection;
+        entry.CompletedPath = null;
+        entry.Identity.Kind = MediaKind.Episode;
+        options.Setup(value => value.Get()).Returns(source.Options);
+        arr.Setup(value => value.FindImportedFileAsync(It.Is<ArrConnection>(connection =>
+            connection.Url == source.Options.SonarrUrl && connection.ApiKey == source.Options.SonarrApiKey),
+            entry.Identity, entry.Length, It.IsAny<CancellationToken>())).ReturnsAsync(source.RemotePath);
+        paths.Setup(value => value.Map(source.RemotePath, source.Options.RemoteMediaRoot, source.Options.LocalMediaRoot)).Returns(source.LocalPath);
+        media.Setup(value => value.HasLength(source.LocalPath, entry.Length)).Returns(true);
+
+        // Act
+        var result = await sut.Handle(source.Query, CancellationToken.None);
+
+        // Assert
+        result.Should().Be(source.LocalPath);
+    }
+
+    [Theory, AutoMoqData]
+    internal async Task Should_RejectAnImportWithDifferentLength(ImportScenario source,
+        [Frozen] Mock<IStreamingOptionsProvider> options, [Frozen] Mock<IProjectionPaths> paths,
+        [Frozen] Mock<IMediaFiles> media, [Frozen] Mock<IArrClient> arr, ResolveImportedFile.Handler sut)
+    {
+        // Arrange
+        var entry = source.Query.Projection;
+        entry.CompletedPath = null;
+        options.Setup(value => value.Get()).Returns(source.Options);
+        arr.Setup(value => value.FindImportedFileAsync(It.IsAny<ArrConnection>(), entry.Identity, entry.Length,
+            It.IsAny<CancellationToken>())).ReturnsAsync(source.RemotePath);
+        paths.Setup(value => value.Map(source.RemotePath, source.Options.RemoteMediaRoot, source.Options.LocalMediaRoot)).Returns(source.LocalPath);
+        media.Setup(value => value.HasLength(source.LocalPath, entry.Length)).Returns(false);
+
+        // Act
+        var result = await sut.Handle(source.Query, CancellationToken.None);
+
+        // Assert
+        result.Should().BeNull();
+    }
+
+    [Theory, AutoMoqData]
+    internal async Task Should_NotCallAnUnconfiguredArr(ImportScenario source,
+        [Frozen] Mock<IStreamingOptionsProvider> options, [Frozen] Mock<IArrClient> arr, ResolveImportedFile.Handler sut)
+    {
+        // Arrange
+        source.Query.Projection.CompletedPath = null;
+        options.Setup(value => value.Get()).Returns(source.Options with { RadarrApiKey = "", SonarrApiKey = "" });
+
+        // Act
+        var result = await sut.Handle(source.Query, CancellationToken.None);
+
+        // Assert
+        result.Should().BeNull();
+        arr.Verify(value => value.FindImportedFileAsync(It.IsAny<ArrConnection>(), It.IsAny<MediaIdentity>(),
+            It.IsAny<long>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     private sealed class AutoMoqDataAttribute() : AutoDataAttribute(() =>
     {
         var fixture = new Fixture { RepeatCount = 1 };

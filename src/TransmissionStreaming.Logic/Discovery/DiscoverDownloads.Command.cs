@@ -102,6 +102,13 @@ public static class DiscoverDownloads
                         entry.CompletedPath = imported;
                     }
                 }
+
+                // Import proof establishes completion even after the downloader has removed its progress data.
+                if (entry.CompletedPath is not null)
+                {
+                    entry.Progress = 1;
+                }
+
                 entry.Status = entry.CompletedPath is not null ? "Complete"
                     : torrent is null ? "Download unavailable"
                     : !string.IsNullOrEmpty(torrent.ErrorString) ? "Download error"
@@ -143,8 +150,8 @@ public static class DiscoverDownloads
                     return identity;
                 }
             }
+
             return null;
         }
     }
 }
-

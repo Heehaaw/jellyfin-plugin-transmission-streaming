@@ -124,4 +124,53 @@ public sealed class MediaPathsTests
         // Assert
         result.Should().Be(expectedId);
     }
+    [Theory, AutoMoqData]
+    internal void Should_SanitizeMetadataIntoSafePathComponents(MediaIdentity identity, TemporaryDirectory directory, MediaPaths sut)
+    {
+        // Arrange
+        using var root = directory;
+        identity.Kind = MediaKind.Movie;
+        identity.Title += " /../\\:\t?";
+
+        // Act
+        var path = sut.StreamPath(root.Path, identity);
+        var relative = Path.GetRelativePath(root.Path, path);
+        var filename = Path.GetFileName(path);
+
+        // Assert
+        relative.Split(Path.DirectorySeparatorChar).Should().NotContain("..");
+        filename.Should().EndWith(".strm").And.NotContain("?").And.NotContain(":").And.NotContain("\t");
+    }
+
+    [Theory, AutoMoqData]
+    internal void Should_KeepEpisodeNumberingInDisplayPaths(MediaIdentity identity, TemporaryDirectory directory, MediaPaths sut)
+    {
+        // Arrange
+        using var root = directory;
+        identity.Kind = MediaKind.Episode;
+        var numbering = $"S{identity.SeasonNumber:00}E{identity.EpisodeNumber:00}";
+
+        // Act
+        var path = sut.StreamPath(root.Path, identity);
+
+        // Assert
+        Path.GetFileName(path).Should().Contain(numbering);
+        Path.GetFileName(Path.GetDirectoryName(path)).Should().Be($"Season {identity.SeasonNumber:00}");
+    }
+
+    [Theory, AutoMoqData]
+    internal void Should_OmitUnknownYearsFromMoviePaths(MediaIdentity identity, TemporaryDirectory directory, MediaPaths sut)
+    {
+        // Arrange
+        using var root = directory;
+        identity.Kind = MediaKind.Movie;
+        identity.Year = 0;
+
+        // Act
+        var path = sut.StreamPath(root.Path, identity);
+
+        // Assert
+        Path.GetFileName(path).Should().Be(identity.Title + ".strm");
+    }
+
 }

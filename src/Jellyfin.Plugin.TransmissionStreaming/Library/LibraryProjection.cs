@@ -50,7 +50,7 @@ internal sealed class LibraryProjection(
             ? identity.EpisodeTitle : identity.Title;
         var display = configuration.Get().ShowDownloadStatus && entry.CompletedPath is null
             ? $"{title} [{entry.Status}]" : title;
-        if (projected.Name != display && projected.GetParent() is { } parent)
+        if (projected.Name != display && projected.ParentId != Guid.Empty && library.GetItemById(projected.ParentId) is { } parent)
         {
             projected.Name = display;
             await library.UpdateItemAsync(projected, parent, ItemUpdateType.MetadataEdit, cancellationToken).ConfigureAwait(false);
