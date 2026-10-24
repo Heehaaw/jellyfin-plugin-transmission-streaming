@@ -47,7 +47,7 @@ public static class DiscoverServicePaths
         {
             return mappings.Where(child => !mappings.Any(parent => Covers(parent, child))).ToArray();
         }
-        
+
         private bool Covers(ServicePathMapping parent, ServicePathMapping child)
         {
             var remoteParent = parent.RemoteRoot.TrimEnd('/');
@@ -59,12 +59,12 @@ public static class DiscoverServicePaths
             {
                 return false;
             }
-        
+
             var expected = localParent + remoteChild[remoteParent.Length..];
             // A trusted child root can permit an alias that the parent mapping refuses. Keep it in that case.
             return expected == localChild && physicalPaths.Map(remoteChild, remoteParent, localParent) == localChild;
         }
-        
+
         private async ValueTask<string> SuggestLocalAsync(MediaService service, string remote, int remoteCount, string[] localPaths, StreamingOptions config,
             CancellationToken cancellationToken)
         {

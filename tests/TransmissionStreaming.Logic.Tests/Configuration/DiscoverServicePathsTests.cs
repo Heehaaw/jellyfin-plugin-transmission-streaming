@@ -114,15 +114,15 @@ public sealed class DiscoverServicePathsTests
         mediator.Setup(value => value.Send(It.Is<MapServicePath.Query>(request => request.Path == parent), It.IsAny<CancellationToken>())).Returns(ValueTask.FromResult<string?>(localParent));
         mediator.Setup(value => value.Send(It.Is<MapServicePath.Query>(request => request.Path == child), It.IsAny<CancellationToken>())).Returns(ValueTask.FromResult<string?>(localChild));
         physicalPaths.Setup(value => value.Map(child, parent, localParent)).Returns(localChild);
-    
+
         // Act
         var result = await sut.Handle(query, CancellationToken.None);
-    
+
         // Assert
         result.Mappings.Should().ContainSingle().Which.RemoteRoot.Should().Be(parent);
         result.Paths.Should().BeSameAs(paths, "the raw service response still explains where suggestions came from");
     }
-    
+
     [Theory, AutoMoqData]
     internal async Task Should_KeepASavedChildWithADifferentLocalTarget(DiscoverySource source,
         [Frozen] Mock<IServicePathDiscovery> discovery, [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
@@ -139,15 +139,15 @@ public sealed class DiscoverServicePathsTests
         discovery.Setup(value => value.DiscoverAsync(query.Service, query.Connection, It.IsAny<CancellationToken>())).ReturnsAsync(paths);
         options.SetupGet(value => value.CurrentValue).Returns(source.Options);
         mediator.Setup(value => value.Send(It.Is<MapServicePath.Query>(request => request.Path == parent), It.IsAny<CancellationToken>())).Returns(ValueTask.FromResult<string?>(source.LocalFolders[0]));
-    
+
         // Act
         var result = await sut.Handle(query, CancellationToken.None);
-    
+
         // Assert
         result.Mappings.Should().HaveCount(paths.DownloadDirectories.Count);
         result.Mappings.Single(mapping => mapping.RemoteRoot == child).LocalRoot.Should().Be(saved.LocalRoot);
     }
-    
+
     [Theory, AutoMoqData]
     internal async Task Should_KeepAChildWhenTheParentCannotTranslateIt(DiscoverySource source,
         [Frozen] Mock<IServicePathDiscovery> discovery, [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
@@ -165,14 +165,14 @@ public sealed class DiscoverServicePathsTests
         mediator.Setup(value => value.Send(It.Is<MapServicePath.Query>(request => request.Path == parent), It.IsAny<CancellationToken>())).Returns(ValueTask.FromResult<string?>(localParent));
         mediator.Setup(value => value.Send(It.Is<MapServicePath.Query>(request => request.Path == child), It.IsAny<CancellationToken>())).Returns(ValueTask.FromResult<string?>(localParent + suffix));
         physicalPaths.Setup(value => value.Map(child, parent, localParent)).Returns((string?)null);
-    
+
         // Act
         var result = await sut.Handle(query, CancellationToken.None);
-    
+
         // Assert
         result.Mappings.Should().HaveCount(paths.DownloadDirectories.Count);
     }
-    
+
     private sealed class AutoMoqDataAttribute() : AutoDataAttribute(() =>
     {
         var fixture = new Fixture { RepeatCount = 1 };
