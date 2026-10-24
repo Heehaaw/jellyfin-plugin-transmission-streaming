@@ -1,6 +1,7 @@
 namespace TransmissionStreaming.Logic.Streaming;
 
 using Mediator;
+using Microsoft.Extensions.Options;
 using System.Security.Cryptography;
 using System.Text;
 using TransmissionStreaming.Core.Configuration;
@@ -19,12 +20,12 @@ public static class GetStream
     }
 
     /// <summary>Checks enablement and capability equality before returning any playback metadata.</summary>
-    internal sealed class Handler(IStreamingOptionsProvider options, IProjectionStore store) : IQueryHandler<Query, Projection?>
+    internal sealed class Handler(IOptionsMonitor<StreamingOptions> options, IProjectionStore store) : IQueryHandler<Query, Projection?>
     {
         public ValueTask<Projection?> Handle(Query query, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (!options.Get().Enabled || query.Key is null)
+            if (!options.CurrentValue.Enabled || query.Key is null)
             {
                 return ValueTask.FromResult<Projection?>(null);
             }
@@ -40,4 +41,3 @@ public static class GetStream
         }
     }
 }
-

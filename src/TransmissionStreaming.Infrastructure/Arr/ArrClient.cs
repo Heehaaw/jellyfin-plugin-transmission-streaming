@@ -4,10 +4,19 @@ using global::TransmissionStreaming.Core.Arr;
 
 using global::TransmissionStreaming.Infrastructure.Arr.Discovery;
 using global::TransmissionStreaming.Infrastructure.Arr.Imports;
+using global::TransmissionStreaming.Infrastructure.Arr.Transport;
 
 /// <summary>Read-only download discovery and verified import resolution for Radarr and Sonarr v3.</summary>
-internal sealed class ArrClient(IArrDownloadDiscovery discovery, IArrImportResolver imports) : IArrClient
+internal sealed class ArrClient(IArrDownloadDiscovery discovery, IArrImportResolver imports, IArrTransport transport) : IArrClient
 {
+    /// <summary>Reads configured roots without assuming they share the downloader's mount layout.</summary>
+    public async Task<IReadOnlyList<string>> GetRootFoldersAsync(ArrConnection connection, CancellationToken cancellationToken)
+    {
+        var response = await transport.GetAsync(connection, "rootfolder", cancellationToken).ConfigureAwait(false);
+        return ArrJson.Array(response).Select(folder => ArrJson.Text(folder, "path"))
+            .Where(path => !string.IsNullOrWhiteSpace(path)).Distinct(StringComparer.Ordinal).ToArray();
+    }
+
     /// <summary>Finds the exact movie or episode associated with a torrent in the arr queue.</summary>
     public Task<MediaIdentity?> FindDownloadAsync(
         ArrConnection connection, MediaKind kind, string hash, string filename, CancellationToken cancellationToken)

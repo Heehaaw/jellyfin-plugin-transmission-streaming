@@ -1,6 +1,7 @@
 namespace TransmissionStreaming.Logic.Discovery;
 
 using Mediator;
+using Microsoft.Extensions.Options;
 using System.Security.Cryptography;
 using TransmissionStreaming.Core.Arr;
 using TransmissionStreaming.Core.Configuration;
@@ -16,21 +17,20 @@ public static class DiscoverDownloads
 
     /// <summary>Coordinates download discovery and import handoff without owning network or filesystem adapters.</summary>
     internal sealed class Handler(
-        IStreamingOptionsProvider options,
+        IOptionsMonitor<StreamingOptions> options,
         IProjectionStore store,
         ITransmissionClient transmission,
         IArrClient arr,
         IProjectionPaths paths,
         IProjectionFiles files,
         IProjectionLibrary library,
-        IVideoFileSelection selection,
         IMediator mediator) : ICommandHandler<Command>
     {
         private const int SecretBytes = 32;
 
         public async ValueTask<Unit> Handle(Command command, CancellationToken cancellationToken)
         {
-            var config = options.Get();
+            var config = options.CurrentValue;
             if (!config.Enabled)
             {
                 return Unit.Value;
@@ -44,22 +44,17 @@ public static class DiscoverDownloads
 
             foreach (var torrent in torrents)
             {
-                var primaryMovie = selection.PrimaryMovieIndex(torrent.Files);
-                for (var index = 0; index < torrent.Files.Count; index++)
+                var selection = await mediator.Send(new SelectVideoFiles.Query(torrent.Files), cancellationToken).ConfigureAwait(false);
+                foreach (var index in selection.PlayableIndexes)
                 {
                     var file = torrent.Files[index];
-                    if (!selection.IsPlayable(file.Name) || file.Length <= 0)
-                    {
-                        continue;
-                    }
-
                     if (entries.Values.Any(entry => entry.TorrentHash.Equals(torrent.Hash, StringComparison.OrdinalIgnoreCase) && entry.FileIndex == index))
                     {
                         continue;
                     }
 
                     var identity = await IdentifyAsync(config, torrent.Hash, file.Name, cancellationToken).ConfigureAwait(false);
-                    if (identity is null || identity.Kind == MediaKind.Movie && index != primaryMovie)
+                    if (identity is null || identity.Kind == MediaKind.Movie && index != selection.PrimaryMovieIndex)
                     {
                         continue;
                     }

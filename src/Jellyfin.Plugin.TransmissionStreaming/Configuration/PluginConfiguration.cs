@@ -1,5 +1,6 @@
 namespace Jellyfin.Plugin.TransmissionStreaming.Configuration;
 
+using global::TransmissionStreaming.Core.Configuration;
 using MediaBrowser.Model.Plugins;
 
 /// <summary>Connection and bounded playback settings for the progressive library.</summary>
@@ -13,6 +14,7 @@ public sealed class PluginConfiguration : BasePluginConfiguration
     public string RadarrApiKey { get; set; } = "";
     public string SonarrUrl { get; set; } = "";
     public string SonarrApiKey { get; set; } = "";
+    public List<ServicePathMapping> PathMappings { get; set; } = [];
     public string RemoteMediaRoot { get; set; } = "/data";
     public string LocalMediaRoot { get; set; } = "";
     public string ProjectionRoot { get; set; } = "";

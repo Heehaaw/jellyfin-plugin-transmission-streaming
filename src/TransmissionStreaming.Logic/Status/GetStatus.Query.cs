@@ -1,6 +1,7 @@
 namespace TransmissionStreaming.Logic.Status;
 
 using Mediator;
+using Microsoft.Extensions.Options;
 using TransmissionStreaming.Core.Configuration;
 using TransmissionStreaming.Core.Discovery;
 using TransmissionStreaming.Core.Projection;
@@ -14,7 +15,7 @@ public static class GetStatus
 
     /// <summary>Projects diagnostics without returning connection details or capability secrets.</summary>
     internal sealed class Handler(
-        IStreamingOptionsProvider options,
+        IOptionsMonitor<StreamingOptions> options,
         IDiscoveryStatus discovery,
         IProjectionStore store,
         IStreamActivity activity) : IQueryHandler<Query, StreamingStatus>
@@ -25,7 +26,7 @@ public static class GetStatus
             var status = discovery.Get();
             var entries = store.All().Select(entry => new StreamStatus(entry.Id, entry.Identity.Title,
                 entry.Status, entry.Progress, activity.Count(entry.Id))).ToArray();
-            return ValueTask.FromResult(new StreamingStatus(options.Get().Enabled, status.LastSuccessfulPoll, status.LastFailure, entries));
+            return ValueTask.FromResult(new StreamingStatus(options.CurrentValue.Enabled, status.LastSuccessfulPoll, status.LastFailure, entries));
         }
     }
 }

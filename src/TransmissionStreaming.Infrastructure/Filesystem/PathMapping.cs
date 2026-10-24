@@ -24,12 +24,12 @@ internal sealed record PathMapping(string RemoteRoot, string LocalRoot)
             return null;
         }
 
-        var root = Path.GetFullPath(LocalRoot).TrimEnd(Path.DirectorySeparatorChar);
-        if (!Path.IsPathFullyQualified(LocalRoot))
+        if (!Path.IsPathFullyQualified(LocalRoot) || LocalRoot.TrimEnd('/').Length == 0)
         {
             return null;
         }
 
+        var root = Path.GetFullPath(LocalRoot).TrimEnd(Path.DirectorySeparatorChar);
         var local = Path.GetFullPath(Path.Combine([root, .. parts]));
         if (local != root && !local.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.Ordinal))
         {

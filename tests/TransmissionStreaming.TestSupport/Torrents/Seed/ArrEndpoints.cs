@@ -28,6 +28,8 @@ internal static class ArrEndpoints
             object[] rows;
             switch (path)
             {
+                case "rootfolder":
+                    return Results.Json(new[] { new { path = "/arr/library" } });
                 case "queue":
                     rows = state.ImportedPath is not null ? [] : state.Episode
                         ? [new { id = 1, seriesId = 1, series, episodeIds = new[] { 2 }, downloadId = configuration.Hash }]

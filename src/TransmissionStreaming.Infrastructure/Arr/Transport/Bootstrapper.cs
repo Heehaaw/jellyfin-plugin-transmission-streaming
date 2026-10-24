@@ -12,13 +12,12 @@ internal static class Bootstrapper
     public static IServiceCollection AddArrTransport(this IServiceCollection services)
     {
         // API keys are scoped to the configured server; redirects must not forward them.
-        services.AddHttpClient(ClientName, client => client.Timeout = RequestTimeout)
+        services.AddHttpClient<IArrTransport, ArrTransport>(ClientName, client => client.Timeout = RequestTimeout)
             .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
             {
                 AllowAutoRedirect = false,
                 AutomaticDecompression = DecompressionMethods.None
             });
-        services.AddSingleton<IArrTransport>(provider => new ArrTransport(provider.GetRequiredService<IHttpClientFactory>().CreateClient(ClientName)));
         return services;
     }
 }

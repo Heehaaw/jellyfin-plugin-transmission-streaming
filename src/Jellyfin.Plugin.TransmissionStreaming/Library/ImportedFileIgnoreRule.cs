@@ -5,16 +5,17 @@ using global::TransmissionStreaming.Core.Projection;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Resolvers;
 using MediaBrowser.Model.IO;
+using Microsoft.Extensions.Options;
 
 /// <summary>Prevents an imported file from duplicating a permanent projected item.</summary>
 internal sealed class ImportedFileIgnoreRule(
-    IStreamingOptionsProvider configuration,
+    IOptionsMonitor<StreamingOptions> configuration,
     IProjectionStore store,
     IProjectionIndex projection) : IResolverIgnoreRule
 {
     public bool ShouldIgnore(FileSystemMetadata fileInfo, BaseItem? parent)
     {
-        if (!configuration.Get().Enabled || fileInfo.IsDirectory)
+        if (!configuration.CurrentValue.Enabled || fileInfo.IsDirectory)
         {
             return false;
         }

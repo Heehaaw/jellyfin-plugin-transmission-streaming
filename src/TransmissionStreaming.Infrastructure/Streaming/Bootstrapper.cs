@@ -8,8 +8,6 @@ internal static class Bootstrapper
 {
     public static IServiceCollection AddProgressiveStreaming(this IServiceCollection services)
     {
-        services.AddSingleton<IProgressiveReader, ProgressiveReader>();
-        services.AddSingleton<IPlaybackSourceFactory, PlaybackSourceFactory>();
         services.AddSingleton<IStreamActivity, StreamActivity>();
         return services;
     }

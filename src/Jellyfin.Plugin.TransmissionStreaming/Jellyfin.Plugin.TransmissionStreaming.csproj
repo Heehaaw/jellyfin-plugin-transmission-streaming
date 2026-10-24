@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <AssemblyName>Jellyfin.Plugin.TransmissionStreaming</AssemblyName>
-        <Version>0.1.2</Version>
+        <Version>0.1.3</Version>
         <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
         <RootNamespace>Jellyfin.Plugin.TransmissionStreaming</RootNamespace>
     </PropertyGroup>
@@ -14,7 +14,7 @@
         <ProjectReference Include="../TransmissionStreaming.Core/TransmissionStreaming.Core.csproj" />
         <ProjectReference Include="../TransmissionStreaming.Infrastructure/TransmissionStreaming.Infrastructure.csproj" />
         <ProjectReference Include="../TransmissionStreaming.Logic/TransmissionStreaming.Logic.csproj" />
-        <EmbeddedResource Include="Configuration/settings.html" />
+        <EmbeddedResource Include="Ui/*.html;Ui/*.css;Ui/*.js" />
         <None Update="meta.json" CopyToOutputDirectory="PreserveNewest" />
     </ItemGroup>
     <ItemGroup>

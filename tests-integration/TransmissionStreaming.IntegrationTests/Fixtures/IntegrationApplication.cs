@@ -4,11 +4,11 @@ using Core.Configuration;
 using Core.Projection;
 using Core.Transmission;
 using Infrastructure;
-using Logic;
 using Logic.Discovery;
 using Logic.Streaming;
 using Mediator;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using TestSupport.Arr;
 using TestSupport.Torrents;
 
@@ -16,9 +16,10 @@ using TestSupport.Torrents;
 internal sealed class IntegrationApplication(DownloadServices containers) : IAsyncDisposable
 {
     private ServiceProvider? _provider;
-    private SettingsProvider? _settings;
+    private MutableOptionsMonitor? _settings;
     private string? _workspace;
     private TorrentScenario? _swarm;
+    private bool _independentArrMounts;
 
     public TorrentScenario Swarm => _swarm ?? throw new InvalidOperationException("Start the fixture first.");
     public ArrStub Arr { get; private set; } = null!;
@@ -33,7 +34,7 @@ internal sealed class IntegrationApplication(DownloadServices containers) : IAsy
             _swarm = await containers.OpenAsync(source.Media, source.FileName, cancellationToken).ConfigureAwait(false);
             _workspace = _swarm.Workspace;
             Arr = await ArrStub.StartAsync(_workspace, containers.Network, _swarm, cancellationToken).ConfigureAwait(false);
-            _settings = new SettingsProvider(new StreamingOptions
+            _settings = new MutableOptionsMonitor(new StreamingOptions
             {
                 Enabled = true,
                 StateDirectory = Path.Combine(_workspace, "state"),
@@ -64,14 +65,30 @@ internal sealed class IntegrationApplication(DownloadServices containers) : IAsy
 
     public Task<IReadOnlyList<TorrentSnapshot>> TorrentsAsync(CancellationToken cancellationToken)
     {
-        var settings = _settings!.Value;
+        var settings = _settings!.CurrentValue;
         var connection = new TransmissionConnection(settings.TransmissionUrl, settings.TransmissionUsername, settings.TransmissionPassword);
         return _provider!.GetRequiredService<ITransmissionClient>().GetTorrentsAsync(connection, cancellationToken);
     }
 
+    public void UseIndependentArrMounts()
+    {
+        _independentArrMounts = true;
+        _settings!.CurrentValue = _settings.CurrentValue with
+        {
+            RemoteMediaRoot = "/unused-legacy",
+            LocalMediaRoot = Path.Combine(_workspace!, "unused-legacy"),
+            PathMappings =
+            [
+                new() { Service = MediaService.Transmission, RemoteRoot = "/data", LocalRoot = containers.Workspace },
+                new() { Service = MediaService.Radarr, RemoteRoot = "/arr/library", LocalRoot = Path.Combine(_workspace!, "movies") },
+                new() { Service = MediaService.Sonarr, RemoteRoot = "/arr/library", LocalRoot = Path.Combine(_workspace!, "movies") }
+            ]
+        };
+    }
+
     public void SetEnabled(bool enabled)
     {
-        _settings!.Value = _settings.Value with { Enabled = enabled };
+        _settings!.CurrentValue = _settings.CurrentValue with { Enabled = enabled };
     }
 
     public async Task RestartAsync()
@@ -93,7 +110,7 @@ internal sealed class IntegrationApplication(DownloadServices containers) : IAsy
     {
         var destination = Path.Combine(_workspace!, "movies", Swarm.FileName);
         File.Move(Swarm.LocalDownloadPath, destination);
-        await Arr.PublishImportAsync(Swarm.RemotePath(destination), cancellationToken).ConfigureAwait(false);
+        await Arr.PublishImportAsync(_independentArrMounts ? "/arr/library/" + Swarm.FileName : Swarm.RemotePath(destination), cancellationToken).ConfigureAwait(false);
         return destination;
     }
 
@@ -123,10 +140,10 @@ internal sealed class IntegrationApplication(DownloadServices containers) : IAsy
     private ServiceProvider BuildProvider()
     {
         var services = new ServiceCollection();
-        services.AddSingleton<IStreamingOptionsProvider>(_settings!);
+        services.AddSingleton<IOptionsMonitor<StreamingOptions>>(_settings!);
         services.AddSingleton<IProjectionLibrary, NoopLibrary>();
         services.AddSingleton<IMediaLibraryLocations, NoopLibrary>();
-        services.AddTransmissionStreamingInfrastructure().AddTransmissionStreamingLogic();
+        services.AddTransmissionStreamingInfrastructure();
         services.AddMediator((MediatorOptions options) =>
         {
             options.Namespace = "TransmissionStreaming.IntegrationTests.Dispatch";
@@ -137,18 +154,22 @@ internal sealed class IntegrationApplication(DownloadServices containers) : IAsy
         return services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });
     }
 
-    private sealed class SettingsProvider(StreamingOptions value) : IStreamingOptionsProvider
+    /// <summary>The fixture changes current settings directly; production notifications use the framework monitor.</summary>
+    private sealed class MutableOptionsMonitor(StreamingOptions value) : IOptionsMonitor<StreamingOptions>
     {
-        public StreamingOptions Value { get; set; } = value;
+        public StreamingOptions CurrentValue { get; set; } = value;
 
-        public StreamingOptions Get()
-        {
-            return Value;
-        }
+        public StreamingOptions Get(string? name) => CurrentValue;
+
+        public IDisposable? OnChange(Action<StreamingOptions, string?> listener) => null;
     }
 
     private sealed class NoopLibrary : IProjectionLibrary, IMediaLibraryLocations
     {
+        public IReadOnlyList<string> GetServicePaths(MediaService service) => [];
+
+        public IReadOnlyList<string> GetAllPaths() => [];
+
         public IReadOnlyList<string> GetPaths()
         {
             return [];

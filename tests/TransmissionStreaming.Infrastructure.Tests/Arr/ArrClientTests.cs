@@ -17,6 +17,24 @@ using Xunit;
 public sealed class ArrClientTests
 {
     [Theory, AutoMoqData]
+    internal async Task Should_ReadDistinctConfiguredLibraryRoots(ArrConnection connection, RootFolder root,
+        [Frozen] TestHttpHandler handler, ArrClient sut)
+    {
+        // Arrange
+        var missing = root with { Path = " " };
+        handler.Respond = _ => Response(new[] { root, missing, root });
+
+        // Act
+        var result = await sut.GetRootFoldersAsync(connection, CancellationToken.None);
+
+        // Assert
+        result.Should().Equal(root.Path);
+        handler.Requests.Should().ContainSingle(request => request.AbsolutePath == "/api/v3/rootfolder");
+    }
+
+    internal sealed record RootFolder(string Path);
+
+    [Theory, AutoMoqData]
     internal async Task Should_DiscoverMovieFromMatchingDownload(
         WireScenario source, [Frozen] TestHttpHandler handler, ArrClient sut)
     {

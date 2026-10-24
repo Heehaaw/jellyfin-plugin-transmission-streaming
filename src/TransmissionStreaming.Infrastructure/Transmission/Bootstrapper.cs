@@ -12,13 +12,12 @@ internal static class Bootstrapper
 
     public static IServiceCollection AddTransmissionTransport(this IServiceCollection services)
     {
-        services.AddHttpClient(ClientName, client => client.Timeout = RequestTimeout)
+        services.AddHttpClient<ITransmissionClient, TransmissionClient>(ClientName, client => client.Timeout = RequestTimeout)
             .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
             {
                 AllowAutoRedirect = false,
                 AutomaticDecompression = DecompressionMethods.None
             });
-        services.AddSingleton<ITransmissionClient>(provider => new TransmissionClient(provider.GetRequiredService<IHttpClientFactory>().CreateClient(ClientName)));
         return services;
     }
 }

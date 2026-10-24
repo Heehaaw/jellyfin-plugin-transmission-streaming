@@ -14,6 +14,7 @@ using global::TransmissionStreaming.Core.Streaming;
 using global::TransmissionStreaming.Core.Transmission;
 using global::TransmissionStreaming.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
 
@@ -21,16 +22,20 @@ public sealed class BootstrapperTests
 {
     [Theory, AutoMoqData]
     internal void Should_ComposeEveryInfrastructureFeature(StreamingOptions source, TemporaryDirectory directory,
-        [Frozen] Mock<IStreamingOptionsProvider> options, ServiceCollection services)
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options, ServiceCollection services)
     {
         // Arrange
         using var root = directory;
-        options.Setup(value => value.Get()).Returns(source with { StateDirectory = root.Path });
+        options.SetupGet(value => value.CurrentValue).Returns(source with { StateDirectory = root.Path });
         services.AddSingleton(options.Object);
         services.AddTransmissionStreamingInfrastructure();
         using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });
-        Type[] contracts = [typeof(IArrClient), typeof(ITransmissionClient), typeof(IProjectionPaths), typeof(IMediaFiles), typeof(IProjectionFiles),
-            typeof(IProjectionStore), typeof(IProgressiveReader), typeof(IPlaybackSourceFactory), typeof(IStreamActivity), typeof(IDiscoveryStatus)];
+        Type[] contracts =
+        [
+            typeof(IArrClient), typeof(ITransmissionClient), typeof(IServicePathDiscovery), typeof(IProjectionPaths), typeof(IMediaPathMapper), typeof(IMediaFiles),
+            typeof(IProjectionFiles),
+            typeof(IProjectionStore), typeof(IStreamActivity), typeof(IDiscoveryStatus)
+        ];
 
         // Act
         var resolved = contracts.Select(provider.GetRequiredService).ToArray();

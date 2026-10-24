@@ -5,12 +5,13 @@ using global::TransmissionStreaming.Core.Discovery;
 using global::TransmissionStreaming.Logic.Discovery;
 using Mediator;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Logging;
 
 /// <summary>Drives the discovery use case from Jellyfin's hosted-service lifecycle.</summary>
 internal sealed class DiscoveryHostedService(
     IMediator mediator,
-    IStreamingOptionsProvider configuration,
+    IOptionsMonitor<StreamingOptions> configuration,
     IDiscoveryStatus status,
     ILogger<DiscoveryHostedService> logger,
     TimeProvider timeProvider) : BackgroundService
@@ -19,14 +20,17 @@ internal sealed class DiscoveryHostedService(
     {
         while (!stoppingToken.IsCancellationRequested)
         {
-            if (configuration.Get().Enabled)
+            if (configuration.CurrentValue.Enabled)
             {
                 try
                 {
                     await mediator.Send(new DiscoverDownloads.Command(), stoppingToken).ConfigureAwait(false);
                     status.Set(new DiscoveryStatus { LastSuccessfulPoll = timeProvider.GetUtcNow() });
                 }
-                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { break; }
+                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                {
+                    break;
+                }
                 catch (Exception exception)
                 {
                     // HTTP exception messages may include upstream URLs. Keep them out of logs and status.
@@ -35,7 +39,8 @@ internal sealed class DiscoveryHostedService(
                     logger.LogWarning("Transmission discovery failed ({FailureType}). Check connections and paths.", failure);
                 }
             }
-            var delay = Math.Clamp(configuration.Get().PollSeconds, DiscoveryConstants.MinimumPollSeconds, DiscoveryConstants.MaximumPollSeconds);
+
+            var delay = Math.Clamp(configuration.CurrentValue.PollSeconds, DiscoveryConstants.MinimumPollSeconds, DiscoveryConstants.MaximumPollSeconds);
             await Task.Delay(TimeSpan.FromSeconds(delay), timeProvider, stoppingToken).ConfigureAwait(false);
         }
     }

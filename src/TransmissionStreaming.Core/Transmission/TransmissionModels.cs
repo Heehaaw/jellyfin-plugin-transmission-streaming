@@ -58,6 +58,8 @@ public sealed record TorrentFileSnapshot
 /// <summary>Session properties needed to locate files and assess write-cache safety.</summary>
 public sealed record TransmissionSessionSnapshot
 {
+    /// <summary>The default completed-download directory reported by Transmission.</summary>
+    [JsonPropertyName("download_dir")] public string DownloadDirectory { get; set; } = "";
     [JsonPropertyName("incomplete_dir")] public string IncompleteDirectory { get; set; } = "";
     [JsonPropertyName("incomplete_dir_enabled")] public bool IncompleteDirectoryEnabled { get; set; }
     [JsonPropertyName("rename_partial_files")] public bool RenamePartialFiles { get; set; }

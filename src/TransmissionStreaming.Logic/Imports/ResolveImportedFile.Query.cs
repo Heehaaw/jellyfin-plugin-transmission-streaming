@@ -1,10 +1,12 @@
 namespace TransmissionStreaming.Logic.Imports;
 
 using Mediator;
+using Microsoft.Extensions.Options;
 using TransmissionStreaming.Core.Arr;
 using TransmissionStreaming.Core.Configuration;
 using TransmissionStreaming.Core.Filesystem;
 using TransmissionStreaming.Core.Projection;
+using TransmissionStreaming.Logic.Configuration;
 
 /// <summary>Defines the ResolveImportedFile query and its application handler.</summary>
 public static class ResolveImportedFile
@@ -14,19 +16,20 @@ public static class ResolveImportedFile
 
     /// <summary>Accepts only an arr-confirmed import within the mapped media root and expected byte length.</summary>
     internal sealed class Handler(
-        IStreamingOptionsProvider options,
+        IOptionsMonitor<StreamingOptions> options,
         IArrClient arr,
-        IProjectionPaths paths,
+        IMediator mediator,
         IMediaFiles media) : IQueryHandler<Query, string?>
     {
         public async ValueTask<string?> Handle(Query query, CancellationToken cancellationToken)
         {
-            var config = options.Get();
+            var config = options.CurrentValue;
             var entry = query.Projection;
+            var service = entry.Identity.Kind == MediaKind.Movie ? MediaService.Radarr : MediaService.Sonarr;
             if (entry.CompletedPath is { } completed)
             {
-                var mapped = paths.Map(completed, config.LocalMediaRoot, config.LocalMediaRoot);
-                return media.HasLength(mapped, entry.Length) ? mapped : null;
+                var mapped = await mediator.Send(new ValidateLocalMediaPath.Query(service, completed), cancellationToken).ConfigureAwait(false);
+                return mapped is not null && media.HasLength(mapped, entry.Length) ? mapped : null;
             }
 
             var movie = entry.Identity.Kind == MediaKind.Movie;
@@ -44,9 +47,8 @@ public static class ResolveImportedFile
                 return null;
             }
 
-            var local = paths.Map(remote, config.RemoteMediaRoot, config.LocalMediaRoot);
-            return media.HasLength(local, entry.Length) ? local : null;
+            var local = await mediator.Send(new MapServicePath.Query(service, remote), cancellationToken).ConfigureAwait(false);
+            return local is not null && media.HasLength(local, entry.Length) ? local : null;
         }
     }
 }
-

@@ -1,8 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <ItemGroup>
+        <PackageReference Include="Microsoft.Extensions.Options" />
         <ProjectReference Include="../TransmissionStreaming.Core/TransmissionStreaming.Core.csproj" />
         <PackageReference Include="Mediator.Abstractions" />
-        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
     </ItemGroup>
     <ItemGroup>
         <InternalsVisibleTo Include="Jellyfin.Plugin.TransmissionStreaming" />

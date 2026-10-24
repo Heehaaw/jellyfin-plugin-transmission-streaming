@@ -11,7 +11,7 @@ internal sealed class StreamingScenario(string workspace, JellyfinApi api, Torre
     private const string ProjectionDirectory = "projection";
     private const string ImportedDirectory = "movies";
     private string LocalProjection => Path.Combine(workspace, ProjectionDirectory);
-    private string RemoteImportedFile => swarm.RemotePath(Path.Combine(workspace, ImportedDirectory, swarm.FileName));
+    private string RemoteImportedFile => "/arr/library/" + swarm.FileName;
 
     public async Task ConfigureAsync(bool enabled = true, int waitSeconds = 5)
     {
@@ -25,8 +25,14 @@ internal sealed class StreamingScenario(string workspace, JellyfinApi api, Torre
             SonarrApiKey = "",
             TransmissionUsername = "",
             TransmissionPassword = "",
-            RemoteMediaRoot = RemoteRoot,
-            LocalMediaRoot = RemoteRoot,
+            // Deliberately unrelated fallback roots prove that playback uses each service's explicit mapping.
+            RemoteMediaRoot = "/unused-legacy",
+            LocalMediaRoot = "/unused-legacy",
+            PathMappings = new[]
+            {
+                new { Service = 0, RemoteRoot, LocalRoot = RemoteRoot },
+                new { Service = 1, RemoteRoot = "/arr/library", LocalRoot = swarm.RemotePath(Path.Combine(workspace, ImportedDirectory)) }
+            },
             ProjectionRoot = swarm.RemotePath(LocalProjection),
             JellyfinPublicUrl = JellyfinContainer.InternalAddress.ToString(),
             PollSeconds = 2,

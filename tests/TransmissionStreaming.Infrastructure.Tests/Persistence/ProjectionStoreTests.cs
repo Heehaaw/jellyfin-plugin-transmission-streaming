@@ -7,6 +7,7 @@ using Filesystem;
 using FluentAssertions;
 using global::TransmissionStreaming.Core.Configuration;
 using global::TransmissionStreaming.Infrastructure.Persistence;
+using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
 using ProjectionEntry = global::TransmissionStreaming.Core.Projection.Projection;
@@ -15,7 +16,7 @@ public sealed class ProjectionStoreTests
 {
     [Theory, AutoMoqData]
     internal void Should_RestoreTheCompleteProjectionAcrossStoreInstances(ProjectionEntry source, TemporaryDirectory directory,
-        [Frozen] Mock<IStreamingOptionsProvider> options, ProjectionStore sut)
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options, ProjectionStore sut)
     {
         // Arrange
         using var root = directory;
@@ -76,8 +77,8 @@ public sealed class ProjectionStoreTests
         fixture.Customize(new AutoMoqCustomization { ConfigureMembers = true, GenerateDelegates = true });
         var directory = fixture.Freeze<TemporaryDirectory>();
         fixture.Customize<StreamingOptions>(composer => composer.With(value => value.StateDirectory, directory.Path));
-        fixture.Customize<Mock<IStreamingOptionsProvider>>(composer => composer.Do(mock =>
-            mock.Setup(value => value.Get()).Returns(fixture.Create<StreamingOptions>())));
+        fixture.Customize<Mock<IOptionsMonitor<StreamingOptions>>>(composer => composer.Do(mock =>
+            mock.SetupGet(value => value.CurrentValue).Returns(fixture.Create<StreamingOptions>())));
         return fixture;
     });
 }

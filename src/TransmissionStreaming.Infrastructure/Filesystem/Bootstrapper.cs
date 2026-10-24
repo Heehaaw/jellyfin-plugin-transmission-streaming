@@ -10,6 +10,7 @@ internal static class Bootstrapper
     public static IServiceCollection AddMediaFilesystem(this IServiceCollection services)
     {
         services.AddSingleton<IProjectionPaths, MediaPaths>();
+        services.AddSingleton<IMediaPathMapper, PhysicalMediaPathMapper>();
         services.AddSingleton<IMediaFiles, PhysicalMediaFiles>();
         return services;
     }

@@ -15,6 +15,7 @@ using MediaBrowser.Controller.Library;
 using MediaBrowser.Controller.Session;
 using MediaBrowser.Model.Dto;
 using MediaBrowser.Model.Entities;
+using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
 
@@ -37,7 +38,7 @@ public sealed class LibraryProjectionTests
 
     [Theory, AutoMoqData]
     internal async Task Should_ShowDownloadStatusOnTheCanonicalItem(Projection source, Movie snapshot, Movie canonical, Folder parent, StreamingOptions options,
-        [Frozen] Mock<IStreamingOptionsProvider> configuration, [Frozen] Mock<ILibraryManager> library, LibraryProjection sut)
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> configuration, [Frozen] Mock<ILibraryManager> library, LibraryProjection sut)
     {
         // Arrange
         source.CompletedPath = null;
@@ -50,7 +51,7 @@ public sealed class LibraryProjectionTests
         library.Setup(value => value.GetItemById(snapshot.Id)).Returns(canonical);
         library.Setup(value => value.GetItemById(parent.Id)).Returns(parent);
         library.Setup(value => value.UpdateItemAsync(canonical, parent, ItemUpdateType.MetadataEdit, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
-        configuration.Setup(value => value.Get()).Returns(options with { ShowDownloadStatus = true });
+        configuration.SetupGet(value => value.CurrentValue).Returns(options with { ShowDownloadStatus = true });
         var expected = $"{source.Identity.Title} [{source.Status}]";
 
         // Act
@@ -64,7 +65,7 @@ public sealed class LibraryProjectionTests
 
     [Theory, AutoMoqData]
     internal async Task Should_RemoveTheTemporaryStatusAfterCompletion(Projection source, Movie projected, Folder parent, StreamingOptions options,
-        [Frozen] Mock<IStreamingOptionsProvider> configuration, [Frozen] Mock<ILibraryManager> library, LibraryProjection sut)
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> configuration, [Frozen] Mock<ILibraryManager> library, LibraryProjection sut)
     {
         // Arrange
         source.Identity.Kind = MediaKind.Movie;
@@ -74,7 +75,7 @@ public sealed class LibraryProjectionTests
         library.Setup(value => value.GetItemById(parent.Id)).Returns(parent);
         library.Setup(value => value.GetItemList(It.Is<InternalItemsQuery>(query => query.Path == source.CompletedPath))).Returns([]);
         library.Setup(value => value.UpdateItemAsync(projected, parent, ItemUpdateType.MetadataEdit, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
-        configuration.Setup(value => value.Get()).Returns(options with { ShowDownloadStatus = true });
+        configuration.SetupGet(value => value.CurrentValue).Returns(options with { ShowDownloadStatus = true });
 
         // Act
         await sut.ReconcileAsync(source, CancellationToken.None);
@@ -86,7 +87,7 @@ public sealed class LibraryProjectionTests
 
     [Theory, AutoMoqData]
     internal async Task Should_UseEpisodeMetadataForItsDisplayTitle(Projection source, Movie projected, Folder parent, StreamingOptions options,
-        [Frozen] Mock<IStreamingOptionsProvider> configuration, [Frozen] Mock<ILibraryManager> library, LibraryProjection sut)
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> configuration, [Frozen] Mock<ILibraryManager> library, LibraryProjection sut)
     {
         // Arrange
         source.Identity.Kind = MediaKind.Episode;
@@ -96,7 +97,7 @@ public sealed class LibraryProjectionTests
         Index(library, projected);
         library.Setup(value => value.GetItemById(parent.Id)).Returns(parent);
         library.Setup(value => value.UpdateItemAsync(projected, parent, ItemUpdateType.MetadataEdit, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
-        configuration.Setup(value => value.Get()).Returns(options with { ShowDownloadStatus = false });
+        configuration.SetupGet(value => value.CurrentValue).Returns(options with { ShowDownloadStatus = false });
 
         // Act
         await sut.ReconcileAsync(source, CancellationToken.None);
@@ -107,7 +108,7 @@ public sealed class LibraryProjectionTests
 
     [Theory, AutoMoqData]
     internal async Task Should_DeferDuplicateRemovalWhileTheNativeCopyIsPlaying(Projection source, Movie projected, Movie native, SessionInfo session, StreamingOptions options,
-        [Frozen] Mock<IStreamingOptionsProvider> configuration, [Frozen] Mock<ILibraryManager> library,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> configuration, [Frozen] Mock<ILibraryManager> library,
         [Frozen] Mock<ISessionManager> sessions, [Frozen] Mock<IUserManager> users, LibraryProjection sut)
     {
         // Arrange
@@ -119,7 +120,7 @@ public sealed class LibraryProjectionTests
         Index(library, native);
         session.NowPlayingItem.Id = native.Id;
         sessions.SetupGet(value => value.Sessions).Returns([session]);
-        configuration.Setup(value => value.Get()).Returns(options with { ShowDownloadStatus = false });
+        configuration.SetupGet(value => value.CurrentValue).Returns(options with { ShowDownloadStatus = false });
 
         // Act
         await sut.ReconcileAsync(source, CancellationToken.None);
@@ -132,7 +133,7 @@ public sealed class LibraryProjectionTests
     [Theory, AutoMoqData]
     internal async Task Should_MergeHydratedUserHistoryBeforeRemovingOnlyTheDuplicateEntry(Projection source, Movie projected, Movie native, User user,
         Dictionary<Guid, UserItemData> saved, UserItemData target, UpdateUserItemDataDto merged, StreamingOptions options,
-        [Frozen] Mock<IStreamingOptionsProvider> configuration, [Frozen] Mock<ILibraryManager> library,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> configuration, [Frozen] Mock<ILibraryManager> library,
         [Frozen] Mock<ISessionManager> sessions, [Frozen] Mock<IUserManager> users,
         [Frozen] Mock<IUserDataManager> userData, [Frozen] Mock<IWatchStateMerger> watchStates, LibraryProjection sut)
     {
@@ -145,7 +146,7 @@ public sealed class LibraryProjectionTests
         Index(library, native);
         sessions.SetupGet(value => value.Sessions).Returns([]);
         users.Setup(value => value.GetUsers()).Returns([user]);
-        configuration.Setup(value => value.Get()).Returns(options with { ShowDownloadStatus = false });
+        configuration.SetupGet(value => value.CurrentValue).Returns(options with { ShowDownloadStatus = false });
         var history = saved.Values.Single();
         saved.Clear();
         saved.Add(native.Id, history);
@@ -207,7 +208,8 @@ public sealed class LibraryProjectionTests
     {
         var fixture = new Fixture { RepeatCount = 1 };
         fixture.Customize(new AutoMoqCustomization { ConfigureMembers = true, GenerateDelegates = true });
-        fixture.Customize<Movie>(composer => composer.OmitAutoProperties().With(value => value.Id).With(value => value.ParentId).With(value => value.Path).With(value => value.Name));
+        fixture.Customize<Movie>(composer =>
+            composer.OmitAutoProperties().With(value => value.Id).With(value => value.ParentId).With(value => value.Path).With(value => value.Name));
         fixture.Customize<Folder>(composer => composer.OmitAutoProperties().With(value => value.Id).With(value => value.Path));
         fixture.Customize<BaseItemDto>(composer => composer.OmitAutoProperties().With(value => value.Id));
         fixture.Customize<SessionInfo>(composer => composer.OmitAutoProperties().With(value => value.NowPlayingItem));

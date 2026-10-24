@@ -7,10 +7,11 @@ using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Library;
 using MediaBrowser.Controller.Session;
 using MediaBrowser.Model.Entities;
+using Microsoft.Extensions.Options;
 
 /// <summary>Adapts permanent application projections to Jellyfin indexing and per-user history.</summary>
 internal sealed class LibraryProjection(
-    IStreamingOptionsProvider configuration,
+    IOptionsMonitor<StreamingOptions> configuration,
     IProjectionFiles files,
     ILibraryManager library,
     IUserManager users,
@@ -47,9 +48,11 @@ internal sealed class LibraryProjection(
 
         var identity = entry.Identity;
         var title = identity.Kind == MediaKind.Episode && !string.IsNullOrWhiteSpace(identity.EpisodeTitle)
-            ? identity.EpisodeTitle : identity.Title;
-        var display = configuration.Get().ShowDownloadStatus && entry.CompletedPath is null
-            ? $"{title} [{entry.Status}]" : title;
+            ? identity.EpisodeTitle
+            : identity.Title;
+        var display = configuration.CurrentValue.ShowDownloadStatus && entry.CompletedPath is null
+            ? $"{title} [{entry.Status}]"
+            : title;
         if (projected.Name != display && projected.ParentId != Guid.Empty && library.GetItemById(projected.ParentId) is { } parent)
         {
             projected.Name = display;
@@ -82,6 +85,7 @@ internal sealed class LibraryProjection(
             saved.TryGetValue(projected.Id, out var target);
             userData.SaveUserData(user, projected, watchStates.Merge(source, target), UserDataSaveReason.Import);
         }
+
         library.DeleteItem(native, new DeleteOptions { DeleteFileLocation = false });
     }
 

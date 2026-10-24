@@ -4,6 +4,7 @@ using AutoFixture;
 using AutoFixture.AutoMoq;
 using AutoFixture.Xunit2;
 using FluentAssertions;
+using Microsoft.Extensions.Options;
 using Moq;
 using TransmissionStreaming.Core.Configuration;
 using TransmissionStreaming.Core.Discovery;
@@ -16,11 +17,11 @@ public sealed class GetStatusTests
 {
     [Theory, AutoMoqData]
     internal async Task Should_ReportDiscoveryAndActivePlayback(StatusScenario source,
-        [Frozen] Mock<IStreamingOptionsProvider> options, [Frozen] Mock<IDiscoveryStatus> discovery,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options, [Frozen] Mock<IDiscoveryStatus> discovery,
         [Frozen] Mock<IProjectionStore> store, [Frozen] Mock<IStreamActivity> activity, GetStatus.Handler sut)
     {
         // Arrange
-        options.Setup(value => value.Get()).Returns(source.Options);
+        options.SetupGet(value => value.CurrentValue).Returns(source.Options);
         discovery.Setup(value => value.Get()).Returns(source.Discovery);
         store.Setup(value => value.All()).Returns([source.Entry]);
         activity.Setup(value => value.Count(source.Entry.Id)).Returns(source.Readers);

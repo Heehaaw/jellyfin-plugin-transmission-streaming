@@ -55,6 +55,7 @@ public sealed class DownloadFlowTests(ITestOutputHelper output)
             using var deadline = new CancellationTokenSource(TimeSpan.FromMinutes(2));
             var cancellationToken = deadline.Token;
             await sut.StartAsync(source, cancellationToken);
+            sut.UseIndependentArrMounts();
             await sut.Mediator.Send(source.Discover, cancellationToken);
             var original = sut.Store.All().Single();
             var expectedStatus = "Complete";
@@ -200,6 +201,7 @@ public sealed class DownloadFlowTests(ITestOutputHelper output)
             var expectedSeason = 1;
             var expectedEpisode = 2;
             await sut.StartAsync(episodeSource, cancellationToken);
+            sut.UseIndependentArrMounts();
             await sut.Arr.SetEpisodeAsync(true, cancellationToken);
 
             // Act

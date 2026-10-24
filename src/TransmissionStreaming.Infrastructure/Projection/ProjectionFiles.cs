@@ -3,12 +3,13 @@ namespace TransmissionStreaming.Infrastructure.Projection;
 using Core.Configuration;
 using Core.Projection;
 using global::TransmissionStreaming.Core.Arr;
+using Microsoft.Extensions.Options;
 using System.Text;
 using System.Xml.Linq;
 using ProjectionEntry = Core.Projection.Projection;
 
 /// <summary>Writes stable stream and metadata files without a media-server dependency.</summary>
-internal sealed class ProjectionFiles(IStreamingOptionsProvider options) : IProjectionFiles
+internal sealed class ProjectionFiles(IOptionsMonitor<StreamingOptions> options) : IProjectionFiles
 {
     private const string OwnershipMarker = ".transmission-streaming";
     private const string OwnershipValue = "TransmissionStreaming";
@@ -17,7 +18,7 @@ internal sealed class ProjectionFiles(IStreamingOptionsProvider options) : IProj
     {
         get
         {
-            var config = options.Get();
+            var config = options.CurrentValue;
             return string.IsNullOrWhiteSpace(config.ProjectionRoot)
                 ? Path.Combine(config.StateDirectory, "library")
                 : Path.GetFullPath(config.ProjectionRoot);
@@ -26,7 +27,7 @@ internal sealed class ProjectionFiles(IStreamingOptionsProvider options) : IProj
 
     public void WriteFiles(ProjectionEntry entry)
     {
-        var config = options.Get();
+        var config = options.CurrentValue;
         var baseUri = new Uri(config.JellyfinPublicUrl.TrimEnd('/') + "/", UriKind.Absolute);
         if (baseUri.Scheme is not ("http" or "https") || !string.IsNullOrEmpty(baseUri.UserInfo))
         {

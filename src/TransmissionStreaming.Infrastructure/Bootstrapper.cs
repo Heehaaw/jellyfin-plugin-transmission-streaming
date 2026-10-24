@@ -1,6 +1,7 @@
 namespace TransmissionStreaming.Infrastructure;
 
 using Arr;
+using Configuration;
 using Discovery;
 using Filesystem;
 using Microsoft.Extensions.DependencyInjection;
@@ -20,6 +21,7 @@ public static class Bootstrapper
         return services
         .AddTransmissionTransport()
         .AddArrIntegration()
+        .AddConfigurationDiscovery()
         .AddMediaFilesystem()
         .AddProgressiveStreaming()
         .AddProjectionFiles()

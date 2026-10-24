@@ -3,6 +3,7 @@ namespace TransmissionStreaming.Infrastructure.Persistence;
 using Core.Configuration;
 using Core.Projection;
 using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.Options;
 using System.Text.Json;
 using ProjectionEntry = Core.Projection.Projection;
 
@@ -11,9 +12,9 @@ internal sealed class ProjectionStore : IProjectionStore
 {
     private readonly string connectionString;
 
-    public ProjectionStore(IStreamingOptionsProvider options)
+    public ProjectionStore(IOptionsMonitor<StreamingOptions> options)
     {
-        var stateDirectory = options.Get().StateDirectory;
+        var stateDirectory = options.CurrentValue.StateDirectory;
         Directory.CreateDirectory(stateDirectory);
         var path = Path.Combine(stateDirectory, "projections.db");
         connectionString = new SqliteConnectionStringBuilder { DataSource = path }.ToString();

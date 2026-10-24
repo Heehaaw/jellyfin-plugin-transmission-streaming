@@ -1,6 +1,7 @@
 namespace TransmissionStreaming.Logic.Streaming;
 
 using Mediator;
+using Microsoft.Extensions.Options;
 using TransmissionStreaming.Core.Configuration;
 using TransmissionStreaming.Core.Projection;
 using TransmissionStreaming.Core.Streaming;
@@ -20,10 +21,9 @@ public static class StreamMedia
 
     /// <summary>Coordinates bounded playback while leaving HTTP and file access to adapters.</summary>
     internal sealed class Handler(
-        IStreamingOptionsProvider options,
+        IOptionsMonitor<StreamingOptions> options,
         ITransmissionClient transmission,
-        IPlaybackSourceFactory sources,
-        IProgressiveReader reader,
+        IMediator mediator,
         IStreamActivity activity) : ICommandHandler<Command>
     {
         private const int MinimumStallSeconds = 5;
@@ -31,7 +31,7 @@ public static class StreamMedia
 
         public async ValueTask<Unit> Handle(Command command, CancellationToken cancellationToken)
         {
-            var config = options.Get();
+            var config = options.CurrentValue;
             if (!config.Enabled)
             {
                 throw new InvalidOperationException("Transmission streaming is disabled.");
@@ -43,16 +43,15 @@ public static class StreamMedia
                 var connection = new TransmissionConnection(config.TransmissionUrl, config.TransmissionUsername, config.TransmissionPassword);
                 await transmission.EnableSequentialAsync(connection, entry.TorrentHash, cancellationToken).ConfigureAwait(false);
             }
-            var source = sources.Create(entry);
+
             var settings = new ProgressiveReadOptions
             {
                 StallTimeout = TimeSpan.FromSeconds(Math.Clamp(config.PieceWaitSeconds, MinimumStallSeconds, MaximumStallSeconds)),
                 PrioritizeMissingPieces = config.PrioritizePlayback
             };
             using var lease = activity.Open(entry.Id);
-            await reader.CopyAsync(source, command.Destination, command.Offset, command.Count, settings, cancellationToken).ConfigureAwait(false);
+            await mediator.Send(new CopyProgressiveMedia.Command(entry, command.Destination, command.Offset, command.Count, settings), cancellationToken).ConfigureAwait(false);
             return Unit.Value;
         }
     }
 }
-

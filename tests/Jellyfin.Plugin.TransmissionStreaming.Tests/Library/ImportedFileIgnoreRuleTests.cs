@@ -8,6 +8,7 @@ using global::TransmissionStreaming.Core.Configuration;
 using global::TransmissionStreaming.Core.Projection;
 using Jellyfin.Plugin.TransmissionStreaming.Library;
 using MediaBrowser.Model.IO;
+using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
 
@@ -15,10 +16,10 @@ public sealed class ImportedFileIgnoreRuleTests
 {
     [Theory, AutoMoqData]
     internal void Should_KeepNativeFilesVisibleWhenDisabled(StreamingOptions options, FileSystemMetadata source,
-        [Frozen] Mock<IStreamingOptionsProvider> configuration, [Frozen] Mock<IProjectionStore> store, ImportedFileIgnoreRule sut)
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> configuration, [Frozen] Mock<IProjectionStore> store, ImportedFileIgnoreRule sut)
     {
         // Arrange
-        configuration.Setup(value => value.Get()).Returns(options with { Enabled = false });
+        configuration.SetupGet(value => value.CurrentValue).Returns(options with { Enabled = false });
 
         // Act
         var result = sut.ShouldIgnore(source, null);
@@ -30,10 +31,10 @@ public sealed class ImportedFileIgnoreRuleTests
 
     [Theory, AutoMoqData]
     internal void Should_LeaveDirectoriesToJellyfin(StreamingOptions options, FileSystemMetadata source,
-        [Frozen] Mock<IStreamingOptionsProvider> configuration, [Frozen] Mock<IProjectionStore> store, ImportedFileIgnoreRule sut)
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> configuration, [Frozen] Mock<IProjectionStore> store, ImportedFileIgnoreRule sut)
     {
         // Arrange
-        configuration.Setup(value => value.Get()).Returns(options with { Enabled = true });
+        configuration.SetupGet(value => value.CurrentValue).Returns(options with { Enabled = true });
         source.IsDirectory = true;
 
         // Act
@@ -46,10 +47,10 @@ public sealed class ImportedFileIgnoreRuleTests
 
     [Theory, AutoMoqData]
     internal void Should_KeepUnmanagedFilesVisible(StreamingOptions options, FileSystemMetadata source,
-        [Frozen] Mock<IStreamingOptionsProvider> configuration, [Frozen] Mock<IProjectionStore> store, ImportedFileIgnoreRule sut)
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> configuration, [Frozen] Mock<IProjectionStore> store, ImportedFileIgnoreRule sut)
     {
         // Arrange
-        configuration.Setup(value => value.Get()).Returns(options with { Enabled = true });
+        configuration.SetupGet(value => value.CurrentValue).Returns(options with { Enabled = true });
         source.IsDirectory = false;
         store.Setup(value => value.All()).Returns([]);
 
@@ -62,10 +63,10 @@ public sealed class ImportedFileIgnoreRuleTests
 
     [Theory, AutoMoqData]
     internal void Should_KeepTheNativeFileWhenItsStreamFileIsMissing(StreamingOptions options, Projection entry, FileSystemMetadata source,
-        [Frozen] Mock<IStreamingOptionsProvider> configuration, [Frozen] Mock<IProjectionStore> store, ImportedFileIgnoreRule sut)
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> configuration, [Frozen] Mock<IProjectionStore> store, ImportedFileIgnoreRule sut)
     {
         // Arrange
-        configuration.Setup(value => value.Get()).Returns(options with { Enabled = true });
+        configuration.SetupGet(value => value.CurrentValue).Returns(options with { Enabled = true });
         source.IsDirectory = false;
         entry.CompletedPath = source.FullName;
         store.Setup(value => value.All()).Returns([entry]);
@@ -79,12 +80,12 @@ public sealed class ImportedFileIgnoreRuleTests
 
     [Theory, AutoMoqData]
     internal void Should_WaitUntilTheProjectedEntryIsIndexed(StreamingOptions options, Projection entry, FileSystemMetadata source,
-        [Frozen] Mock<IStreamingOptionsProvider> configuration, [Frozen] Mock<IProjectionStore> store,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> configuration, [Frozen] Mock<IProjectionStore> store,
         [Frozen] Mock<IProjectionIndex> index, ImportedFileIgnoreRule sut)
     {
         // Arrange
         using var stream = CreatedStreamFile.At(entry.StreamPath);
-        configuration.Setup(value => value.Get()).Returns(options with { Enabled = true });
+        configuration.SetupGet(value => value.CurrentValue).Returns(options with { Enabled = true });
         source.IsDirectory = false;
         entry.CompletedPath = source.FullName;
         store.Setup(value => value.All()).Returns([entry]);
@@ -99,12 +100,12 @@ public sealed class ImportedFileIgnoreRuleTests
 
     [Theory, AutoMoqData]
     internal void Should_KeepAnIndexedNativeEntryUntilItsHistoryIsMerged(StreamingOptions options, Projection entry, FileSystemMetadata source,
-        [Frozen] Mock<IStreamingOptionsProvider> configuration, [Frozen] Mock<IProjectionStore> store,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> configuration, [Frozen] Mock<IProjectionStore> store,
         [Frozen] Mock<IProjectionIndex> index, ImportedFileIgnoreRule sut)
     {
         // Arrange
         using var stream = CreatedStreamFile.At(entry.StreamPath);
-        configuration.Setup(value => value.Get()).Returns(options with { Enabled = true });
+        configuration.SetupGet(value => value.CurrentValue).Returns(options with { Enabled = true });
         source.IsDirectory = false;
         entry.CompletedPath = source.FullName;
         store.Setup(value => value.All()).Returns([entry]);
@@ -120,12 +121,12 @@ public sealed class ImportedFileIgnoreRuleTests
 
     [Theory, AutoMoqData]
     internal void Should_HideTheNativeFileAfterSafeReconciliation(StreamingOptions options, Projection entry, FileSystemMetadata source,
-        [Frozen] Mock<IStreamingOptionsProvider> configuration, [Frozen] Mock<IProjectionStore> store,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> configuration, [Frozen] Mock<IProjectionStore> store,
         [Frozen] Mock<IProjectionIndex> index, ImportedFileIgnoreRule sut)
     {
         // Arrange
         using var stream = CreatedStreamFile.At(entry.StreamPath);
-        configuration.Setup(value => value.Get()).Returns(options with { Enabled = true });
+        configuration.SetupGet(value => value.CurrentValue).Returns(options with { Enabled = true });
         source.IsDirectory = false;
         entry.CompletedPath = source.FullName;
         store.Setup(value => value.All()).Returns([entry]);

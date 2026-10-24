@@ -3,6 +3,9 @@ namespace TransmissionStreaming.Core.Arr;
 /// <summary>Read-only ownership discovery and exact import resolution for Radarr and Sonarr.</summary>
 public interface IArrClient
 {
+    /// <summary>Returns configured library root folders in the arr service's own filesystem namespace.</summary>
+    Task<IReadOnlyList<string>> GetRootFoldersAsync(ArrConnection connection, CancellationToken cancellationToken);
+
     /// <summary>Matches a torrent file to an arr queue identity, returning null when ownership cannot be resolved unambiguously.</summary>
     /// <param name="connection">The arr endpoint and credentials used only for read-only requests.</param>
     /// <param name="kind">Selects the Radarr movie or Sonarr episode ownership flow.</param>

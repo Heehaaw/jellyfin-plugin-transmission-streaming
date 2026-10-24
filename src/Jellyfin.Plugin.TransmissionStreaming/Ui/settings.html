@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+<head><title>Transmission Streaming</title></head>
+<body>
+<div id="transmissionStreamingSettings" data-role="page" data-controller="__plugin/transmission-streaming-controller.js" data-plugin-id="843c341c-ce40-4cc3-8077-53ebd66d83b4" class="page type-interior pluginConfigurationPage">
+    <link rel="stylesheet" href="./ConfigurationPage?name=transmission-streaming.css">
+    <div data-role="content">
+        <div class="content-primary ts-dashboard">
+            <header class="ts-header">
+                <div class="ts-kicker">Transmission → Jellyfin</div>
+                <h2>Transmission Streaming</h2>
+                <p class="ts-muted">Play managed downloads before they finish. Keep the same library entry when they are imported.</p>
+            </header>
+            <section class="ts-panel" aria-labelledby="activityHeading">
+                <div class="ts-heading">
+                    <div><h3 id="activityHeading">Live activity</h3>
+                        <p class="ts-muted">Saved configuration · refreshes every 10 seconds while this page is open.</p></div>
+                    <button is="emby-button" type="button" id="refreshStreamingStatus" class="raised">Refresh</button>
+                </div>
+                <dl class="ts-metrics">
+                    <div>
+                        <dt>Download scan</dt>
+                        <dd id="streamingStatus">Checking…</dd>
+                    </div>
+                    <div>
+                        <dt>Last successful scan</dt>
+                        <dd id="lastSuccessfulPoll">Not yet reported</dd>
+                    </div>
+                    <div>
+                        <dt>Library items</dt>
+                        <dd id="streamingItemCount">—</dd>
+                    </div>
+                    <div>
+                        <dt>Active readers</dt>
+                        <dd id="streamingReaderCount">—</dd>
+                    </div>
+                </dl>
+                <p id="streamingStatusMessage" class="ts-muted" role="status" aria-live="polite"></p>
+                <ul id="streamingEntries" aria-label="Streaming library items"></ul>
+                <p id="streamingEmpty" class="ts-empty ts-muted" hidden>No streaming items yet. Enable scanning and start an arr-managed download to see it here.</p>
+            </section>
+            <form id="transmissionStreamingForm">
+                <section class="ts-panel" aria-labelledby="discoveryHeading">
+                    <div class="ts-heading">
+                        <div><h3 id="discoveryHeading">Progressive library</h3>
+                            <p class="ts-muted">Create playable entries while Transmission downloads the media.</p></div>
+                    </div>
+                    <label class="checkboxContainer"><input is="emby-checkbox" id="Enabled" type="checkbox"><span data-help-for="Enabled">Enable progressive library</span></label>
+                </section>
+                <section class="ts-panel" aria-labelledby="transmissionHeading">
+                    <div class="ts-heading">
+                        <div><h3 id="transmissionHeading">Transmission</h3>
+                            <p class="ts-muted">Download and incomplete folders</p></div>
+                        <span id="TransmissionMappingCount" class="ts-count">0 mappings</span></div>
+                    <div id="TransmissionConnection" class="ts-connection-row">
+                        <div class="inputContainer"><label class="inputLabel" for="TransmissionUrl">RPC URL</label><input is="emby-input" id="TransmissionUrl" type="url" required>
+                        </div>
+                    </div>
+                    <details class="ts-credentials">
+                        <summary>Connection credentials</summary>
+                        <div class="inputContainer"><label class="inputLabel" for="TransmissionUsername">Username</label><input is="emby-input" id="TransmissionUsername"
+                                                                                                                                autocomplete="username"></div>
+                        <div class="inputContainer"><label class="inputLabel" for="TransmissionPassword">Password</label><input is="emby-input" id="TransmissionPassword"
+                                                                                                                                type="password" autocomplete="current-password">
+                        </div>
+                    </details>
+                    <div id="TransmissionPaths"></div>
+                </section>
+                <section class="ts-panel" aria-labelledby="radarrHeading">
+                    <div class="ts-heading">
+                        <div><h3 id="radarrHeading">Radarr</h3>
+                            <p class="ts-muted">Movie library folders · optional</p></div>
+                        <span id="RadarrMappingCount" class="ts-count">0 mappings</span></div>
+                    <div id="RadarrConnection" class="ts-connection-row">
+                        <div class="inputContainer"><label class="inputLabel" for="RadarrUrl">Radarr URL</label><input is="emby-input" id="RadarrUrl" type="url"></div>
+                    </div>
+                    <details class="ts-credentials">
+                        <summary>API credentials</summary>
+                        <div class="inputContainer"><label class="inputLabel" for="RadarrApiKey">Radarr API key</label><input is="emby-input" id="RadarrApiKey" type="password"
+                                                                                                                              autocomplete="off"></div>
+                    </details>
+                    <div id="RadarrPaths"></div>
+                </section>
+                <section class="ts-panel" aria-labelledby="sonarrHeading">
+                    <div class="ts-heading">
+                        <div><h3 id="sonarrHeading">Sonarr</h3>
+                            <p class="ts-muted">Series library folders · optional</p></div>
+                        <span id="SonarrMappingCount" class="ts-count">0 mappings</span></div>
+                    <div id="SonarrConnection" class="ts-connection-row">
+                        <div class="inputContainer"><label class="inputLabel" for="SonarrUrl">Sonarr URL</label><input is="emby-input" id="SonarrUrl" type="url"></div>
+                    </div>
+                    <details class="ts-credentials">
+                        <summary>API credentials</summary>
+                        <div class="inputContainer"><label class="inputLabel" for="SonarrApiKey">Sonarr API key</label><input is="emby-input" id="SonarrApiKey" type="password"
+                                                                                                                              autocomplete="off"></div>
+                    </details>
+                    <div id="SonarrPaths"></div>
+                </section>
+                <section class="ts-panel" aria-labelledby="libraryHeading">
+                    <div class="ts-heading">
+                        <div><h3 id="libraryHeading">Jellyfin library</h3>
+                            <p class="ts-muted">Where the streaming entries live and how players reach them.</p></div>
+                    </div>
+                    <div class="inputContainer"><label class="inputLabel" for="ProjectionRoot">Dedicated streaming library folder</label><input is="emby-input" id="ProjectionRoot">
+                        <div class="fieldDescription">Add its movies and shows subfolders as the corresponding Jellyfin library types. Keep this separate from your media folders.
+                        </div>
+                    </div>
+                    <div class="inputContainer"><label class="inputLabel" for="JellyfinPublicUrl">Jellyfin URL reachable by the server and every player</label><input
+                            is="emby-input" id="JellyfinPublicUrl" type="url" required></div>
+                    <details>
+                        <summary>Advanced: shared path fallback</summary>
+                        <p class="ts-muted">Optional translation for a service with no mapping rows. Both directories must refer to the same shared root.</p>
+                        <div class="inputContainer"><label class="inputLabel" for="RemoteMediaRoot">Shared root seen by the services</label><input is="emby-input"
+                                                                                                                                                   id="RemoteMediaRoot"></div>
+                        <div class="inputContainer"><label class="inputLabel" for="LocalMediaRoot">Same root seen by Jellyfin</label><input is="emby-input" id="LocalMediaRoot">
+                        </div>
+                    </details>
+                </section>
+                <section class="ts-panel" aria-labelledby="playbackHeading">
+                    <div class="ts-heading"><h3 id="playbackHeading">Playback and scanning</h3></div>
+                    <label class="checkboxContainer"><input is="emby-checkbox" id="PrioritizePlayback" type="checkbox"><span data-help-for="PrioritizePlayback">Enable sequential download and prioritize missing playback pieces</span></label>
+                    <label class="checkboxContainer"><input is="emby-checkbox" id="ShowDownloadStatus" type="checkbox"><span data-help-for="ShowDownloadStatus">Show download status in item titles</span></label>
+                    <div class="ts-settings-grid">
+                        <div class="inputContainer"><label class="inputLabel" for="PollSeconds">Download scan interval in seconds</label><input is="emby-input" id="PollSeconds"
+                                                                                                                                                type="number" min="2" max="300"
+                                                                                                                                                required></div>
+                        <div class="inputContainer"><label class="inputLabel" for="PieceWaitSeconds">Maximum continuous stall in seconds</label><input is="emby-input"
+                                                                                                                                                       id="PieceWaitSeconds"
+                                                                                                                                                       type="number" min="5"
+                                                                                                                                                       max="600" required></div>
+                    </div>
+                </section>
+                <div class="ts-save">
+                    <div class="ts-heading" style="margin-bottom:0">
+                        <p id="configurationState" class="ts-save-note" role="status" aria-live="polite">Loading configuration…</p>
+                        <button is="emby-button" id="saveStreamingConfiguration" type="submit" class="raised button-submit" disabled>Save changes</button>
+                    </div>
+                    <p id="configurationError" role="alert"></p>
+                </div>
+            </form>
+        </div>
+    </div>
+
+</div>
+</body>
+</html>

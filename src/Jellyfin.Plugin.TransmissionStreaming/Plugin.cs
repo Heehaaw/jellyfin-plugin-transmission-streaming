@@ -23,6 +23,12 @@ public sealed class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages, IPlu
     public override string Description => "Play arr-managed Transmission downloads before they finish.";
     public override Guid Id => PluginId;
 
+    event EventHandler<BasePluginConfiguration>? IPluginSettings.ConfigurationChanged
+    {
+        add => ConfigurationChanged += value;
+        remove => ConfigurationChanged -= value;
+    }
+
     void IPluginSettings.UpdateConfiguration(PluginConfiguration configuration)
     {
         UpdateConfiguration(configuration);
@@ -30,8 +36,18 @@ public sealed class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages, IPlu
 
     public IEnumerable<PluginPageInfo> GetPages()
     {
-        return [
-        new() { Name = PluginConstants.SettingsPage, EmbeddedResourcePath = GetType().Namespace + ".Configuration.settings.html" }
-    ];
+        var resourcePrefix = GetType().Namespace + ".Ui.";
+        return
+        [
+            new() { Name = PluginConstants.SettingsPage, EmbeddedResourcePath = resourcePrefix + "settings.html" },
+            new() { Name = PluginConstants.Ui.Styles, EmbeddedResourcePath = resourcePrefix + "settings.css" },
+            new() { Name = PluginConstants.Ui.Controller, EmbeddedResourcePath = resourcePrefix + "controller.js" },
+            new() { Name = PluginConstants.Ui.Configuration, EmbeddedResourcePath = resourcePrefix + "configuration.js" },
+            new() { Name = PluginConstants.Ui.Mappings, EmbeddedResourcePath = resourcePrefix + "mappings.js" },
+            new() { Name = PluginConstants.Ui.Activity, EmbeddedResourcePath = resourcePrefix + "activity.js" },
+            new() { Name = PluginConstants.Ui.Tooltips, EmbeddedResourcePath = resourcePrefix + "tooltips.js" },
+            new() { Name = PluginConstants.Ui.TooltipDisplay, EmbeddedResourcePath = resourcePrefix + "tooltip-display.js" },
+            new() { Name = PluginConstants.Ui.Elements, EmbeddedResourcePath = resourcePrefix + "elements.js" }
+        ];
     }
 }

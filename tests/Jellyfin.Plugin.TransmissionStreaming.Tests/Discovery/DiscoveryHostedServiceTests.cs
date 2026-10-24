@@ -8,6 +8,7 @@ using global::TransmissionStreaming.Core.Configuration;
 using global::TransmissionStreaming.Core.Discovery;
 using Jellyfin.Plugin.TransmissionStreaming.Discovery;
 using Mediator;
+using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
 
@@ -15,12 +16,12 @@ public sealed class DiscoveryHostedServiceTests
 {
     [Theory, AutoMoqData]
     internal async Task Should_PollOnlyAtTheConfiguredInterval(StreamingOptions source,
-        [Frozen] ObservableFakeTimeProvider clock, [Frozen] Mock<IStreamingOptionsProvider> configuration,
+        [Frozen] ObservableFakeTimeProvider clock, [Frozen] Mock<IOptionsMonitor<StreamingOptions>> configuration,
         [Frozen] Mock<IMediator> mediator, [Frozen] Mock<IDiscoveryStatus> status, DiscoveryHostedService sut)
     {
         // Arrange
         using var worker = sut;
-        configuration.Setup(value => value.Get()).Returns(source with { Enabled = true });
+        configuration.SetupGet(value => value.CurrentValue).Returns(source with { Enabled = true });
         mediator.Setup(value => value.Send(It.IsAny<ICommand>(), It.IsAny<CancellationToken>())).Returns(ValueTask.FromResult(Unit.Value));
         var updates = new List<DiscoveryStatus>();
         status.Setup(value => value.Set(It.IsAny<DiscoveryStatus>())).Callback<DiscoveryStatus>(updates.Add);
@@ -49,13 +50,13 @@ public sealed class DiscoveryHostedServiceTests
 
     [Theory, AutoMoqData]
     internal async Task Should_ResumeDiscoveryAfterItIsEnabled(StreamingOptions source,
-        [Frozen] ObservableFakeTimeProvider clock, [Frozen] Mock<IStreamingOptionsProvider> configuration,
+        [Frozen] ObservableFakeTimeProvider clock, [Frozen] Mock<IOptionsMonitor<StreamingOptions>> configuration,
         [Frozen] Mock<IMediator> mediator, DiscoveryHostedService sut)
     {
         // Arrange
         using var worker = sut;
         var current = source with { Enabled = false };
-        configuration.Setup(value => value.Get()).Returns(() => current);
+        configuration.SetupGet(value => value.CurrentValue).Returns(() => current);
         mediator.Setup(value => value.Send(It.IsAny<ICommand>(), It.IsAny<CancellationToken>())).Returns(ValueTask.FromResult(Unit.Value));
         var expectedPollCount = 1;
 
@@ -75,12 +76,12 @@ public sealed class DiscoveryHostedServiceTests
 
     [Theory, AutoMoqData]
     internal async Task Should_RetainSuccessTimeAcrossFailureAndRetry(StreamingOptions source, DiscoveryStatus initial, HttpRequestException failure,
-        [Frozen] ObservableFakeTimeProvider clock, [Frozen] Mock<IStreamingOptionsProvider> configuration,
+        [Frozen] ObservableFakeTimeProvider clock, [Frozen] Mock<IOptionsMonitor<StreamingOptions>> configuration,
         [Frozen] Mock<IMediator> mediator, [Frozen] Mock<IDiscoveryStatus> status, DiscoveryHostedService sut)
     {
         // Arrange
         using var worker = sut;
-        configuration.Setup(value => value.Get()).Returns(source with { Enabled = true });
+        configuration.SetupGet(value => value.CurrentValue).Returns(source with { Enabled = true });
         mediator.SetupSequence(value => value.Send(It.IsAny<ICommand>(), It.IsAny<CancellationToken>()))
             .Returns(ValueTask.FromResult(Unit.Value))
             .Returns(ValueTask.FromException<Unit>(failure))

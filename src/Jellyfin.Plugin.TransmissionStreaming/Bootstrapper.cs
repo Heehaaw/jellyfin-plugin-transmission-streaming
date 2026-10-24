@@ -3,7 +3,6 @@ namespace Jellyfin.Plugin.TransmissionStreaming;
 using Configuration;
 using Discovery;
 using global::TransmissionStreaming.Infrastructure;
-using global::TransmissionStreaming.Logic;
 using global::TransmissionStreaming.Logic.Discovery;
 using Library;
 using MediaBrowser.Controller;
@@ -20,7 +19,6 @@ public sealed class Bootstrapper : IPluginServiceRegistrator
             .AddPluginConfiguration()
             .AddJellyfinLibrary()
             .AddTransmissionStreamingInfrastructure()
-            .AddTransmissionStreamingLogic()
             .AddJellyfinDiscovery();
 
         services.AddMediator((MediatorOptions options) =>

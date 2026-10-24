@@ -17,6 +17,7 @@ using MediaBrowser.Controller.Resolvers;
 using MediaBrowser.Controller.Session;
 using Mediator;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Hosting;
 using Moq;
 using Xunit;
@@ -27,7 +28,7 @@ public sealed class BootstrapperTests
     [Theory, AutoMoqData]
     internal void Should_ComposeThePluginEndpointsAndHostedWorker(Mock<IServerApplicationHost> host,
         Mock<ILibraryManager> library, Mock<IUserManager> users, Mock<IUserDataManager> userData, Mock<ISessionManager> sessions,
-        Mock<IStreamingOptionsProvider> options, Mock<IProjectionStore> store, Mock<IPluginSettings> settings, HostBootstrapper sut)
+        Mock<IOptionsMonitor<StreamingOptions>> options, Mock<IProjectionStore> store, Mock<IPluginSettings> settings, HostBootstrapper sut)
     {
         // Arrange
         var services = new ServiceCollection();

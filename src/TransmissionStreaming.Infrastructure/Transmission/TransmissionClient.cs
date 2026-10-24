@@ -51,7 +51,7 @@ internal sealed class TransmissionClient(HttpClient httpClient) : ITransmissionC
     {
         var result = await CallAsync(connection, "session_get", new
         {
-            fields = new[] { "incomplete_dir", "incomplete_dir_enabled", "rename_partial_files", "cache_size_mib", "version" }
+            fields = new[] { "download_dir", "incomplete_dir", "incomplete_dir_enabled", "rename_partial_files", "cache_size_mib", "version" }
         }, cancellationToken).ConfigureAwait(false);
         return result.Deserialize<TransmissionSessionSnapshot>(Json) ?? throw new IOException("Transmission returned an empty session.");
     }
