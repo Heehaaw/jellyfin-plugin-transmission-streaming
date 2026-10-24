@@ -2,6 +2,24 @@
 
 The plugin starts disabled. Configure connections and paths before enabling discovery.
 
+## Initial defaults and suggestions
+
+On startup, the plugin saves defaults for missing local paths. A blank projection folder becomes `library` beneath the plugin's data directory. For a blank local media root, it
+looks at the parents of existing Jellyfin Movies and Shows folders. For example, `/mnt/media/movies` and `/mnt/media/shows` suggest `/mnt/media`.
+
+The plugin excludes its own projection folders, invalid paths, and relative paths. It leaves the local root empty when there is no usable common parent or the result would be a
+filesystem root such as `/`. Review any inferred root: it must also contain the incomplete and completed download folders through the shared mapping.
+
+Saved nonblank values always win, and initialization never enables discovery. Prefill is best effort; unavailable library information or a failed defaults lookup must not prevent
+Jellyfin from starting. Existing configured installations retain their supplied settings.
+
+When the settings page opens, it asks an administrator-only, read-only defaults endpoint for current suggestions. This allows blank fields to reflect libraries added since startup
+without changing saved configuration. A blank Jellyfin URL is suggested from the connected server's address, including any reverse-proxy base path. Credentials, query strings,
+and fragments are excluded; addresses containing credentials are not suggested. Check that the resulting URL is reachable by Jellyfin itself and every player.
+
+Suggestions filled into the page persist only when you click **Save**. Transmission and arr addresses, credentials, API keys, and the remote media root still require your input.
+The plugin does not scan the network or guess credentials.
+
 ## Connections and shared paths
 
 | Setting | What to enter |
@@ -29,8 +47,8 @@ After saving and enabling discovery:
 3. Start a download through Radarr or Sonarr. Wait for its torrent metadata and the next discovery poll.
 4. Check the plugin settings page for status, then open the new item in Jellyfin and press Play.
 
-An empty projection setting uses a library folder beneath the plugin's Jellyfin data directory. An explicit dedicated folder is easier to locate and back up. On first use, the
-plugin refuses a nonempty folder so it cannot adopt unrelated contents. Keep the projection folder and its persisted state together when backing up or moving the installation.
+You can keep the default projection folder or choose an explicit dedicated folder that is easier to locate and back up. On first use, the plugin refuses a nonempty folder so it
+cannot adopt unrelated contents. Keep the projection folder and its persisted state together when backing up or moving the installation.
 
 ## Sequential downloading and write-cache safety
 

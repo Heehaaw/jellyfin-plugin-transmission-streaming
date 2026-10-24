@@ -17,9 +17,10 @@
       <div class="inputContainer"><label class="inputLabel" for="SonarrUrl">Sonarr URL</label><input is="emby-input" id="SonarrUrl" type="url"></div>
       <div class="inputContainer"><label class="inputLabel" for="SonarrApiKey">Sonarr API key</label><input is="emby-input" id="SonarrApiKey" type="password"></div>
       <h3>Library and paths</h3>
+      <p>Missing local paths are suggested from this server. Verify the shared-root mapping before enabling discovery. Service addresses and credentials remain explicit.</p>
       <div class="inputContainer"><label class="inputLabel" for="RemoteMediaRoot">Media root seen by Transmission and arr</label><input is="emby-input" id="RemoteMediaRoot" required></div>
       <div class="inputContainer"><label class="inputLabel" for="LocalMediaRoot">Same media root seen by Jellyfin</label><input is="emby-input" id="LocalMediaRoot" required></div>
-      <div class="inputContainer"><label class="inputLabel" for="ProjectionRoot">Dedicated streaming library folder</label><input is="emby-input" id="ProjectionRoot"><div class="fieldDescription">Leave empty to use Jellyfin's data folder. Add its movies and shows subfolders as the corresponding Jellyfin library types.</div></div>
+      <div class="inputContainer"><label class="inputLabel" for="ProjectionRoot">Dedicated streaming library folder</label><input is="emby-input" id="ProjectionRoot"><div class="fieldDescription">Defaults to a dedicated folder beneath Jellyfin's data directory. Add its movies and shows subfolders as the corresponding Jellyfin library types.</div></div>
       <div class="inputContainer"><label class="inputLabel" for="JellyfinPublicUrl">Jellyfin URL reachable by the server and every player</label><input is="emby-input" id="JellyfinPublicUrl" type="url" required></div>
       <h3>Playback</h3>
       <label class="checkboxContainer"><input is="emby-checkbox" id="PrioritizePlayback" type="checkbox"><span>Enable sequential download and prioritize missing playback pieces</span></label>
@@ -36,7 +37,31 @@
       const page = document.querySelector('#transmissionStreamingSettings');
       const fields = ['Enabled','TransmissionUrl','TransmissionUsername','TransmissionPassword','RadarrUrl','RadarrApiKey','SonarrUrl','SonarrApiKey','RemoteMediaRoot','LocalMediaRoot','ProjectionRoot','JellyfinPublicUrl','PollSeconds','PieceWaitSeconds','PrioritizePlayback','ShowDownloadStatus'];
       const read = (value, name) => value[name] ?? value[name[0].toUpperCase() + name.slice(1)];
+      function fillEmpty(name, value) {
+        const element = page.querySelector('#' + name);
+        if (!element.value.trim() && value) element.value = value;
+      }
+      function connectedServerUrl() {
+        // Use the connected server's address, including a reverse-proxy base path; discard query credentials.
+        const suffix = '/TransmissionStreaming/status';
+        const endpoint = new URL(ApiClient.getUrl('TransmissionStreaming/status'), window.location.href);
+        if (!['http:', 'https:'].includes(endpoint.protocol) || endpoint.username || endpoint.password || !endpoint.pathname.endsWith(suffix)) return '';
+        endpoint.pathname = endpoint.pathname.slice(0, -suffix.length);
+        endpoint.search = ''; endpoint.hash = '';
+        return endpoint.href.replace(/\/$/, '');
+      }
+      async function prefill() {
+        fillEmpty('JellyfinPublicUrl', connectedServerUrl());
+        try {
+          const defaults = await ApiClient.getJSON(ApiClient.getUrl('TransmissionStreaming/configuration/defaults'));
+          fillEmpty('ProjectionRoot', read(defaults, 'projectionRoot'));
+          fillEmpty('LocalMediaRoot', read(defaults, 'localMediaRoot'));
+        } catch {
+          // Local suggestions are optional; the saved configuration remains editable if discovery is unavailable.
+        }
+      }
       async function status() {
+
         try {
           const result = await ApiClient.getJSON(ApiClient.getUrl('TransmissionStreaming/status'));
           page.querySelector('#streamingStatus').textContent = read(result, 'lastFailure') ? 'Last poll failed: ' + read(result, 'lastFailure') : read(result, 'enabled') ? 'Discovery enabled' : 'Discovery disabled';
@@ -57,6 +82,7 @@
             if (element.type === 'checkbox') element.checked = Boolean(config[name]);
             else element.value = config[name] ?? '';
           }
+          await prefill();
           await status();
         } finally { Dashboard.hideLoadingMsg(); }
       });

@@ -6,6 +6,8 @@ using AutoFixture.Xunit2;
 using FluentAssertions;
 using global::TransmissionStreaming.Core.Configuration;
 using global::TransmissionStreaming.Core.Projection;
+using Jellyfin.Plugin.TransmissionStreaming.Configuration;
+using Jellyfin.Plugin.TransmissionStreaming.Discovery;
 using Jellyfin.Plugin.TransmissionStreaming.Library;
 using Jellyfin.Plugin.TransmissionStreaming.Streaming;
 using MediaBrowser.Controller;
@@ -25,14 +27,14 @@ public sealed class BootstrapperTests
     [Theory, AutoMoqData]
     internal void Should_ComposeThePluginEndpointsAndHostedWorker(Mock<IServerApplicationHost> host,
         Mock<ILibraryManager> library, Mock<IUserManager> users, Mock<IUserDataManager> userData, Mock<ISessionManager> sessions,
-        Mock<IStreamingOptionsProvider> options, Mock<IProjectionStore> store, HostBootstrapper sut)
+        Mock<IStreamingOptionsProvider> options, Mock<IProjectionStore> store, Mock<IPluginSettings> settings, HostBootstrapper sut)
     {
         // Arrange
         var services = new ServiceCollection();
         services.AddLogging();
         sut.RegisterServices(services, host.Object);
         services.AddSingleton(library.Object).AddSingleton(users.Object).AddSingleton(userData.Object)
-            .AddSingleton(sessions.Object).AddSingleton(options.Object).AddSingleton(store.Object);
+            .AddSingleton(sessions.Object).AddSingleton(options.Object).AddSingleton(store.Object).AddSingleton(settings.Object);
 
         // Act
         using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });
@@ -43,7 +45,8 @@ public sealed class BootstrapperTests
         // Assert
         mediator.Should().NotBeNull();
         endpoint.Should().NotBeNull();
-        workers.Should().ContainSingle();
+        workers.Should().ContainSingle(worker => worker is ConfigurationInitializer);
+        workers.Should().ContainSingle(worker => worker is DiscoveryHostedService);
         provider.GetRequiredService<IProjectionLibrary>().Should().BeOfType<LibraryProjection>();
         provider.GetServices<IResolverIgnoreRule>().Should().ContainSingle().Which.Should().BeOfType<ImportedFileIgnoreRule>();
     }

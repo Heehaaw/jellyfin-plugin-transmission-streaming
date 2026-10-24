@@ -71,6 +71,22 @@ internal sealed class CatalogInstallation(DownloadServices containers) : IAsyncD
         await api.AuthenticateAsync().WaitAsync(cancellationToken);
     }
 
+    public async Task<string> AddEmptyMediaLibrariesAsync(CancellationToken cancellationToken)
+    {
+        var root = Path.Combine(workspace!, "media");
+        foreach (var (name, type, folder) in new[] { ("Movies", "movies", "movies"), ("Shows", "tvshows", "series") })
+        {
+            var local = Directory.CreateDirectory(Path.Combine(root, folder)).FullName;
+            var remote = scenario!.RemotePath(local);
+            var query = $"name={name}&collectionType={type}&refreshLibrary=false&paths={Uri.EscapeDataString(remote)}";
+            await api!.RequestAsync("/Library/VirtualFolders?" + query, new
+            {
+                LibraryOptions = new { EnableRealtimeMonitor = false, EnableInternetProviders = false, SaveLocalMetadata = false }
+            }).WaitAsync(cancellationToken);
+        }
+        return scenario!.RemotePath(root);
+    }
+
     public Task<JsonNode?> PackagesAsync(CancellationToken cancellationToken)
     {
         return api!.RequestAsync("/Packages").WaitAsync(cancellationToken);

@@ -12,6 +12,16 @@ flowchart LR
     F -->|same entry, imported backing file| P
 ```
 
+## Configuration initialization
+
+Startup fills only missing local settings: a projection folder beneath the plugin's data directory and, where possible, a shared media root inferred from existing Movies and Shows
+library paths. It ignores invalid or relative paths and its own projection folders, and rejects a filesystem root as too broad. Unclear media roots stay empty. Saved nonblank
+settings retain ownership, and discovery stays disabled until the administrator enables it. An optional prefill failure must not block server startup.
+
+The settings page can request fresh local suggestions through an administrator-only, read-only endpoint after libraries change. It also suggests the connected Jellyfin address for
+a blank public URL, retaining a reverse-proxy base path without credentials, query strings, or fragments. These page suggestions are saved only on **Save**. External-service
+addresses, remote paths, and secrets remain explicit configuration. See [configuration](configuration.md#initial-defaults-and-suggestions) for examples and checks.
+
 ## Discovery
 
 The plugin polls Transmission and matches each playable file to a configured arr queue entry by torrent hash. A movie download uses its primary video file. Standard single-episode

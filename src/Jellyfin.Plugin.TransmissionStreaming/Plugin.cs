@@ -23,6 +23,11 @@ public sealed class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages, IPlu
     public override string Description => "Play arr-managed Transmission downloads before they finish.";
     public override Guid Id => PluginId;
 
+    void IPluginSettings.UpdateConfiguration(PluginConfiguration configuration)
+    {
+        UpdateConfiguration(configuration);
+    }
+
     public IEnumerable<PluginPageInfo> GetPages()
     {
         return [

@@ -5,7 +5,7 @@
     "owner": "Heehaaw",
     "category": "General",
     "targetAbi": "12.3.0.0",
-    "version": "0.1.1.0",
+    "version": "0.1.2.0",
     "status": "Active",
     "autoUpdate": false,
     "assemblies": [

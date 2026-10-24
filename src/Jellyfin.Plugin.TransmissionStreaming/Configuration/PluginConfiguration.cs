@@ -14,9 +14,9 @@ public sealed class PluginConfiguration : BasePluginConfiguration
     public string SonarrUrl { get; set; } = "";
     public string SonarrApiKey { get; set; } = "";
     public string RemoteMediaRoot { get; set; } = "/data";
-    public string LocalMediaRoot { get; set; } = "/mnt/media";
+    public string LocalMediaRoot { get; set; } = "";
     public string ProjectionRoot { get; set; } = "";
-    public string JellyfinPublicUrl { get; set; } = "http://127.0.0.1:8096";
+    public string JellyfinPublicUrl { get; set; } = "";
     public int PollSeconds { get; set; } = 10;
     public int PieceWaitSeconds { get; set; } = 120;
     public bool PrioritizePlayback { get; set; } = true;

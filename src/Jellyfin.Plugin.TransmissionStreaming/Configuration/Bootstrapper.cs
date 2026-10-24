@@ -11,6 +11,8 @@ internal static class Bootstrapper
         return services
             .AddSingleton(_ => Plugin.Instance ?? throw new InvalidOperationException("Plugin has not initialized."))
             .AddSingleton<IPluginSettings>(provider => provider.GetRequiredService<Plugin>())
-            .AddSingleton<IStreamingOptionsProvider, OptionsProvider>();
+            .AddSingleton<IStreamingOptionsProvider, OptionsProvider>()
+            .AddSingleton<IMediaLibraryLocations, JellyfinMediaLibraryLocations>()
+            .AddHostedService<ConfigurationInitializer>();
     }
 }

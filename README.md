@@ -42,8 +42,10 @@ The ZIP is written beneath `artifacts/`. Use the matching Jellyfin version; the 
 
 ## First download
 
-The plugin starts disabled. Configure the Transmission RPC endpoint, Radarr or Sonarr, a shared media-root mapping, a new empty projection folder, and a Jellyfin URL reachable by
-both the server and its players. Jellyfin needs read access to incomplete downloads, completed downloads, and imported media. Its plugin data and projection folders must be writable.
+The plugin starts disabled. It fills missing local paths from its data directory and existing Movies/Shows libraries where possible. The settings page also suggests the connected
+Jellyfin address. Review these values and save the Transmission and arr connections, shared media-root mapping, and a Jellyfin URL reachable by both the server and its players.
+
+Jellyfin needs read access to incomplete downloads, completed downloads, and imported media. Its plugin data and dedicated projection folders must be writable.
 
 Enable discovery, then add the projection's `movies` folder to a Movies library and its `shows` folder to a Shows library. Start an arr-managed download, wait for torrent metadata
 and the next discovery poll, and play the new Jellyfin item. The settings page reports discovery and download status.

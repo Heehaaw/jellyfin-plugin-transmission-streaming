@@ -5,4 +5,7 @@ internal interface IPluginSettings
 {
     PluginConfiguration Configuration { get; }
     string StateDirectory { get; }
+
+    /// <summary>Persists updated host settings through Jellyfin's configuration lifecycle.</summary>
+    void UpdateConfiguration(PluginConfiguration configuration);
 }

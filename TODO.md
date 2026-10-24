@@ -31,3 +31,10 @@
 - [x] Add component scenarios for competing releases, late import recovery, completed downloads awaiting import, and rejected payloads.
 - [x] Verify progressive video decoding against the complete original in the Jellyfin application flow.
 - [x] Audit test readability, run the expanded suites, and publish the verified result.
+
+## Initial configuration prefill
+
+- [x] Fill missing projection and local media roots from host-local information, preserving supplied values and leaving discovery disabled.
+- [x] Suggest the connected Jellyfin URL and refresh blank path fields through a read-only administrator endpoint; persist page suggestions only on Save.
+- [x] Verify happy paths, path exclusions, ambiguous roots, supplied-value precedence, and best-effort startup failure handling.
+- [ ] Exercise initialization and settings suggestions in the real Jellyfin application flow, then verify the published package.

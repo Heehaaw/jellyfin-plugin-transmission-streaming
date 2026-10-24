@@ -82,8 +82,8 @@ Before the additional business scenarios, the same six scenarios were measured b
 These are local Docker measurements, not CI guarantees. Transmission still schedules real peer requests on its own clock. At that point, the unit-only command completed all 78 tests in
 3.44 seconds with warmed dependencies, including SDK/build overhead; virtual-time test bodies complete in milliseconds.
 
-The focused unit suite has 174 tests and completed in 2.98 seconds with warmed dependencies, including build overhead. Integration has 11 scenarios and the Jellyfin application
-suite has 6. The added business scenarios and decoder check change the workload, so current totals are separate from the like-for-like reuse comparison above.
+The unit-only command completes in a few seconds with warmed dependencies, including build overhead. Additional business scenarios and the decoder check change the workload,
+so current totals are separate from the like-for-like reuse comparison above.
 
 ## Virtual time
 
@@ -116,6 +116,10 @@ viewers' watched status, resume positions, play counts, and favorites. A separat
 
 Container readiness checks and bounded condition polling replace fixed startup sleeps. A restarted container can receive a new host port; the test client rebinds while the
 permanent URL inside the test network stays unchanged. Failure diagnostics include sanitized container logs without capability secrets.
+
+Startup prefill is also tested against real Jellyfin libraries during catalog installation. The application test checks inferred paths and confirms that explicit overrides
+survive a server restart. Unit tests cover path selection, supplied-value precedence, cancellation, and optional startup failures. The settings script is checked for blank-field
+prefill, preserved overrides, reverse-proxy base paths, discarded query parameters, and unavailable suggestions.
 
 ## What still needs a client trial
 

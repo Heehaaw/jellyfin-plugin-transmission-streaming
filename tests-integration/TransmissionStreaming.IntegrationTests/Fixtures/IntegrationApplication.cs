@@ -125,6 +125,7 @@ internal sealed class IntegrationApplication(DownloadServices containers) : IAsy
         var services = new ServiceCollection();
         services.AddSingleton<IStreamingOptionsProvider>(_settings!);
         services.AddSingleton<IProjectionLibrary, NoopLibrary>();
+        services.AddSingleton<IMediaLibraryLocations, NoopLibrary>();
         services.AddTransmissionStreamingInfrastructure().AddTransmissionStreamingLogic();
         services.AddMediator((MediatorOptions options) =>
         {
@@ -146,8 +147,13 @@ internal sealed class IntegrationApplication(DownloadServices containers) : IAsy
         }
     }
 
-    private sealed class NoopLibrary : IProjectionLibrary
+    private sealed class NoopLibrary : IProjectionLibrary, IMediaLibraryLocations
     {
+        public IReadOnlyList<string> GetPaths()
+        {
+            return [];
+        }
+
         public Task RefreshAsync(CancellationToken cancellationToken)
         {
             return Task.CompletedTask;
