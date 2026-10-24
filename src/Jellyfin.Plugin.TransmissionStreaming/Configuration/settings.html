@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html><head><title>Transmission Streaming</title></head><body>
+<div id="transmissionStreamingSettings" data-role="page" class="page type-interior pluginConfigurationPage">
+  <div data-role="content"><div class="content-primary">
+    <form id="transmissionStreamingForm">
+      <h2>Transmission Streaming prototype</h2>
+      <p>Play arr-managed downloads while Transmission finishes them. Use a dedicated streaming library folder.</p>
+      <label class="checkboxContainer"><input is="emby-checkbox" id="Enabled" type="checkbox"><span>Enable progressive library</span></label>
+      <h3>Transmission</h3>
+      <div class="inputContainer"><label class="inputLabel" for="TransmissionUrl">RPC URL</label><input is="emby-input" id="TransmissionUrl" type="url" required></div>
+      <div class="inputContainer"><label class="inputLabel" for="TransmissionUsername">Username</label><input is="emby-input" id="TransmissionUsername" autocomplete="username"></div>
+      <div class="inputContainer"><label class="inputLabel" for="TransmissionPassword">Password</label><input is="emby-input" id="TransmissionPassword" type="password" autocomplete="current-password"></div>
+      <h3>Radarr and Sonarr</h3>
+      <p>Configure whichever applications manage the downloads you want to expose.</p>
+      <div class="inputContainer"><label class="inputLabel" for="RadarrUrl">Radarr URL</label><input is="emby-input" id="RadarrUrl" type="url"></div>
+      <div class="inputContainer"><label class="inputLabel" for="RadarrApiKey">Radarr API key</label><input is="emby-input" id="RadarrApiKey" type="password"></div>
+      <div class="inputContainer"><label class="inputLabel" for="SonarrUrl">Sonarr URL</label><input is="emby-input" id="SonarrUrl" type="url"></div>
+      <div class="inputContainer"><label class="inputLabel" for="SonarrApiKey">Sonarr API key</label><input is="emby-input" id="SonarrApiKey" type="password"></div>
+      <h3>Library and paths</h3>
+      <div class="inputContainer"><label class="inputLabel" for="RemoteMediaRoot">Media root seen by Transmission and arr</label><input is="emby-input" id="RemoteMediaRoot" required></div>
+      <div class="inputContainer"><label class="inputLabel" for="LocalMediaRoot">Same media root seen by Jellyfin</label><input is="emby-input" id="LocalMediaRoot" required></div>
+      <div class="inputContainer"><label class="inputLabel" for="ProjectionRoot">Dedicated streaming library folder</label><input is="emby-input" id="ProjectionRoot"><div class="fieldDescription">Leave empty to use Jellyfin's data folder. Add its movies and shows subfolders as the corresponding Jellyfin library types.</div></div>
+      <div class="inputContainer"><label class="inputLabel" for="JellyfinPublicUrl">Jellyfin URL reachable by the server and every player</label><input is="emby-input" id="JellyfinPublicUrl" type="url" required></div>
+      <h3>Playback</h3>
+      <label class="checkboxContainer"><input is="emby-checkbox" id="PrioritizePlayback" type="checkbox"><span>Enable sequential download and prioritize missing playback pieces</span></label>
+      <label class="checkboxContainer"><input is="emby-checkbox" id="ShowDownloadStatus" type="checkbox"><span>Show download status in item titles</span></label>
+      <div class="inputContainer"><label class="inputLabel" for="PollSeconds">Discovery interval in seconds</label><input is="emby-input" id="PollSeconds" type="number" min="2" max="300" required></div>
+      <div class="inputContainer"><label class="inputLabel" for="PieceWaitSeconds">Maximum continuous stall in seconds</label><input is="emby-input" id="PieceWaitSeconds" type="number" min="5" max="600" required></div>
+      <button is="emby-button" type="submit" class="raised button-submit block"><span>Save</span></button>
+    </form>
+    <h3>Discovery status</h3><p id="streamingStatus"></p><ul id="streamingEntries"></ul>
+  </div></div>
+  <script>
+    (() => {
+      const id = '843c341c-ce40-4cc3-8077-53ebd66d83b4';
+      const page = document.querySelector('#transmissionStreamingSettings');
+      const fields = ['Enabled','TransmissionUrl','TransmissionUsername','TransmissionPassword','RadarrUrl','RadarrApiKey','SonarrUrl','SonarrApiKey','RemoteMediaRoot','LocalMediaRoot','ProjectionRoot','JellyfinPublicUrl','PollSeconds','PieceWaitSeconds','PrioritizePlayback','ShowDownloadStatus'];
+      async function status() {
+        try {
+          const result = await ApiClient.getJSON(ApiClient.getUrl('TransmissionStreaming/status'));
+          page.querySelector('#streamingStatus').textContent = result.lastFailure ? 'Last poll failed: ' + result.lastFailure : result.enabled ? 'Discovery enabled' : 'Discovery disabled';
+          const list = page.querySelector('#streamingEntries'); list.replaceChildren();
+          for (const entry of result.entries) {
+            const row = document.createElement('li');
+            row.textContent = entry.title + ': ' + entry.status;
+            list.append(row);
+          }
+        } catch { page.querySelector('#streamingStatus').textContent = 'Status unavailable. Check the server log.'; }
+      }
+      page.addEventListener('pageshow', async () => {
+        Dashboard.showLoadingMsg();
+        try {
+          const config = await ApiClient.getPluginConfiguration(id);
+          for (const name of fields) {
+            const element = page.querySelector('#' + name);
+            if (element.type === 'checkbox') element.checked = Boolean(config[name]);
+            else element.value = config[name] ?? '';
+          }
+          await status();
+        } finally { Dashboard.hideLoadingMsg(); }
+      });
+      page.querySelector('form').addEventListener('submit', async event => {
+        event.preventDefault(); Dashboard.showLoadingMsg();
+        try {
+          const config = await ApiClient.getPluginConfiguration(id);
+          for (const name of fields) {
+            const element = page.querySelector('#' + name);
+            config[name] = element.type === 'checkbox' ? element.checked : element.type === 'number' ? Number(element.value) : element.value;
+          }
+          const result = await ApiClient.updatePluginConfiguration(id, config);
+          Dashboard.processPluginConfigurationUpdateResult(result);
+          await status();
+        } finally { Dashboard.hideLoadingMsg(); }
+      });
+    })();
+  </script>
+</div></body></html>

@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>Jellyfin.Plugin.TransmissionStreaming</AssemblyName>
+    <Version>0.1.0</Version>
+    <RootNamespace>Jellyfin.Plugin.TransmissionStreaming</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Jellyfin.Controller" ExcludeAssets="runtime" />
+    <PackageReference Include="Jellyfin.Model" ExcludeAssets="runtime" />
+    <PackageReference Include="Microsoft.Data.Sqlite.Core" />
+    <ProjectReference Include="../TransmissionStreaming.Core/TransmissionStreaming.Core.csproj" />
+    <ProjectReference Include="../TransmissionStreaming.Arr/TransmissionStreaming.Arr.csproj" />
+    <EmbeddedResource Include="Configuration/settings.html" />
+    <None Update="meta.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

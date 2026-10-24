@@ -1,0 +1,16 @@
+{
+    "guid": "843c341c-ce40-4cc3-8077-53ebd66d83b4",
+    "name": "Transmission Streaming",
+    "description": "Progressive playback of arr-managed Transmission downloads. Prototype.",
+    "owner": "Heehaaw",
+    "category": "General",
+    "targetAbi": "12.3.0.0",
+    "version": "0.1.0.0",
+    "status": "Active",
+    "autoUpdate": false,
+    "assemblies": [
+        "Jellyfin.Plugin.TransmissionStreaming.dll",
+        "TransmissionStreaming.Core.dll",
+        "TransmissionStreaming.Arr.dll"
+    ]
+}
