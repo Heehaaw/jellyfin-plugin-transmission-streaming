@@ -43,7 +43,8 @@ The ZIP is written beneath `artifacts/`. Use the matching Jellyfin version; the 
 ## First download
 
 The plugin starts disabled. It fills missing local paths from its data directory and existing Movies/Shows libraries where possible. The settings page also suggests the connected
-Jellyfin address. Review these values and save the Transmission and arr connections, shared media-root mapping, and a Jellyfin URL reachable by both the server and its players.
+Jellyfin address. Enter the Transmission and arr connections, then use Discover folders beside each service URL. Review its editable service-folder → Jellyfin-folder pairs and
+save them with a Jellyfin URL reachable by both the server and its players.
 
 Jellyfin needs read access to incomplete downloads, completed downloads, and imported media. Its plugin data and dedicated projection folders must be writable.
 

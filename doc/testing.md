@@ -1,6 +1,6 @@
 # Testing and isolation
 
-Tests use xUnit, AutoFixture/AutoMoq, and FluentAssertions. The unit suites remain on xUnit v2; the container suites use xUnit v3 assembly fixtures. Integration and application tests use Testcontainers for .NET with small fixtures owned by this repository. They have no
+Tests use xUnit, AutoFixture/AutoMoq, and FluentAssertions. The unit and in-process plugin integration suites use xUnit v2; the container suites use xUnit v3 assembly fixtures. Container integration and application tests use Testcontainers for .NET with small fixtures owned by this repository. They have no
 SGP-library dependencies. Main-branch CI and pull requests run the complete suite before packaging an artifact. Tagged releases require a successful main push run for that exact
 commit and reuse its ZIP. Missing or expired artifacts are rebuilt from the tagged commit without rerunning tests. See the [release flow](installation.md#published-release-and-repository-flow).
 
@@ -32,6 +32,12 @@ Run the fast unit and adapter tests without building or discovering the containe
 dotnet test tests/UnitTests.slnx -c Release
 ```
 
+Run the in-process plugin integration tests without containers. These compose DI registrations and verify options reload through the real framework monitor:
+
+```sh
+dotnet test tests-integration/Jellyfin.Plugin.TransmissionStreaming.IntegrationTests -c Release
+```
+
 Run the service integration tests:
 
 ```sh
@@ -56,8 +62,9 @@ The suites divide responsibilities so failures point to a specific behavior:
 
 | Layer | Behaviors |
 | --- | --- |
-| Unit | Range and piece boundaries, ownership and video selection, import validation, authorization, reader cleanup, virtual deadlines and caches, status, history merging, and host adapters. |
-| Component integration | Real handlers, HTTP adapters, SQLite, projection files, and Transmission working together across discovery, playback, import, and application restart. |
+| Unit | Service-path suggestions, mount confinement, range and piece boundaries, ownership and video selection, import validation, authorization, reader cleanup, virtual deadlines and caches, status, history merging, and host adapters. |
+| Plugin integration | Jellyfin-owned settings, DI composition, options snapshots and live reload, and change-subscription disposal without starting a server. |
+| Component integration | Real handlers, HTTP adapters, SQLite, projection files, and Transmission working together across discovery, playback, import through independent arr mounts, and application restart. |
 | Jellyfin application | Actual plugin loading and DI, indexing unfinished media, HTTP delivery and video decoding, duplicate reconciliation, per-user history, server restart, and installation. |
 
 Integration scenarios cover competing releases for one title, a removed torrent followed by a late import, completed bytes awaiting import, recovery after an arr outage, and
@@ -69,6 +76,14 @@ mapping, persistence, authorization, and service composition rather than tests t
 
 Each behavior-bearing unit gets a happy-path call plus tests for meaningful branches, loops, main failures, and obvious edge cases. Property defaults and metadata declarations
 do not need separate assertion-only tests. Integration and application tests establish whether the assembled plugin performs its intended work; coverage percentages are not a target.
+
+The container application suites verify server behavior through HTTP, not the web client's component lifecycle. Local installation also needs a browser check: load saved settings,
+discover paths for each service, edit a mapping, rediscover without losing that edit, save, and reload. Jellyfin's bundled component polyfill requires its own dynamic-element
+creation conventions; a plain DOM mock cannot establish compatibility.
+
+Service-path application tests call the authenticated discovery endpoints with unsaved connection details, verify discovery leaves saved settings alone, and retain a manual mapping
+override after a Jellyfin restart. Playback scenarios use independent Transmission and arr namespaces with deliberately unrelated shared fallback roots. The import, torrent removal,
+restart, and viewer-history assertions therefore also verify that the explicit mappings drive the real file handoff.
 
 ## Measured runtime
 
@@ -88,7 +103,7 @@ so current totals are separate from the like-for-like reuse comparison above.
 
 ## Virtual time
 
-Unit tests inject `TimeProvider` and advance `FakeTimeProvider` rather than sleeping. They check exact discovery intervals, failure and retry timestamps, continuous-stall deadlines,
+Application policy unit tests use generated in-memory bytes and mocked offset reads. Physical offset reads, missing paths, and cancellation are tested separately against temporary\nfiles in the infrastructure suite. Tests follow the owning feature and layer when a policy moves.\n\nUnit tests inject `TimeProvider` and advance `FakeTimeProvider` rather than sleeping. They check exact discovery intervals, failure and retry timestamps, continuous-stall deadlines,
 deadline reset after progress, cancellation, and availability-cache expiry. Duration calculations use monotonic timestamps, so changing wall time cannot extend a stalled request
 or keep an expired cache alive.
 

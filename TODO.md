@@ -45,3 +45,20 @@
 - [x] Publish the successful main run's ZIP for the tagged commit, rebuilding that commit only if the artifact is missing or expired, without rerunning tests.
 - [x] Verify reuse with a real CI ZIP and verify the source-build fallback without running tests.
 - [ ] Confirm the revised tag job on the next versioned release.
+
+## Service path discovery
+
+- [x] Discover Transmission download directories and each arr service's library roots using the form's connection details.
+- [x] Offer editable mappings per service, retaining manual entries and the existing shared fallback.
+- [x] Confine download and imported paths to their service mappings, with stable projection identity across the handoff.
+- [x] Run all 231 tests and verify local 0.1.3 in the existing Jellyfin LXC: five service mappings discovered, local folders readable, old settings and library identities preserved.
+- [x] Verify the real Jellyfin web page: load saved connections, query all services, retain manual edits on rediscovery, and save/reload the five mappings.
+- [x] Group mapping pairs, place discovery controls beside URLs, and expose runtime metrics, folder-check results, and unsaved/save state; verify desktop and mobile browser behavior.
+- [x] Move mapping and playback rules with their tests into Logic, compose inference/copying through Mediator, and keep physical reads in Infrastructure.
+- [x] Install and verify the redesigned settings page and 240-test build locally before the further DI pass.
+- [x] Replace mapping/video/playback services with CQ handlers, remove service-bearing playback factories, and remove redundant Logic bootstrappers and DI packages.
+- [x] Complete 253 server tests, options live-reload verification, redundant-child filtering, and local installation with preserved configuration.
+- [x] Split UI assets into focused modules under Ui, add underlined help, and align every input/action height; verify native module loading and resource wiring.
+- [x] Verify the final split UI in the installed local Jellyfin, including 150 ms tooltips, faint label hints, plain button cursors/text, uniform control heights, and preserved settings.
+- [x] Move real options-monitor and DI-composition checks from unit tests into a separate in-process plugin integration project.
+- [ ] Publish the locally verified build after main CI passes, then reinstall through the Jellyfin repository.

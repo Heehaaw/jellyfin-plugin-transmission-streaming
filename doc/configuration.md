@@ -8,7 +8,7 @@ On startup, the plugin saves defaults for missing local paths. A blank projectio
 looks at the parents of existing Jellyfin Movies and Shows folders. For example, `/mnt/media/movies` and `/mnt/media/shows` suggest `/mnt/media`.
 
 The plugin excludes its own projection folders, invalid paths, and relative paths. It leaves the local root empty when there is no usable common parent or the result would be a
-filesystem root such as `/`. Review any inferred root: it must also contain the incomplete and completed download folders through the shared mapping.
+filesystem root such as `/`. This root is a fallback for existing shared-mount setups; individual services can use their own mappings.
 
 Saved nonblank values always win, and initialization never enables discovery. Prefill is best effort; unavailable library information or a failed defaults lookup must not prevent
 Jellyfin from starting. Existing configured installations retain their supplied settings.
@@ -17,25 +17,47 @@ When the settings page opens, it asks an administrator-only, read-only defaults 
 without changing saved configuration. A blank Jellyfin URL is suggested from the connected server's address, including any reverse-proxy base path. Credentials, query strings,
 and fragments are excluded; addresses containing credentials are not suggested. Check that the resulting URL is reachable by Jellyfin itself and every player.
 
-Suggestions filled into the page persist only when you click **Save**. Transmission and arr addresses, credentials, API keys, and the remote media root still require your input.
+Suggestions filled into the page persist only when you click **Save**. Transmission and arr addresses, credentials, and API keys still require your input.
 The plugin does not scan the network or guess credentials.
 
-## Connections and shared paths
+## Connections and service paths
 
 | Setting | What to enter |
 | --- | --- |
 | Transmission RPC URL | An address Jellyfin can reach, including `/transmission/rpc`, such as `http://download-host:9091/transmission/rpc` |
 | Transmission credentials | The existing RPC username and password |
 | Radarr and Sonarr | Each application's base URL and API key; configure whichever manages the media you want to expose |
-| Media root seen by Transmission and arr | The common remote path, for example `/data` |
-| Same media root seen by Jellyfin | The matching local mount, for example `/mnt/media` |
+| Shared fallback mapping | Optional remote and local roots, used only for a service with no explicit path mappings |
 | Dedicated streaming library folder | A new empty folder writable by Jellyfin, for example `/srv/jellyfin-streaming` |
 | Jellyfin URL | A URL reachable by both the Jellyfin server and every player, including any reverse-proxy base path |
 
 Root mapping translates paths without moving files. For example, `/data/downloads/incomplete/movie.mkv.part` becomes `/mnt/media/downloads/incomplete/movie.mkv.part`. Jellyfin needs
 read access to incomplete downloads, completed downloads, and the final arr libraries. A read-only media mount is sufficient. Its projection folder and plugin data folder must be writable.
 
-Transmission and arr must use the same shared media layout. Independent remote roots or different arr download mappings are outside this prototype's configuration model.
+Click **Discover paths** beside each configured service. Discovery uses the connection fields currently entered in the form, so there is no need to save credentials first:
+
+- Transmission reports its default download directory, directories used by current torrents, and its enabled incomplete directory.
+- Radarr and Sonarr each report their own configured library roots. Their mount paths can differ from Transmission and from each other.
+
+Each returned remote folder gets an editable local mapping. Existing administrator mappings take precedence. Otherwise, the plugin uses the shared fallback where it applies,
+looks for a unique matching Jellyfin library folder name, or pairs a lone movie/show root with the corresponding lone Jellyfin library folder. It excludes its own streaming
+folders. An uncertain local path stays empty for you to fill in. A service cannot report how the same disk is mounted inside Jellyfin, so check these suggestions.
+
+Suggested mappings omit a nested folder when its parent already produces the same local path and permits that translation. For example, a completed-download root covers its
+`tv-sonarr` subfolder without a second row. A child with a different local target or a required narrower filesystem boundary remains separate.
+
+You can edit either side, add a mapping manually, or remove a row. Rediscovery preserves rows already in the form, including unsaved overrides, and adds newly found roots.
+The purpose labels come from service metadata: the configured default directory, enabled incomplete directory, and per-torrent download directories. They are refreshed by
+Discover folders; a saved Transmission row initially says Mapped folder until checked in that page visit.
+Nothing changes on the server until **Save**. Saved settings refresh live through the options monitor; no Jellyfin restart is needed for ordinary configuration edits. Discovery does not move files, change download settings, or enable the plugin.
+
+Explicit rows replace the shared fallback for that service. For example, Transmission can map `/downloads` to `/mnt/media/downloads`, Radarr can map `/films` to
+`/mnt/media/movies`, and Sonarr can map `/tv` to `/mnt/media/series`. Include every active and incomplete download location you want to stream. Existing configurations without
+explicit rows continue using the saved shared fallback.
+
+When roots overlap, the most specific remote root wins. Conflicting translations for that same root are refused. Imported files must remain within their arr service's mapped
+local roots, including after a restart or torrent removal. Paths containing traversal or symlinks below a mapped root are refused.
+
 Connection URLs must identify the service directly, without redirects to a login page or another host.
 
 ## Library setup
@@ -62,6 +84,13 @@ progressive playback when neither condition holds. The plugin does not change th
 
 With status display enabled, downloading items receive a temporary title suffix such as `[Downloading 23%]`. Other states include waiting for import, an unavailable download, and a
 download error. Completion removes the suffix while retaining the entry.
+
+The settings page groups each remote folder and its Jellyfin folder into one translation row. Discover folders sits beside the service URL; Add mapping and Remove affect
+translations only. Unsaved edits are marked explicitly, and Save reports success or failure without discarding the draft. Credentials stay collapsed until needed.
+
+Live activity reports the saved download-scan state, last successful scan, item count, per-item download progress, and active HTTP readers. It refreshes every 10 seconds while
+the page is active, with a manual Refresh button. Reader counts describe streaming requests, not distinct viewers. Folder checks have their own timestamp and result count; they
+are administrator-triggered checks, not continuous service-health monitoring. Empty or failed status responses do not imply that every service is healthy.
 
 The player controls its buffering indicator. There is no custom badge understood by every native Jellyfin client. The plugin settings page provides a separate discovery/status view.
 

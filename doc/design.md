@@ -20,7 +20,15 @@ settings retain ownership, and discovery stays disabled until the administrator 
 
 The settings page can request fresh local suggestions through an administrator-only, read-only endpoint after libraries change. It also suggests the connected Jellyfin address for
 a blank public URL, retaining a reverse-proxy base path without credentials, query strings, or fragments. These page suggestions are saved only on **Save**. External-service
-addresses, remote paths, and secrets remain explicit configuration. See [configuration](configuration.md#initial-defaults-and-suggestions) for examples and checks.
+addresses and secrets remain explicit configuration.
+
+Per-service buttons read remote directories through the configured APIs, then propose editable translations into Jellyfin's filesystem. Discovery is read-only; the administrator
+saves the reviewed mappings. Each service has an independent namespace, with the old shared-root pair retained as a fallback. See [configuration](configuration.md#connections-and-service-paths)
+for examples and checks.
+
+The plugin keeps Jellyfin's XML configuration as its persisted source. A host adapter configures standard .NET options and translates configuration-save events into change
+tokens. Singleton handlers read the current monitored options, while a previously obtained snapshot retains its own mapping values. Core and Logic do not depend on Jellyfin
+packages or configuration APIs.
 
 ## Discovery
 
@@ -51,11 +59,19 @@ The permanent Jellyfin entry remains the owner of watch history. Native duplicat
 ## Application boundaries
 
 The domain defines media identities, playback state, and external-service contracts. Application requests coordinate discovery, authorization, streaming, and completion through
-source-generated Mediator handlers. Infrastructure supplies HTTP clients, confined path mapping, piece-gated file reads, and SQLite persistence. The plugin composes these layers
+source-generated Mediator handlers. Root inference, service-mapping precedence, verified-piece gating, prioritization, and stall deadlines belong to application policy.\nInfrastructure supplies HTTP clients, physical path confinement, offset reads, and SQLite persistence. Copying reads through a filesystem contract so the application tests its\nwaiting and cancellation rules without disk access. The plugin composes these layers
 and adapts them to Jellyfin's configuration, HTTP endpoints, indexing, and user metadata.
 
-Each layer uses feature folders and composes feature bootstrappers through dependency injection. Service implementations remain internal behind their interfaces. Jellyfin's public
-entry points are the framework-required exceptions. The installed plugin needs no separate server, torrent engine, or database service.
+Each layer uses feature folders. Infrastructure and the plugin compose their adapters through feature bootstrappers. Logic contains Mediator queries and commands; generated
+registration discovers their internal handlers without per-feature bootstrappers. Service implementations remain internal behind Core contracts. Jellyfin's public entry points
+are the framework-required exceptions. The installed plugin needs no separate server, torrent engine, or database service.
+
+Playback commands carry media identity, output, range, and read options. Each copy creates data-only session state for its cached torrent metadata, timestamps, and imported path.
+Handlers receive the client, store, filesystem, options, clock, and Mediator through DI. Runtime messages do not carry service instances, service factories, or callbacks.
+
+The settings UI uses focused browser modules for draft configuration, folder mappings, activity, and contextual help. Jellyfin serves the embedded page, stylesheet, and modules
+from the plugin; there is no separate frontend server or build pipeline. Each page instance owns its draft and polling lifecycle. Tooltips explain the controls, and faint dashed
+underlines mark explanatory text with help. Buttons keep their normal cursor and plain text. Hover or keyboard focus shows help after 150 ms; leaving the control, scrolling, or interacting dismisses it. Responsive layout uses the same field and action-button heights throughout.
 
 ## Resource use
 
