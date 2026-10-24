@@ -1,21 +1,34 @@
 # Testing and isolation
 
-Tests use xUnit, AutoFixture/AutoMoq, and FluentAssertions. Integration and application tests use Testcontainers for .NET with small fixtures owned by this repository. They have no
+Tests use xUnit, AutoFixture/AutoMoq, and FluentAssertions. The unit suites remain on xUnit v2; the container suites use xUnit v3 assembly fixtures. Integration and application tests use Testcontainers for .NET with small fixtures owned by this repository. They have no
 SGP-library dependencies. CI runs the same complete suite before packaging an artifact or publishing a tagged release.
 
 ## Prerequisites
 
 Install the .NET 10 SDK. The container suites also need a running local Docker-compatible daemon. Their first run pulls pinned Jellyfin, Transmission, and .NET SDK images.
 
-Fixtures bind a unique directory beneath `~/.cache/transmission-streaming-tests`; share that location with Docker. Each fixture owns its containers, network, and data directory and
-removes them on disposal. The tests use synthetic media and generated state. They do not reuse the home stack's settings, credentials, or media.
+Assembly fixtures own one Transmission daemon, one C# peer, and their isolated network for each container suite. Each scenario acquires an exclusive lease, uses a fresh directory
+beneath `~/.cache/transmission-streaming-tests`, and removes its torrents and peer state before releasing the lease. Share that location with Docker. Containers stop at assembly
+teardown rather than after every test.
+
+Jellyfin cases retain independent configuration, databases, and media libraries. An empty server is initialized and stopped once; each case copies that baseline before starting
+its own server. This skips repeated migrations without sharing mutable databases or carrying watch state between scenarios. The tests use synthetic media and generated state.
+
+## Reuse without shared scenario state
+
+Each container-test assembly starts one Transmission daemon, one C# peer/HTTP process, and one isolated network. An exclusive scenario lease gives each test a fresh media and
+projection directory. Releasing the lease removes its torrents, cancels old peer connections, resets controlled upstream state, and deletes the scenario data. The next case borrows
+the same processes rather than recompiling or restarting them. The controlled HTTP process also serves local plugin repositories.
+
+Jellyfin remains a separate process for each scenario. A stopped, empty server baseline amortizes database migrations and initial setup. Each scenario gets its own copied database
+and configuration; mutable library data and watch history are never shared. Installation tests still begin without the plugin and load it through the intended installation path.
 
 ## Run the suites
 
-Run the fast unit and adapter tests without Docker:
+Run the fast unit and adapter tests without building or discovering the container suites:
 
 ```sh
-dotnet test TransmissionStreaming.slnx -c Release --filter 'FullyQualifiedName!~IntegrationTests&FullyQualifiedName!~ApplicationTests'
+dotnet test tests/UnitTests.slnx -c Release
 ```
 
 Run the service integration tests:
@@ -36,7 +49,29 @@ Run everything:
 dotnet test TransmissionStreaming.slnx -c Release
 ```
 
+## Measured runtime
+
+The same six scenarios were measured before and after assembly reuse, including fixture setup and teardown:
+
+| Suite | Before | After | Reduction |
+| --- | ---: | ---: | ---: |
+| Application | 158.1 s | 136.1 s | 14% |
+| Integration | 72.9 s | 52.7 s | 28% |
+
+These are local Docker measurements, not CI guarantees. Transmission still schedules real peer requests on its own clock. The unit-only command completed all 78 tests in
+3.44 seconds with warmed dependencies, including SDK/build overhead; virtual-time test bodies complete in milliseconds.
+
+## Virtual time
+
+Unit tests inject `TimeProvider` and advance `FakeTimeProvider` rather than sleeping. They check exact discovery intervals, failure and retry timestamps, continuous-stall deadlines,
+deadline reset after progress, cancellation, and availability-cache expiry. Duration calculations use monotonic timestamps, so changing wall time cannot extend a stalled request
+or keep an expired cache alive.
+
+The observer waits until a timer is registered before advancing it. Its real-time guard detects a broken test synchronization contract; it does not drive the behavior under test.
+Container tests use the real clocks of Jellyfin and Transmission and bounded condition polling to observe their progress.
+
 ## Service integration flow
+
 
 The integration suite composes real application handlers, HTTP adapters, filesystem access, and the SQLite store through dependency injection. Jellyfin's indexing boundary is
 replaced for these tests, so they can exercise discovery and playback without starting a media server.

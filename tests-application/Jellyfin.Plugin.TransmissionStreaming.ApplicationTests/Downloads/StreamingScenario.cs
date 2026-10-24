@@ -5,13 +5,13 @@ using global::TransmissionStreaming.TestSupport.Torrents;
 using Hosting;
 
 /// <summary>Controls download settings and the simulated arr import, without bypassing the plugin's HTTP endpoints.</summary>
-internal sealed class StreamingScenario(string workspace, JellyfinApi api, TorrentSwarm swarm, ArrStub arr)
+internal sealed class StreamingScenario(string workspace, JellyfinApi api, TorrentScenario swarm, ArrStub arr)
 {
     private const string RemoteRoot = "/data";
     private const string ProjectionDirectory = "projection";
     private const string ImportedDirectory = "movies";
     private string LocalProjection => Path.Combine(workspace, ProjectionDirectory);
-    private string RemoteImportedFile => $"{RemoteRoot}/{ImportedDirectory}/{swarm.FileName}";
+    private string RemoteImportedFile => swarm.RemotePath(Path.Combine(workspace, ImportedDirectory, swarm.FileName));
 
     public async Task ConfigureAsync(bool enabled = true, int waitSeconds = 5)
     {
@@ -27,7 +27,7 @@ internal sealed class StreamingScenario(string workspace, JellyfinApi api, Torre
             TransmissionPassword = "",
             RemoteMediaRoot = RemoteRoot,
             LocalMediaRoot = RemoteRoot,
-            ProjectionRoot = $"{RemoteRoot}/{ProjectionDirectory}",
+            ProjectionRoot = swarm.RemotePath(LocalProjection),
             JellyfinPublicUrl = JellyfinContainer.InternalAddress.ToString(),
             PollSeconds = 2,
             PieceWaitSeconds = waitSeconds,

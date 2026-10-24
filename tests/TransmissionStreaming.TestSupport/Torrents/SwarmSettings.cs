@@ -7,9 +7,12 @@ internal static class SwarmSettings
     public const int RpcPort = 9091;
     public const int HttpPort = 8080;
     public const int PeerPort = 6881;
+    // The controlled peer implements plaintext BitTorrent, so avoid an encrypted handshake and fallback retry.
+    public const string PlaintextPreferredEncryption = "allowed";
     public const string TransmissionHost = "transmission";
     public const string SeedHost = "seed";
     public const string ArrHost = "arr";
+    public const string CatalogHost = "catalog";
     public const string RpcPath = "/transmission/rpc";
     public const string RemoteRoot = "/data";
     public const string CompletedDirectory = "completed";

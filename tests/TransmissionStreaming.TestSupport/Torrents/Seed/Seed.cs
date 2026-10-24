@@ -8,6 +8,8 @@
 #:include Bencode.cs
 #:include BitTorrentPeer.cs
 #:include BitTorrentProtocol.cs
+#:include BitTorrentTransfer.cs
+#:include CatalogEndpoints.cs
 
 using System.Net;
 using System.Net.Sockets;
@@ -19,7 +21,7 @@ using TransmissionStreaming.TestSupport.Torrents.Seed;
 var configuration = JsonSerializer.Deserialize<SeedConfiguration>(File.ReadAllText("/fixture/seed.json"),
     new JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
 var media = File.ReadAllBytes("/fixture/reference.mkv");
-var control = new SeedControl(configuration, media);
+using var control = new SeedControl(configuration, media);
 var builder = WebApplication.CreateBuilder(args);
 builder.Logging.ClearProviders();
 var app = builder.Build();
@@ -31,4 +33,5 @@ _ = BitTorrentPeer.AcceptAsync(listener, control, app.Lifetime.ApplicationStoppi
 TrackerEndpoints.Map(app, control);
 ControlEndpoints.Map(app, control);
 ArrEndpoints.Map(app, control);
+CatalogEndpoints.Map(app, control);
 await app.RunAsync($"http://0.0.0.0:{configuration.HttpPort}");

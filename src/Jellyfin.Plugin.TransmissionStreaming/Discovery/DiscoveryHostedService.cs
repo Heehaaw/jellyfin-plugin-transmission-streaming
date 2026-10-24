@@ -12,7 +12,8 @@ internal sealed class DiscoveryHostedService(
     IMediator mediator,
     IStreamingOptionsProvider configuration,
     IDiscoveryStatus status,
-    ILogger<DiscoveryHostedService> logger) : BackgroundService
+    ILogger<DiscoveryHostedService> logger,
+    TimeProvider timeProvider) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -23,7 +24,7 @@ internal sealed class DiscoveryHostedService(
                 try
                 {
                     await mediator.Send(new DiscoverDownloads.Command(), stoppingToken).ConfigureAwait(false);
-                    status.Set(new DiscoveryStatus { LastSuccessfulPoll = DateTimeOffset.UtcNow });
+                    status.Set(new DiscoveryStatus { LastSuccessfulPoll = timeProvider.GetUtcNow() });
                 }
                 catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { break; }
                 catch (Exception exception)
@@ -35,7 +36,7 @@ internal sealed class DiscoveryHostedService(
                 }
             }
             var delay = Math.Clamp(configuration.Get().PollSeconds, DiscoveryConstants.MinimumPollSeconds, DiscoveryConstants.MaximumPollSeconds);
-            await Task.Delay(TimeSpan.FromSeconds(delay), stoppingToken).ConfigureAwait(false);
+            await Task.Delay(TimeSpan.FromSeconds(delay), timeProvider, stoppingToken).ConfigureAwait(false);
         }
     }
 }

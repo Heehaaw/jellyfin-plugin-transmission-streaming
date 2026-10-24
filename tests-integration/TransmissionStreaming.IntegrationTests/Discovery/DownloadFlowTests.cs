@@ -2,12 +2,11 @@ namespace TransmissionStreaming.IntegrationTests.Discovery;
 
 using AutoFixture;
 using AutoFixture.AutoMoq;
-using AutoFixture.Xunit2;
 using Core.Arr;
 using Fixtures;
 using FluentAssertions;
+using global::TransmissionStreaming.TestSupport.Testing;
 using Xunit;
-using Xunit.Abstractions;
 
 public sealed class DownloadFlowTests(ITestOutputHelper output)
 {
@@ -101,12 +100,12 @@ public sealed class DownloadFlowTests(ITestOutputHelper output)
             var original = sut.Store.All().Single();
             await sut.Swarm.AllowAllPiecesAsync(cancellationToken);
             var importedPath = await sut.ImportAsync(cancellationToken);
-            await sut.Arr.PublishUnrelatedImportAsync("/data/movies/" + source.FileName, unrelatedTorrent.ToString("N"), cancellationToken);
+            await sut.Arr.PublishUnrelatedImportAsync(sut.Swarm.RemotePath(importedPath), unrelatedTorrent.ToString("N"), cancellationToken);
 
             // Act
             await sut.Mediator.Send(source.Discover, cancellationToken);
             var afterUnrelatedImport = sut.Store.All().Single();
-            await sut.Arr.PublishImportAsync("/data/movies/" + source.FileName, cancellationToken);
+            await sut.Arr.PublishImportAsync(sut.Swarm.RemotePath(importedPath), cancellationToken);
             await sut.Mediator.Send(source.Discover, cancellationToken);
             var afterExactImport = sut.Store.All().Single();
 

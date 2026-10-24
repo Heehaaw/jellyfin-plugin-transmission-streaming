@@ -4,7 +4,7 @@ using System.Text.Json;
 
 internal sealed record TorrentWorkspace(string SeedRoot, TorrentMetainfo Metainfo)
 {
-    public static async Task<TorrentWorkspace> PrepareAsync(string workspace, byte[] media, string fileName, CancellationToken cancellationToken)
+    public static async Task<TorrentWorkspace> PrepareAsync(string workspace, byte[] media, string fileName, CancellationToken cancellationToken, string remoteRoot = SwarmSettings.RemoteRoot)
     {
         if (media.Length <= SwarmSettings.PieceSize * 2 || Path.GetFileName(fileName) != fileName)
         {
@@ -29,7 +29,7 @@ internal sealed record TorrentWorkspace(string SeedRoot, TorrentMetainfo Metainf
             peerPort = SwarmSettings.PeerPort,
             host = SwarmSettings.SeedHost,
             arrKey = SwarmSettings.ArrKey,
-            completedRoot = SwarmSettings.CompletedRoot
+            completedRoot = remoteRoot + "/" + SwarmSettings.CompletedDirectory
         }), cancellationToken).ConfigureAwait(false);
         await File.WriteAllTextAsync(Path.Combine(settingsRoot, "settings.json"), JsonSerializer.Serialize(DaemonConfiguration()), cancellationToken).ConfigureAwait(false);
         return new TorrentWorkspace(seedRoot, metainfo);
@@ -57,7 +57,7 @@ internal sealed record TorrentWorkspace(string SeedRoot, TorrentMetainfo Metainf
             sequential_download = false,
             cache_size_mib = 4,
             preallocation = 1,
-            encryption = "tolerated",
+            encryption = SwarmSettings.PlaintextPreferredEncryption,
             message_level = 2
         };
     }

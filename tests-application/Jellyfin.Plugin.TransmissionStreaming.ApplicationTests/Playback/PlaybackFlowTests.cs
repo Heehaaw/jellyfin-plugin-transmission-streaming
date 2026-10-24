@@ -2,14 +2,13 @@ namespace Jellyfin.Plugin.TransmissionStreaming.ApplicationTests.Playback;
 
 using AutoFixture;
 using AutoFixture.AutoMoq;
-using AutoFixture.Xunit2;
 using FluentAssertions;
+using global::TransmissionStreaming.TestSupport.Testing;
 using Hosting;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text.Json.Nodes;
 using Xunit;
-using Xunit.Abstractions;
 
 /// <summary>Exercises the public plugin and Jellyfin APIs with real, locally downloaded torrent bytes.</summary>
 public sealed class PlaybackFlowTests(JellyfinTestServer sut, ITestOutputHelper output) : IClassFixture<JellyfinTestServer>
@@ -18,6 +17,7 @@ public sealed class PlaybackFlowTests(JellyfinTestServer sut, ITestOutputHelper 
     public async Task Should_KeepPlaybackAndUserStateThroughImportAndRestart(WatchState playedViewer, WatchState resumingViewer)
     {
         // Arrange
+        var cancellationToken = TestContext.Current.CancellationToken;
         playedViewer.Played = true;
         playedViewer.IsFavorite = true;
         playedViewer.PlaybackPositionTicks = 0;
@@ -37,29 +37,29 @@ public sealed class PlaybackFlowTests(JellyfinTestServer sut, ITestOutputHelper 
         {
             // Act
             // The library entry must be usable while the seed still withholds the remaining pieces.
-            await sut.AddLibraryAsync("Streaming", "/data/projection/movies");
+            await sut.AddLibraryAsync("Streaming", sut.ProjectionMoviesPath);
             var itemId = await sut.WaitForItemAsync();
-            var indexingDownload = await sut.Swarm.ProgressAsync(CancellationToken.None);
+            var indexingDownload = await sut.Swarm.ProgressAsync(cancellationToken);
             var playbackInfo = await sut.Api.RequestAsync($"/Items/{itemId}/PlaybackInfo?userId={sut.Administrator}");
             var sources = JellyfinApi.Field(playbackInfo, "MediaSources")!.AsArray();
             var advertisedPath = JellyfinApi.Value<string>(sources[0], "Path");
 
-            using var head = await client.SendAsync(new HttpRequestMessage(HttpMethod.Head, hostUrl));
-            using var range = await client.SendAsync(available);
-            var firstPiece = await range.Content.ReadAsByteArrayAsync();
-            using var playback = await client.GetAsync(hostUrl, HttpCompletionOption.ResponseHeadersRead);
-            await using var body = await playback.Content.ReadAsStreamAsync();
+            using var head = await client.SendAsync(new HttpRequestMessage(HttpMethod.Head, hostUrl), cancellationToken);
+            using var range = await client.SendAsync(available, cancellationToken);
+            var firstPiece = await range.Content.ReadAsByteArrayAsync(cancellationToken);
+            using var playback = await client.GetAsync(hostUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+            await using var body = await playback.Content.ReadAsStreamAsync(cancellationToken);
             var prefix = new byte[sut.Swarm.PieceSize];
-            await body.ReadExactlyAsync(prefix);
+            await body.ReadExactlyAsync(prefix, cancellationToken);
             var nextByte = new byte[1];
-            var pendingRead = body.ReadAsync(nextByte).AsTask();
-            var waitedForPieces = await Task.WhenAny(pendingRead, Task.Delay(700)) != pendingRead;
-            await sut.Swarm.AllowAllPiecesAsync(CancellationToken.None);
-            var firstAfterWait = await pendingRead.WaitAsync(TimeSpan.FromSeconds(30));
+            var pendingRead = body.ReadAsync(nextByte, cancellationToken).AsTask();
+            var waitedForPieces = await Task.WhenAny(pendingRead, Task.Delay(700, cancellationToken)) != pendingRead;
+            await sut.Swarm.AllowAllPiecesAsync(cancellationToken);
+            var firstAfterWait = await pendingRead.WaitAsync(TimeSpan.FromSeconds(30), cancellationToken);
             await using var received = new MemoryStream();
-            await received.WriteAsync(prefix);
-            await received.WriteAsync(nextByte.AsMemory(0, firstAfterWait));
-            await body.CopyToAsync(received);
+            await received.WriteAsync(prefix, cancellationToken);
+            await received.WriteAsync(nextByte.AsMemory(0, firstAfterWait), cancellationToken);
+            await body.CopyToAsync(received, cancellationToken);
 
             var viewer = await sut.Api.RequestAsync("/Users/New", new { Name = "second-viewer", Password = "Disposable-viewer-only-123!" });
             var secondUser = JellyfinApi.Value<string>(viewer, "Id");
@@ -72,12 +72,12 @@ public sealed class PlaybackFlowTests(JellyfinTestServer sut, ITestOutputHelper 
             }
 
             await sut.ImportAsync();
-            using var afterImport = await client.GetAsync(hostUrl);
-            var importedBytes = await afterImport.Content.ReadAsByteArrayAsync();
+            using var afterImport = await client.GetAsync(hostUrl, cancellationToken);
+            var importedBytes = await afterImport.Content.ReadAsByteArrayAsync(cancellationToken);
             var afterItem = await sut.FindItemAsync(true);
             await sut.RestartAsync();
-            using var afterRestart = await client.GetAsync(sut.HostStream(permanentUrl));
-            var restartedBytes = await afterRestart.Content.ReadAsByteArrayAsync();
+            using var afterRestart = await client.GetAsync(sut.HostStream(permanentUrl), cancellationToken);
+            var restartedBytes = await afterRestart.Content.ReadAsByteArrayAsync(cancellationToken);
             var restartedId = await sut.WaitForItemAsync();
             var retainedUrl = await sut.WaitForStreamAsync();
             var after = new Dictionary<string, JsonNode?>();

@@ -4,6 +4,7 @@ using Arr;
 using Discovery;
 using Filesystem;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Persistence;
 using Projection;
 using Streaming;
@@ -15,6 +16,7 @@ public static class Bootstrapper
     /// <summary>Adds the infrastructure services used by the application handlers and plugin adapter.</summary>
     public static IServiceCollection AddTransmissionStreamingInfrastructure(this IServiceCollection services)
     {
+        services.TryAddSingleton<TimeProvider>(TimeProvider.System);
         return services
         .AddTransmissionTransport()
         .AddArrIntegration()

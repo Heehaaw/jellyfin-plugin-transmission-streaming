@@ -2,12 +2,11 @@ namespace Jellyfin.Plugin.TransmissionStreaming.ApplicationTests.Playback;
 
 using AutoFixture;
 using AutoFixture.AutoMoq;
-using AutoFixture.Xunit2;
 using FluentAssertions;
+using global::TransmissionStreaming.TestSupport.Testing;
 using Hosting;
 using System.Text.Json.Nodes;
 using Xunit;
-using Xunit.Abstractions;
 
 public sealed class DuplicateReconciliationTests(JellyfinTestServer sut, ITestOutputHelper output) : IClassFixture<JellyfinTestServer>
 {
@@ -15,6 +14,7 @@ public sealed class DuplicateReconciliationTests(JellyfinTestServer sut, ITestOu
     public async Task Should_MergeAnIndexedNativeDuplicateWithoutDeletingMedia(WatchState playedViewer, WatchState resumingViewer)
     {
         // Arrange
+        var cancellationToken = TestContext.Current.CancellationToken;
         playedViewer.Played = true;
         playedViewer.IsFavorite = true;
         playedViewer.PlaybackPositionTicks = 0;
@@ -27,7 +27,7 @@ public sealed class DuplicateReconciliationTests(JellyfinTestServer sut, ITestOu
         var permanentUrl = await sut.WaitForStreamAsync();
         await sut.StageImportedFileAsync();
         // Index the physical import before arr publishes its history. This reproduces the scan race.
-        await sut.AddLibraryAsync("Native import", "/data/movies");
+        await sut.AddLibraryAsync("Native import", sut.ImportedMoviesPath);
         var nativeId = await sut.WaitForItemAsync(false);
         var viewer = await sut.Api.RequestAsync("/Users/New", new { Name = "native-viewer", Password = "Disposable-native-viewer-only-123!" });
         var users = new[] { sut.Administrator, JellyfinApi.Value<string>(viewer, "Id") };
@@ -41,7 +41,7 @@ public sealed class DuplicateReconciliationTests(JellyfinTestServer sut, ITestOu
         try
         {
             // Act
-            await sut.AddLibraryAsync("Streaming", "/data/projection/movies");
+            await sut.AddLibraryAsync("Streaming", sut.ProjectionMoviesPath);
             var projectedId = await sut.WaitForItemAsync();
             await sut.ImportAsync();
             await JellyfinTestServer.UntilAsync(async () => await sut.FindItemAsync(false) is null, "native duplicate reconciliation");
@@ -59,7 +59,7 @@ public sealed class DuplicateReconciliationTests(JellyfinTestServer sut, ITestOu
                 persisted[user] = await sut.Api.RequestAsync($"/UserItems/{projectedId}/UserData?userId={user}");
             }
             using var client = new HttpClient();
-            var playback = await client.GetByteArrayAsync(sut.HostStream(permanentUrl));
+            var playback = await client.GetByteArrayAsync(sut.HostStream(permanentUrl), cancellationToken);
 
             // Assert
             projectedId.Should().NotBe(nativeId);

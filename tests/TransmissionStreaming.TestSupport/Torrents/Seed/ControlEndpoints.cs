@@ -6,26 +6,50 @@ internal static class ControlEndpoints
 {
     public static void Map(WebApplication app, SeedControl control)
     {
-        var configuration = control.Configuration;
         app.MapPost("/control/{operation}", async (string operation, HttpContext context) =>
         {
             using var body = await JsonDocument.ParseAsync(context.Request.Body, cancellationToken: context.RequestAborted);
             var value = body.RootElement;
-            lock (control.Gate)
+            if (operation == "scenario")
             {
-                control.State = operation switch
+                var directory = value.GetProperty("directory").GetString()!;
+                var json = await File.ReadAllTextAsync(Path.Combine(directory, "seed.json"), context.RequestAborted);
+                var configuration = JsonSerializer.Deserialize<SeedConfiguration>(json, new JsonSerializerOptions(JsonSerializerDefaults.Web))!;
+                var media = await File.ReadAllBytesAsync(Path.Combine(directory, "reference.mkv"), context.RequestAborted);
+                control.Reset(configuration, media);
+            }
+            else if (operation == "catalog")
+            {
+                control.CatalogRoot = value.GetProperty("directory").GetString();
+            }
+            else if (operation == "end")
+            {
+                control.Dispose();
+                control.CatalogRoot = null;
+                if (control.Current.PeerFailure is { } failure)
                 {
-                    "first" => control.State with { Allowed = 1 },
-                    "all" => control.State with { Allowed = control.PieceCount },
-                    "import" => control.State with
+                    throw new InvalidOperationException(failure);
+                }
+            }
+            else
+            {
+                var scenario = control.Current;
+                lock (scenario.Gate)
+                {
+                    scenario.State = operation switch
                     {
-                        ImportedPath = value.GetProperty("path").GetString(),
-                        HistoryHash = value.TryGetProperty("hash", out var hash) ? hash.GetString()! : configuration.Hash
-                    },
-                    "failure" => control.State with { Failure = value.GetProperty("enabled").GetBoolean() },
-                    "episode" => control.State with { Episode = value.GetProperty("enabled").GetBoolean() },
-                    _ => throw new InvalidOperationException("Unknown synthetic fixture control operation.")
-                };
+                        "first" => scenario.State with { Allowed = 1 },
+                        "all" => scenario.State with { Allowed = scenario.PieceCount },
+                        "import" => scenario.State with
+                        {
+                            ImportedPath = value.GetProperty("path").GetString(),
+                            HistoryHash = value.TryGetProperty("hash", out var hash) ? hash.GetString()! : scenario.Configuration.Hash
+                        },
+                        "failure" => scenario.State with { Failure = value.GetProperty("enabled").GetBoolean() },
+                        "episode" => scenario.State with { Episode = value.GetProperty("enabled").GetBoolean() },
+                        _ => throw new InvalidOperationException("Unknown fixture control operation.")
+                    };
+                }
             }
             return Results.Json(new { });
         });

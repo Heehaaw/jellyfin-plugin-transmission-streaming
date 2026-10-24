@@ -13,5 +13,6 @@
         <ProjectReference Include="../../src/TransmissionStreaming.Core/TransmissionStreaming.Core.csproj" />
         <ProjectReference Include="../../src/TransmissionStreaming.Infrastructure/TransmissionStreaming.Infrastructure.csproj" />
         <PackageReference Include="Moq" />
+        <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
     </ItemGroup>
 </Project>

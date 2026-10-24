@@ -4,7 +4,7 @@ using DotNet.Testcontainers.Networks;
 using Torrents;
 
 /// <summary>Controls the arr responses served alongside the local seed, without running a real indexer or download manager.</summary>
-internal sealed class ArrStub(TorrentSwarm swarm)
+internal sealed class ArrStub(TorrentScenario swarm)
 {
     public string Key => SwarmSettings.ArrKey;
     public Uri Url => swarm.ControlUrl;
@@ -12,7 +12,7 @@ internal sealed class ArrStub(TorrentSwarm swarm)
     public string Title => swarm.Title;
     public const int MovieId = 1;
 
-    public static Task<ArrStub> StartAsync(string workspace, INetwork network, TorrentSwarm swarm, CancellationToken cancellationToken)
+    public static Task<ArrStub> StartAsync(string workspace, INetwork network, TorrentScenario swarm, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         return Task.FromResult(new ArrStub(swarm));

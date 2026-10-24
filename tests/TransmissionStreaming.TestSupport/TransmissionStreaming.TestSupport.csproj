@@ -4,6 +4,8 @@
     </PropertyGroup>
     <ItemGroup>
         <PackageReference Include="Testcontainers" />
+        <PackageReference Include="AutoFixture.AutoMoq" />
+        <PackageReference Include="xunit.v3.extensibility.core" />
         <InternalsVisibleTo Include="TransmissionStreaming.IntegrationTests" />
         <InternalsVisibleTo Include="Jellyfin.Plugin.TransmissionStreaming.ApplicationTests" />
         <Compile Remove="Torrents/Seed/**/*.cs" />

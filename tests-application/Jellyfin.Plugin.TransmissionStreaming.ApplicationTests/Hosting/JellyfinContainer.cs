@@ -15,11 +15,13 @@ internal sealed class JellyfinContainer : IAsyncDisposable
     private const string Image = "jellyfin/jellyfin:12.3@sha256:2038fe038ab3876a80f6e7b7e0aef6607b032c7dc0c9b3ad3296d0b2eba3bbb5";
     private const string MediaFileName = "reference.mkv";
     private readonly string workspace;
+    private readonly string mediaRoot;
     private readonly IContainer container;
 
-    public JellyfinContainer(string workspace, INetwork network, bool installPlugin)
+    public JellyfinContainer(string workspace, INetwork network, bool installPlugin, string? mediaRoot = null)
     {
         this.workspace = workspace;
+        this.mediaRoot = mediaRoot ?? workspace;
         var configuration = Path.Combine(workspace, "jellyfin");
         PrepareConfiguration(configuration, installPlugin);
         var cache = Directory.CreateDirectory(Path.Combine(workspace, "cache")).FullName;
@@ -30,7 +32,7 @@ internal sealed class JellyfinContainer : IAsyncDisposable
             .WithPortBinding(HttpPort, true)
             .WithBindMount(configuration, "/config")
             .WithBindMount(cache, "/cache")
-            .WithBindMount(workspace, "/data")
+            .WithBindMount(this.mediaRoot, "/data")
             .WithWaitStrategy(Wait.ForUnixContainer().UntilHttpRequestIsSucceeded(request => request.ForPort(HttpPort).ForPath("/System/Info/Public")))
             .Build();
     }
@@ -42,6 +44,11 @@ internal sealed class JellyfinContainer : IAsyncDisposable
         return container.StartAsync(cancellationToken);
     }
 
+    public Task StopAsync(CancellationToken cancellationToken)
+    {
+        return container.StopAsync(cancellationToken);
+    }
+
     public async Task RestartAsync(CancellationToken cancellationToken)
     {
         await container.StopAsync(cancellationToken);
@@ -50,7 +57,8 @@ internal sealed class JellyfinContainer : IAsyncDisposable
 
     public async Task<byte[]> CreateVideoAsync(CancellationToken cancellationToken)
     {
-        var remotePath = $"/data/{MediaFileName}";
+        var relative = Path.GetRelativePath(mediaRoot, Path.Combine(workspace, MediaFileName)).Replace(Path.DirectorySeparatorChar, '/');
+        var remotePath = "/data/" + relative;
         var generated = await container.ExecAsync([
             "/usr/lib/jellyfin-ffmpeg/ffmpeg", "-hide_banner", "-loglevel", "error", "-f", "lavfi", "-i", "testsrc2=size=320x180:rate=24",
             "-t", MediaDuration.TotalSeconds.ToString(System.Globalization.CultureInfo.InvariantCulture), "-c:v", "libx264", "-preset", "ultrafast", "-an", "-y", remotePath], cancellationToken);

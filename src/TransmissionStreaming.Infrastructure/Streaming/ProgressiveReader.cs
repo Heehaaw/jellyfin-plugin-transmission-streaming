@@ -2,10 +2,9 @@ namespace TransmissionStreaming.Infrastructure.Streaming;
 
 using Core.Streaming;
 using System.Buffers;
-using System.Diagnostics;
 
 /// <summary>Streams verified byte ranges from an incomplete file without reading sparse gaps.</summary>
-internal sealed class ProgressiveReader : IProgressiveReader
+internal sealed class ProgressiveReader(TimeProvider timeProvider) : IProgressiveReader
 {
     /// <summary>Copies a fixed byte range, waiting for missing verified pieces and following refreshed backing paths.</summary>
     public async Task CopyAsync(IProgressiveSource source, Stream destination, long offset, long count, ProgressiveReadOptions options, CancellationToken cancellationToken = default)
@@ -18,7 +17,7 @@ internal sealed class ProgressiveReader : IProgressiveReader
         }
 
         var buffer = ArrayPool<byte>.Shared.Rent(options.BufferSize);
-        var stalled = Stopwatch.StartNew();
+        var stalledAt = timeProvider.GetTimestamp();
         var position = offset;
         var end = checked(offset + count);
         long? prioritized = null;
@@ -55,7 +54,7 @@ internal sealed class ProgressiveReader : IProgressiveReader
                 {
                     await destination.WriteAsync(buffer.AsMemory(0, read), cancellationToken).ConfigureAwait(false);
                     position += read;
-                    stalled.Restart();
+                    stalledAt = timeProvider.GetTimestamp();
                     prioritized = null;
                     continue;
                 }
@@ -64,12 +63,16 @@ internal sealed class ProgressiveReader : IProgressiveReader
                     await source.PrioritizeAsync(position, cancellationToken).ConfigureAwait(false);
                     prioritized = position;
                 }
-                if (stalled.Elapsed >= options.StallTimeout)
+                var stalledFor = timeProvider.GetElapsedTime(stalledAt);
+                if (stalledFor >= options.StallTimeout)
                 {
                     throw new TimeoutException("The requested media bytes did not become available before the playback stall deadline.");
                 }
 
-                await Task.Delay(options.PollInterval, cancellationToken).ConfigureAwait(false);
+                // A long polling interval must not extend the final stall deadline.
+                var remaining = options.StallTimeout - stalledFor;
+                var delay = options.PollInterval < remaining ? options.PollInterval : remaining;
+                await Task.Delay(delay, timeProvider, cancellationToken).ConfigureAwait(false);
             }
         }
         finally { ArrayPool<byte>.Shared.Return(buffer); }

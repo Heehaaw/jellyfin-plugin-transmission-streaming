@@ -2,8 +2,6 @@ namespace TransmissionStreaming.IntegrationTests.Fixtures;
 
 using Core.Configuration;
 using Core.Projection;
-using DotNet.Testcontainers.Builders;
-using DotNet.Testcontainers.Networks;
 using Infrastructure;
 using Logic;
 using Logic.Discovery;
@@ -14,15 +12,14 @@ using TestSupport.Arr;
 using TestSupport.Torrents;
 
 /// <summary>Composes the actual application and infrastructure while replacing only Jellyfin's indexing boundary.</summary>
-internal sealed class IntegrationApplication : IAsyncDisposable
+internal sealed class IntegrationApplication(DownloadServices containers) : IAsyncDisposable
 {
-    private INetwork? _network;
     private ServiceProvider? _provider;
     private SettingsProvider? _settings;
     private string? _workspace;
-    private TorrentSwarm? _swarm;
+    private TorrentScenario? _swarm;
 
-    public TorrentSwarm Swarm => _swarm ?? throw new InvalidOperationException("Start the fixture first.");
+    public TorrentScenario Swarm => _swarm ?? throw new InvalidOperationException("Start the fixture first.");
     public ArrStub Arr { get; private set; } = null!;
     public IMediator Mediator => _provider!.GetRequiredService<IMediator>();
     public IProjectionStore Store => _provider!.GetRequiredService<IProjectionStore>();
@@ -32,12 +29,9 @@ internal sealed class IntegrationApplication : IAsyncDisposable
     {
         try
         {
-            _workspace = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".cache", "transmission-streaming-tests", "integration-" + Guid.NewGuid().ToString("N"));
-            Directory.CreateDirectory(_workspace);
-            _network = new NetworkBuilder().Build();
-            await _network.CreateAsync(cancellationToken).ConfigureAwait(false);
-            _swarm = await TorrentSwarm.StartAsync(_workspace, _network, source.Media, source.FileName, cancellationToken).ConfigureAwait(false);
-            Arr = await ArrStub.StartAsync(_workspace, _network, _swarm, cancellationToken).ConfigureAwait(false);
+            _swarm = await containers.OpenAsync(source.Media, source.FileName, cancellationToken).ConfigureAwait(false);
+            _workspace = _swarm.Workspace;
+            Arr = await ArrStub.StartAsync(_workspace, containers.Network, _swarm, cancellationToken).ConfigureAwait(false);
             _settings = new SettingsProvider(new StreamingOptions
             {
                 Enabled = true,
@@ -48,7 +42,7 @@ internal sealed class IntegrationApplication : IAsyncDisposable
                 SonarrUrl = Arr.Url.AbsoluteUri,
                 SonarrApiKey = Arr.Key,
                 RemoteMediaRoot = "/data",
-                LocalMediaRoot = _workspace,
+                LocalMediaRoot = containers.Workspace,
                 ProjectionRoot = Path.Combine(_workspace, "projections"),
                 JellyfinPublicUrl = "http://unused-jellyfin.invalid",
                 PrioritizePlayback = true,
@@ -90,7 +84,7 @@ internal sealed class IntegrationApplication : IAsyncDisposable
     {
         var destination = Path.Combine(_workspace!, "movies", Swarm.FileName);
         File.Move(Swarm.LocalDownloadPath, destination);
-        await Arr.PublishImportAsync("/data/movies/" + Swarm.FileName, cancellationToken).ConfigureAwait(false);
+        await Arr.PublishImportAsync(Swarm.RemotePath(destination), cancellationToken).ConfigureAwait(false);
         return destination;
     }
 
@@ -101,7 +95,6 @@ internal sealed class IntegrationApplication : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
-        // Each owner gets its cleanup even if an earlier disposal fails.
         try
         {
             if (_provider is not null)
@@ -111,29 +104,9 @@ internal sealed class IntegrationApplication : IAsyncDisposable
         }
         finally
         {
-            try
+            if (_swarm is not null)
             {
-                if (_swarm is not null)
-                {
-                    await _swarm.DisposeAsync().ConfigureAwait(false);
-                }
-            }
-            finally
-            {
-                try
-                {
-                    if (_network is not null)
-                    {
-                        await _network.DisposeAsync().ConfigureAwait(false);
-                    }
-                }
-                finally
-                {
-                    if (_workspace is not null && Directory.Exists(_workspace))
-                    {
-                        Directory.Delete(_workspace, true);
-                    }
-                }
+                await _swarm.DisposeAsync().ConfigureAwait(false);
             }
         }
     }

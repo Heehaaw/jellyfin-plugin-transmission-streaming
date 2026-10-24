@@ -2,13 +2,12 @@ namespace Jellyfin.Plugin.TransmissionStreaming.ApplicationTests.Catalog;
 
 using AutoFixture;
 using AutoFixture.AutoMoq;
-using AutoFixture.Xunit2;
 using FluentAssertions;
+using global::TransmissionStreaming.TestSupport.Testing;
 using Hosting;
 using System.Security.Cryptography;
 using System.Text.Json.Nodes;
 using Xunit;
-using Xunit.Abstractions;
 
 public sealed class CatalogInstallationTests(ITestOutputHelper output)
 {

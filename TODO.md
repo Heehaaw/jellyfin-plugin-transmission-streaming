@@ -15,4 +15,12 @@
 
 - [x] Verify local build-and-load and ZIP packaging commands.
 - [x] Verify installation through Jellyfin's Catalog API, including checksum rejection.
-- [ ] Run CI, publish the first tagged release, and verify the stable repository manifest and ZIP download.
+- [x] Run CI, publish the first tagged release, and verify the stable repository manifest and ZIP download.
+
+## Deterministic and faster tests
+
+- [x] Inject `TimeProvider` into discovery, streaming deadlines, and availability caches.
+- [x] Advance virtual time in unit tests for poll boundaries, retries, expiry, cancellation, and stall reset.
+- [x] Reuse download containers and networks through assembly fixtures while resetting scenario state.
+- [ ] Measure complete-suite runtime after reuse and rerun Linux CI.
+- [ ] Publish and verify the release containing the timer and fixture improvements.

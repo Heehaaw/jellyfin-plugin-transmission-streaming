@@ -2,12 +2,13 @@ namespace TransmissionStreaming.TestSupport.Torrents.Seed;
 
 internal static class ArrEndpoints
 {
-    public static void Map(WebApplication app, SeedControl control)
+    public static void Map(WebApplication app, SeedControl owner)
     {
-        var configuration = control.Configuration;
-        var media = control.Media;
         app.MapGet("/api/v3/{**path}", (string path, HttpContext context) =>
         {
+            var control = owner.Current;
+            var configuration = control.Configuration;
+            var media = control.Media;
             if (context.Request.Headers["X-Api-Key"] != control.Configuration.ArrKey)
             {
                 return Results.StatusCode(401);

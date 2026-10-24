@@ -10,7 +10,9 @@
         <PackageReference Include="xunit.runner.visualstudio" PrivateAssets="all" />
         <PackageReference Include="AutoFixture.Xunit2" />
         <PackageReference Include="AutoFixture.AutoMoq" />
+        <PackageReference Include="Moq" />
         <PackageReference Include="FluentAssertions" />
+        <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
         <PackageReference Include="Jellyfin.Controller" />
         <PackageReference Include="Jellyfin.Model" />
         <ProjectReference Include="../../src/Jellyfin.Plugin.TransmissionStreaming/Jellyfin.Plugin.TransmissionStreaming.csproj" />

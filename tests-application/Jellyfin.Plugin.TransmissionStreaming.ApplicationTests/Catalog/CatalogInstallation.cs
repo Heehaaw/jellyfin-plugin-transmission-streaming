@@ -1,15 +1,15 @@
 namespace Jellyfin.Plugin.TransmissionStreaming.ApplicationTests.Catalog;
 
-using DotNet.Testcontainers.Builders;
-using DotNet.Testcontainers.Networks;
+using global::TransmissionStreaming.TestSupport.Torrents;
 using Hosting;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
+using Xunit;
 
 /// <summary>Installs exclusively through Jellyfin's repository API, starting with an empty plugin directory.</summary>
-internal sealed class CatalogInstallation : IAsyncDisposable
+internal sealed class CatalogInstallation(DownloadServices containers) : IAsyncDisposable
 {
-    private INetwork? network;
+    private TorrentScenario? scenario;
     private CatalogServer? catalog;
     private JellyfinContainer? server;
     private JellyfinApi? api;
@@ -34,7 +34,7 @@ internal sealed class CatalogInstallation : IAsyncDisposable
         await PrepareAsync(source, cancellationToken);
         if (repository is null)
         {
-            catalog = new CatalogServer(workspace!, network!, corruptChecksum);
+            catalog = new CatalogServer(containers, scenario!, corruptChecksum);
             await catalog.StartAsync(cancellationToken);
         }
         repositoryUrl = repository ?? catalog!.ManifestUrl;
@@ -56,11 +56,12 @@ internal sealed class CatalogInstallation : IAsyncDisposable
 
     private async Task PrepareAsync(CatalogSource source, CancellationToken cancellationToken)
     {
-        workspace = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".cache", "transmission-streaming-tests", "installation-" + source.RunId.ToString("N"));
-        Directory.CreateDirectory(workspace);
-        network = new NetworkBuilder().Build();
-        await network.CreateAsync(cancellationToken);
-        server = new JellyfinContainer(workspace, network, installPlugin: false);
+        scenario = await containers.BeginScenarioAsync(cancellationToken);
+        workspace = scenario.Workspace;
+        var baseline = await TestContext.Current.GetFixture<JellyfinBaseline>()
+            ?? throw new InvalidOperationException("Register the Jellyfin baseline assembly fixture.");
+        baseline.Populate(Path.Combine(workspace, "jellyfin"));
+        server = new JellyfinContainer(workspace, containers.Network, installPlugin: false, containers.Workspace);
     }
 
     private async Task StartJellyfinAsync(CancellationToken cancellationToken)
@@ -117,29 +118,9 @@ internal sealed class CatalogInstallation : IAsyncDisposable
         }
         finally
         {
-            try
+            if (scenario is not null)
             {
-                if (catalog is not null)
-                {
-                    await catalog.DisposeAsync();
-                }
-            }
-            finally
-            {
-                try
-                {
-                    if (network is not null)
-                    {
-                        await network.DisposeAsync();
-                    }
-                }
-                finally
-                {
-                    if (workspace is not null && Directory.Exists(workspace))
-                    {
-                        Directory.Delete(workspace, true);
-                    }
-                }
+                await scenario.DisposeAsync();
             }
         }
     }

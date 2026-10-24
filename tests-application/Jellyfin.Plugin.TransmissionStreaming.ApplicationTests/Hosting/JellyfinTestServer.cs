@@ -1,7 +1,5 @@
 namespace Jellyfin.Plugin.TransmissionStreaming.ApplicationTests.Hosting;
 
-using DotNet.Testcontainers.Builders;
-using DotNet.Testcontainers.Networks;
 using Downloads;
 using global::TransmissionStreaming.TestSupport.Arr;
 using global::TransmissionStreaming.TestSupport.Torrents;
@@ -10,37 +8,34 @@ using System.Text.RegularExpressions;
 using Xunit;
 
 /// <summary>Composes the disposable application and owns every resource through the xUnit fixture lifecycle.</summary>
-public sealed class JellyfinTestServer : IAsyncLifetime
+public sealed class JellyfinTestServer(DownloadServices containers, JellyfinBaseline baseline) : IAsyncLifetime
 {
-    private readonly string workspace = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".cache", "transmission-streaming-tests", Guid.NewGuid().ToString("N"));
-    private readonly INetwork network = new NetworkBuilder().Build();
+    private string workspace = null!;
     private JellyfinContainer? server;
     private JellyfinApi api = null!;
     private JellyfinLibrary library = null!;
     private StreamingScenario downloads = null!;
     private string administrator = "";
 
-    internal TorrentSwarm Swarm { get; private set; } = null!;
+    internal TorrentScenario Swarm { get; private set; } = null!;
     internal ArrStub Arr { get; private set; } = null!;
     internal byte[] ExpectedBytes => Swarm.ExpectedBytes;
     internal string Workspace => workspace;
+    internal string ProjectionMoviesPath => Swarm.RemotePath(Path.Combine(workspace, "projection", "movies"));
+    internal string ImportedMoviesPath => Swarm.RemotePath(Path.Combine(workspace, "movies"));
     internal Uri Address => server!.Address;
     internal JellyfinApi Api => api;
     internal string Administrator => administrator;
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
-        Directory.CreateDirectory(workspace);
-        if (!OperatingSystem.IsWindows())
-        {
-            File.SetUnixFileMode(workspace, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
-        }
-
         try
         {
             using var deadline = new CancellationTokenSource(TimeSpan.FromMinutes(4));
-            await network.CreateAsync(deadline.Token);
-            server = new JellyfinContainer(workspace, network, true);
+            Swarm = await containers.BeginScenarioAsync(deadline.Token);
+            workspace = Swarm.Workspace;
+            baseline.Populate(Path.Combine(workspace, "jellyfin"));
+            server = new JellyfinContainer(workspace, containers.Network, true, containers.Workspace);
             await server.StartAsync(deadline.Token);
             api = new JellyfinApi(Address);
             administrator = await api.AuthenticateAsync();
@@ -48,8 +43,8 @@ public sealed class JellyfinTestServer : IAsyncLifetime
             await api.RequestAsync("/TransmissionStreaming/status");
 
             var media = await server.CreateVideoAsync(deadline.Token);
-            Swarm = await TorrentSwarm.StartAsync(workspace, network, media, "Prototype Movie.mkv", deadline.Token);
-            Arr = await ArrStub.StartAsync(workspace, network, Swarm, deadline.Token);
+            await Swarm.AddAsync(media, "Prototype Movie.mkv", deadline.Token);
+            Arr = await ArrStub.StartAsync(workspace, containers.Network, Swarm, deadline.Token);
             ComposeAdapters();
             await downloads.ConfigureAsync();
             await Swarm.AllowFirstPieceAsync(deadline.Token);
@@ -138,9 +133,8 @@ public sealed class JellyfinTestServer : IAsyncLifetime
         return TestWait.UntilAsync(probe, description, seconds);
     }
 
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
-        // Each later owner is released even when an earlier shutdown throws.
         try
         {
             api?.Dispose();
@@ -151,26 +145,9 @@ public sealed class JellyfinTestServer : IAsyncLifetime
         }
         finally
         {
-            try
+            if (Swarm is not null)
             {
-                if (Swarm is not null)
-                {
-                    await Swarm.DisposeAsync();
-                }
-            }
-            finally
-            {
-                try
-                {
-                    await network.DisposeAsync();
-                }
-                finally
-                {
-                    if (Directory.Exists(workspace))
-                    {
-                        Directory.Delete(workspace, true);
-                    }
-                }
+                await Swarm.DisposeAsync();
             }
         }
     }

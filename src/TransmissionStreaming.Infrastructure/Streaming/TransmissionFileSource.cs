@@ -8,6 +8,7 @@ using global::TransmissionStreaming.Core.Transmission;
 /// <summary>Follows an individual Transmission file through incomplete, completed and imported paths.</summary>
 internal sealed class TransmissionFileSource(
     ITransmissionClient client,
+    TimeProvider timeProvider,
     TransmissionConnection connection,
     string hash,
     int fileIndex,
@@ -15,10 +16,12 @@ internal sealed class TransmissionFileSource(
     long expectedLength,
     Func<CancellationToken, Task<string?>>? completedPath = null) : IProgressiveSource
 {
+    private static readonly TimeSpan RefreshInterval = TimeSpan.FromMilliseconds(500);
     private TorrentSnapshot? _torrent;
     private TransmissionSessionSnapshot? _session;
-    private DateTimeOffset _refreshedAt;
-    private DateTimeOffset _completionCheckedAt;
+    // A provider can start at timestamp zero; an unset cache must still refresh once.
+    private long? _refreshedAt;
+    private long? _completionCheckedAt;
     private string? _importedPath;
 
     /// <inheritdoc />
@@ -30,21 +33,21 @@ internal sealed class TransmissionFileSource(
         }
         // A file read happens per output chunk. Import reconciliation may call arr over HTTP,
         // so it follows the polling cadence rather than the much faster copy loop.
-        if (completedPath is not null && DateTimeOffset.UtcNow - _completionCheckedAt >= TimeSpan.FromMilliseconds(500))
+        if (completedPath is not null && (_completionCheckedAt is not { } completionCheckedAt || timeProvider.GetElapsedTime(completionCheckedAt) >= RefreshInterval))
         {
             _importedPath = await completedPath(cancellationToken).ConfigureAwait(false);
-            _completionCheckedAt = DateTimeOffset.UtcNow;
+            _completionCheckedAt = timeProvider.GetTimestamp();
         }
         if (_importedPath is not null && IsAllowedLocalPath(_importedPath) && HasExpectedLength(_importedPath))
         {
             return new ProgressiveReadState(_importedPath, expectedLength, 0, 0, [], true, true);
         }
 
-        if (_torrent is null || DateTimeOffset.UtcNow - _refreshedAt >= TimeSpan.FromMilliseconds(500))
+        if (_refreshedAt is not { } refreshedAt || timeProvider.GetElapsedTime(refreshedAt) >= RefreshInterval)
         {
             _torrent = await client.GetTorrentAsync(connection, hash, cancellationToken).ConfigureAwait(false) ?? _torrent;
             _session = await client.GetSessionAsync(connection, cancellationToken).ConfigureAwait(false);
-            _refreshedAt = DateTimeOffset.UtcNow;
+            _refreshedAt = timeProvider.GetTimestamp();
         }
         var torrent = _torrent;
         var session = _session;

@@ -2,20 +2,19 @@
     <PropertyGroup>
         <IsPackable>false</IsPackable>
         <IsTestProject>true</IsTestProject>
+        <OutputType>Exe</OutputType>
     </PropertyGroup>
     <ItemGroup>
         <ProjectReference Include="../../tests/TransmissionStreaming.TestSupport/TransmissionStreaming.TestSupport.csproj" />
         <ProjectReference Include="../../src/Jellyfin.Plugin.TransmissionStreaming/Jellyfin.Plugin.TransmissionStreaming.csproj" ReferenceOutputAssembly="false" />
         <PackageReference Include="Microsoft.NET.Test.Sdk" />
-        <PackageReference Include="xunit" />
+        <PackageReference Include="xunit.v3" />
         <PackageReference Include="xunit.runner.visualstudio" PrivateAssets="all" />
-        <PackageReference Include="AutoFixture.Xunit2" />
+        <PackageReference Include="AutoFixture" />
         <PackageReference Include="AutoFixture.AutoMoq" />
         <PackageReference Include="FluentAssertions" />
     </ItemGroup>
     <ItemGroup>
-        <Compile Remove="Catalog/Scripts/**/*.cs" />
-        <EmbeddedResource Include="Catalog/Scripts/**/*.cs" />
         <None Update="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
     </ItemGroup>
     <Target Name="CopyPluginBundle" AfterTargets="Build">

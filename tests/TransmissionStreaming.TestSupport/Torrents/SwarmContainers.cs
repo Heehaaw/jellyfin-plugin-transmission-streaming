@@ -17,7 +17,7 @@ internal static class SwarmContainers
         var builder = new ContainerBuilder(SeedImage)
             .WithCreateParameterModifier(parameters => parameters.User = ContainerIdentity.User)
             .WithNetwork(network)
-            .WithNetworkAliases(SwarmSettings.SeedHost, SwarmSettings.ArrHost)
+            .WithNetworkAliases(SwarmSettings.SeedHost, SwarmSettings.ArrHost, SwarmSettings.CatalogHost)
             .WithEnvironment("DOTNET_CLI_TELEMETRY_OPTOUT", "1")
             .WithEnvironment("DOTNET_NOLOGO", "1")
             .WithEnvironment("DOTNET_CLI_HOME", "/tmp")
@@ -25,6 +25,7 @@ internal static class SwarmContainers
             .WithEnvironment("XDG_DATA_HOME", "/tmp/data")
             .WithEnvironment("XDG_CACHE_HOME", "/tmp/cache")
             .WithBindMount(seedRoot, "/fixture")
+            .WithBindMount(Directory.GetParent(seedRoot)!.FullName, SwarmSettings.RemoteRoot)
             .WithCommand("dotnet", "run", "--file", EntryScript)
             .WithPortBinding(SwarmSettings.HttpPort, true)
             .WithWaitStrategy(Wait.ForUnixContainer().UntilHttpRequestIsSucceeded(request => request.ForPort(SwarmSettings.HttpPort).ForPath("/health")));
