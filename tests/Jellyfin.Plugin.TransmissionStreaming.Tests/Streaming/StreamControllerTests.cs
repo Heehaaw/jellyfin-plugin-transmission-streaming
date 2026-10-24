@@ -223,28 +223,6 @@ public sealed class StreamControllerTests
         lifetime.Verify(value => value.Abort(), Times.Once);
     }
 
-    [Theory, AutoMoqData]
-    internal void Should_ProtectStatusWhileAllowingCapabilityPlayback(StreamController sut)
-    {
-        // Arrange
-        var type = sut.GetType();
-        var status = type.GetMethod(nameof(StreamController.Status))!;
-        var stream = type.GetMethod(nameof(StreamController.Stream))!;
-        var expectedRoute = "TransmissionStreaming";
-        var expectedPolicy = "RequiresElevation";
-
-        // Act
-        var route = type.GetCustomAttribute<RouteAttribute>();
-        var authorization = status.GetCustomAttribute<AuthorizeAttribute>();
-        var anonymousPlayback = stream.GetCustomAttribute<AllowAnonymousAttribute>();
-
-        // Assert
-        route!.Template.Should().Be(expectedRoute);
-        authorization!.Policy.Should().Be(expectedPolicy);
-        status.GetCustomAttribute<AllowAnonymousAttribute>().Should().BeNull();
-        anonymousPlayback.Should().NotBeNull();
-    }
-
     private static void Authorize(Mock<IMediator> mediator, Projection source)
     {
         mediator.Setup(value => value.Send(It.Is<GetStream.Query>(query => query.Id == source.Id && query.Key == source.Secret),

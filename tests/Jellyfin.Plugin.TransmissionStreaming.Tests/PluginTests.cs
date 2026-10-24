@@ -30,23 +30,6 @@ public sealed class PluginTests
     }
 
     [Theory, AutoMoqData]
-    internal void Should_ExposeTheIdentityDeclaredByTheInstallDescriptor(HostPlugin sut)
-    {
-        // Arrange
-        using var descriptor = JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "meta.json")));
-        var metadata = descriptor.RootElement;
-
-        // Act
-        var id = sut.Id;
-        var name = sut.Name;
-
-        // Assert
-        id.Should().Be(metadata.GetProperty("guid").GetGuid());
-        name.Should().Be(metadata.GetProperty("name").GetString());
-        sut.Description.Should().NotBeNullOrWhiteSpace();
-    }
-
-    [Theory, AutoMoqData]
     internal void Should_ExposeAnEmbeddedSettingsPageForTheSamePlugin(HostPlugin sut)
     {
         // Arrange

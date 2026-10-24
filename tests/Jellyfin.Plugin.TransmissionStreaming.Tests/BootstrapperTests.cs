@@ -23,21 +23,6 @@ using HostBootstrapper = Jellyfin.Plugin.TransmissionStreaming.Bootstrapper;
 public sealed class BootstrapperTests
 {
     [Theory, AutoMoqData]
-    internal void Should_BeDiscoverableByTheJellyfinHost(HostBootstrapper sut)
-    {
-        // Arrange
-        var contract = typeof(IPluginServiceRegistrator);
-
-        // Act
-        var type = sut.GetType();
-
-        // Assert
-        type.IsPublic.Should().BeTrue();
-        type.Should().BeAssignableTo(contract);
-        type.GetConstructor(Type.EmptyTypes).Should().NotBeNull();
-    }
-
-    [Theory, AutoMoqData]
     internal void Should_ComposeThePluginEndpointsAndHostedWorker(Mock<IServerApplicationHost> host,
         Mock<ILibraryManager> library, Mock<IUserManager> users, Mock<IUserDataManager> userData, Mock<ISessionManager> sessions,
         Mock<IStreamingOptionsProvider> options, Mock<IProjectionStore> store, HostBootstrapper sut)

@@ -49,7 +49,7 @@ Run everything:
 dotnet test TransmissionStreaming.slnx -c Release
 ```
 
-## Business coverage
+## Business tests
 
 The suites divide responsibilities so failures point to a specific behavior:
 
@@ -66,13 +66,13 @@ Tests use generated inputs and inject concrete subjects with frozen collaborator
 Small helpers own external setup or protocol details when that makes the flow easier to read; short arrangements remain inline. Records and interfaces are exercised through
 mapping, persistence, authorization, and service composition rather than tests that repeat property assignments.
 
-The unit coverage audit records execution in all 55 production C# files containing executable code. Interface declarations, enums, and compile-time constants have no executable
-sequence points; their contracts are exercised through consumers and composition tests. This is a file-coverage check, not a claim that every branch has been tested.
+Each behavior-bearing unit gets a happy-path call plus tests for meaningful branches, loops, main failures, and obvious edge cases. Property defaults and metadata declarations
+do not need separate assertion-only tests. Integration and application tests establish whether the assembled plugin performs its intended work; coverage percentages are not a target.
 
 ## Measured runtime
 
 
-Before the additional business coverage, the same six scenarios were measured before and after assembly reuse, including fixture setup and teardown:
+Before the additional business scenarios, the same six scenarios were measured before and after assembly reuse, including fixture setup and teardown:
 
 | Suite | Before | After | Reduction |
 | --- | ---: | ---: | ---: |
@@ -82,9 +82,8 @@ Before the additional business coverage, the same six scenarios were measured be
 These are local Docker measurements, not CI guarantees. Transmission still schedules real peer requests on its own clock. At that point, the unit-only command completed all 78 tests in
 3.44 seconds with warmed dependencies, including SDK/build overhead; virtual-time test bodies complete in milliseconds.
 
-The expanded suite now has 180 unit tests, 11 integration tests, and 6 Jellyfin application tests. A complete local run passed all 197 in 133.04 seconds. The warmed unit-only
-command completed in 2.37 seconds, including build overhead. The additional integration scenarios and video-decoding check change the workload, so these figures are separate
-from the like-for-like reuse comparison above.
+The focused unit suite has 174 tests and completed in 2.98 seconds with warmed dependencies, including build overhead. Integration has 11 scenarios and the Jellyfin application
+suite has 6. The added business scenarios and decoder check change the workload, so current totals are separate from the like-for-like reuse comparison above.
 
 ## Virtual time
 

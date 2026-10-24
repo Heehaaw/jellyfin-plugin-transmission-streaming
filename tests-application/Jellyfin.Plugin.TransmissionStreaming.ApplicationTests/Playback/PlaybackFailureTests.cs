@@ -29,6 +29,7 @@ public sealed class PlaybackFailureTests(JellyfinTestServer sut, ITestOutputHelp
         try
         {
             // Act
+            using var anonymousStatus = await client.GetAsync(new Uri(sut.Address, "/TransmissionStreaming/status"), cancellationToken);
             using var noKey = await client.GetAsync(hostUrl.Split('?')[0], cancellationToken);
             using var invalidRange = await client.SendAsync(invalid, cancellationToken);
             using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -51,6 +52,7 @@ public sealed class PlaybackFailureTests(JellyfinTestServer sut, ITestOutputHelp
             using var disabled = await client.GetAsync(hostUrl, cancellationToken);
 
             // Assert
+            anonymousStatus.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
             noKey.StatusCode.Should().Be(HttpStatusCode.NotFound);
             invalidRange.StatusCode.Should().Be(HttpStatusCode.RequestedRangeNotSatisfiable);
             invalidRange.Content.Headers.ContentRange!.Length.Should().Be(sut.ExpectedBytes.Length);
