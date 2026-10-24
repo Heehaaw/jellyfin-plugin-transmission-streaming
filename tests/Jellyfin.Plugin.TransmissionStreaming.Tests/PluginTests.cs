@@ -4,10 +4,6 @@ using AutoFixture;
 using AutoFixture.AutoMoq;
 using AutoFixture.Xunit2;
 using FluentAssertions;
-using global::TransmissionStreaming.Core.Configuration;
-using Jellyfin.Plugin.TransmissionStreaming.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
 using MediaBrowser.Common.Configuration;
 using Moq;
 using System.Text.RegularExpressions;
@@ -72,23 +68,6 @@ public sealed class PluginTests
         // Assert
         dependencies.Should().NotBeEmpty().And.OnlyContain(name => advertisedNames.Contains(name));
         advertisedNames.Should().Contain(PluginConstants.Ui.Controller).And.Contain(PluginConstants.Ui.Styles);
-    }
-
-    [Theory, AutoMoqData]
-    internal void Should_UseTheHostPluginForItsSettings(HostPlugin source)
-    {
-        // Arrange
-        var services = new ServiceCollection();
-        services.AddPluginConfiguration();
-
-        // Act
-        using var provider = services.BuildServiceProvider();
-        var settings = provider.GetRequiredService<IPluginSettings>();
-        var options = provider.GetRequiredService<IOptionsMonitor<StreamingOptions>>();
-
-        // Assert
-        settings.Should().BeSameAs(source);
-        options.Should().BeOfType<OptionsMonitor<StreamingOptions>>();
     }
 
     private sealed class AutoMoqDataAttribute() : AutoDataAttribute(() =>

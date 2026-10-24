@@ -1,4 +1,4 @@
-namespace Jellyfin.Plugin.TransmissionStreaming.Tests;
+namespace Jellyfin.Plugin.TransmissionStreaming.IntegrationTests;
 
 using AutoFixture;
 using AutoFixture.AutoMoq;
