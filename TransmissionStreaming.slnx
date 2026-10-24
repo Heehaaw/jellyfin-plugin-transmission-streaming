@@ -1,11 +1,14 @@
 <Solution>
-  <Folder Name="/src/" />
-  <Folder Name="/tests/">
-    <Project Path="tests/Jellyfin.Plugin.TransmissionStreaming.Tests/Jellyfin.Plugin.TransmissionStreaming.Tests.csproj" />
-    <Project Path="tests/TransmissionStreaming.Arr.Tests/TransmissionStreaming.Arr.Tests.csproj" />
-    <Project Path="tests/TransmissionStreaming.Core.Tests/TransmissionStreaming.Core.Tests.csproj" />
-  </Folder>
-  <Project Path="src/Jellyfin.Plugin.TransmissionStreaming/Jellyfin.Plugin.TransmissionStreaming.csproj" />
-  <Project Path="src/TransmissionStreaming.Arr/TransmissionStreaming.Arr.csproj" />
-  <Project Path="src/TransmissionStreaming.Core/TransmissionStreaming.Core.csproj" />
+    <Folder Name="/src/">
+        <Project Path="src/TransmissionStreaming.Infrastructure/TransmissionStreaming.Infrastructure.csproj" />
+        <Project Path="src/TransmissionStreaming.Logic/TransmissionStreaming.Logic.csproj" />
+    </Folder>
+    <Folder Name="/tests/">
+        <Project Path="tests/Jellyfin.Plugin.TransmissionStreaming.Tests/Jellyfin.Plugin.TransmissionStreaming.Tests.csproj" />
+        <Project Path="tests/TransmissionStreaming.Core.Tests/TransmissionStreaming.Core.Tests.csproj" />
+        <Project Path="tests/TransmissionStreaming.Infrastructure.Tests/TransmissionStreaming.Infrastructure.Tests.csproj" />
+        <Project Path="tests/TransmissionStreaming.Logic.Tests/TransmissionStreaming.Logic.Tests.csproj" />
+    </Folder>
+    <Project Path="src/Jellyfin.Plugin.TransmissionStreaming/Jellyfin.Plugin.TransmissionStreaming.csproj" />
+    <Project Path="src/TransmissionStreaming.Core/TransmissionStreaming.Core.csproj" />
 </Solution>

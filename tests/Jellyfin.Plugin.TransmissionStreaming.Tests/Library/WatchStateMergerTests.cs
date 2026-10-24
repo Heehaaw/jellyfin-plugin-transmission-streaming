@@ -8,7 +8,6 @@ using Jellyfin.Plugin.TransmissionStreaming.Library;
 using MediaBrowser.Controller.Entities;
 using Xunit;
 
-
 public sealed class WatchStateMergerTests
 {
     private sealed class AutoMoqDataAttribute() : AutoDataAttribute(() =>
@@ -21,7 +20,7 @@ public sealed class WatchStateMergerTests
     });
 
     [Theory, AutoMoqData]
-    public void Should_UseTheNewerSourcePlayback(UserItemData source, UserItemData target, WatchStateMerger sut)
+    internal void Should_UseTheNewerSourcePlayback(UserItemData source, UserItemData target, WatchStateMerger sut)
     {
         // Arrange
         source.LastPlayedDate = target.LastPlayedDate.GetValueOrDefault().AddMinutes(1);
@@ -36,7 +35,7 @@ public sealed class WatchStateMergerTests
     }
 
     [Theory, AutoMoqData]
-    public void Should_KeepTheNewerTargetPlayback(UserItemData source, UserItemData target, WatchStateMerger sut)
+    internal void Should_KeepTheNewerTargetPlayback(UserItemData source, UserItemData target, WatchStateMerger sut)
     {
         // Arrange
         source.LastPlayedDate = target.LastPlayedDate.GetValueOrDefault().AddMinutes(-1);
@@ -51,7 +50,7 @@ public sealed class WatchStateMergerTests
     }
 
     [Theory, AutoMoqData]
-    public void Should_PreserveManualWatchedStateAgainstAnUntouchedDuplicate(UserItemData source, UserItemData target, WatchStateMerger sut)
+    internal void Should_PreserveManualWatchedStateAgainstAnUntouchedDuplicate(UserItemData source, UserItemData target, WatchStateMerger sut)
     {
         // Arrange
         source.LastPlayedDate = null;
@@ -73,7 +72,7 @@ public sealed class WatchStateMergerTests
     }
 
     [Theory, AutoMoqData]
-    public void Should_PreserveResumeAgainstAnUntouchedDuplicate(UserItemData source, UserItemData target, WatchStateMerger sut)
+    internal void Should_PreserveResumeAgainstAnUntouchedDuplicate(UserItemData source, UserItemData target, WatchStateMerger sut)
     {
         // Arrange
         source.LastPlayedDate = null;
@@ -92,7 +91,7 @@ public sealed class WatchStateMergerTests
     }
 
     [Theory, AutoMoqData]
-    public void Should_PreserveConflictingUndatedManualState(UserItemData source, UserItemData target, WatchStateMerger sut)
+    internal void Should_PreserveConflictingUndatedManualState(UserItemData source, UserItemData target, WatchStateMerger sut)
     {
         // Arrange
         source.LastPlayedDate = null;
@@ -109,7 +108,7 @@ public sealed class WatchStateMergerTests
     }
 
     [Theory, AutoMoqData]
-    public void Should_NotAssumeTimestampedPlaybackIsNewerThanAManualMark(UserItemData source, UserItemData target, WatchStateMerger sut)
+    internal void Should_NotAssumeTimestampedPlaybackIsNewerThanAManualMark(UserItemData source, UserItemData target, WatchStateMerger sut)
     {
         // Arrange
         target.LastPlayedDate = null;
@@ -125,7 +124,7 @@ public sealed class WatchStateMergerTests
     }
 
     [Theory, AutoMoqData]
-    public void Should_RetainFavoritesFromAnOlderDuplicate(UserItemData source, UserItemData target, WatchStateMerger sut)
+    internal void Should_RetainFavoritesFromAnOlderDuplicate(UserItemData source, UserItemData target, WatchStateMerger sut)
     {
         // Arrange
         source.LastPlayedDate = target.LastPlayedDate.GetValueOrDefault().AddMinutes(-1);
@@ -141,7 +140,7 @@ public sealed class WatchStateMergerTests
     }
 
     [Theory, AutoMoqData]
-    public void Should_KeepTargetRatingWhenSourcePlaybackIsNewer(UserItemData source, UserItemData target, WatchStateMerger sut)
+    internal void Should_KeepTargetRatingWhenSourcePlaybackIsNewer(UserItemData source, UserItemData target, WatchStateMerger sut)
     {
         // Arrange
         source.LastPlayedDate = target.LastPlayedDate.GetValueOrDefault().AddMinutes(1);
@@ -156,7 +155,7 @@ public sealed class WatchStateMergerTests
     }
 
     [Theory, AutoMoqData]
-    public void Should_UseSourceRatingWhenTargetHasNone(UserItemData source, UserItemData target, WatchStateMerger sut)
+    internal void Should_UseSourceRatingWhenTargetHasNone(UserItemData source, UserItemData target, WatchStateMerger sut)
     {
         // Arrange
         target.Rating = null;
@@ -170,7 +169,7 @@ public sealed class WatchStateMergerTests
     }
 
     [Theory, AutoMoqData]
-    public void Should_AvoidCountingTheSamePlaybackTwice(UserItemData source, UserItemData target, WatchStateMerger sut)
+    internal void Should_AvoidCountingTheSamePlaybackTwice(UserItemData source, UserItemData target, WatchStateMerger sut)
     {
         // Arrange
         var expectedCount = Math.Max(source.PlayCount, target.PlayCount);
@@ -183,7 +182,7 @@ public sealed class WatchStateMergerTests
     }
 
     [Theory, AutoMoqData]
-    public void Should_UseSourceWhenNoTargetExists(UserItemData source, WatchStateMerger sut)
+    internal void Should_UseSourceWhenNoTargetExists(UserItemData source, WatchStateMerger sut)
     {
         // Arrange
         UserItemData? target = null;

@@ -35,14 +35,15 @@
       const id = '843c341c-ce40-4cc3-8077-53ebd66d83b4';
       const page = document.querySelector('#transmissionStreamingSettings');
       const fields = ['Enabled','TransmissionUrl','TransmissionUsername','TransmissionPassword','RadarrUrl','RadarrApiKey','SonarrUrl','SonarrApiKey','RemoteMediaRoot','LocalMediaRoot','ProjectionRoot','JellyfinPublicUrl','PollSeconds','PieceWaitSeconds','PrioritizePlayback','ShowDownloadStatus'];
+      const read = (value, name) => value[name] ?? value[name[0].toUpperCase() + name.slice(1)];
       async function status() {
         try {
           const result = await ApiClient.getJSON(ApiClient.getUrl('TransmissionStreaming/status'));
-          page.querySelector('#streamingStatus').textContent = result.lastFailure ? 'Last poll failed: ' + result.lastFailure : result.enabled ? 'Discovery enabled' : 'Discovery disabled';
+          page.querySelector('#streamingStatus').textContent = read(result, 'lastFailure') ? 'Last poll failed: ' + read(result, 'lastFailure') : read(result, 'enabled') ? 'Discovery enabled' : 'Discovery disabled';
           const list = page.querySelector('#streamingEntries'); list.replaceChildren();
-          for (const entry of result.entries) {
+          for (const entry of read(result, 'entries') ?? []) {
             const row = document.createElement('li');
-            row.textContent = entry.title + ': ' + entry.status;
+            row.textContent = read(entry, 'title') + ': ' + read(entry, 'status');
             list.append(row);
           }
         } catch { page.querySelector('#streamingStatus').textContent = 'Status unavailable. Check the server log.'; }

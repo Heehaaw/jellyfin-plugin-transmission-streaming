@@ -6,7 +6,6 @@ using MediaBrowser.Common.Plugins;
 using MediaBrowser.Model.Plugins;
 using MediaBrowser.Model.Serialization;
 
-
 /// <summary>Progressive Transmission playback hosted inside Jellyfin.</summary>
 public sealed class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
 {
@@ -24,8 +23,10 @@ public sealed class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
     public override string Description => "Play arr-managed Transmission downloads before they finish.";
     public override Guid Id => PluginId;
 
-    public IEnumerable<PluginPageInfo> GetPages() =>
-    [
+    public IEnumerable<PluginPageInfo> GetPages()
+    {
+        return [
         new() { Name = PluginConstants.SettingsPage, EmbeddedResourcePath = GetType().Namespace + ".Configuration.settings.html" }
     ];
+    }
 }

@@ -1,16 +1,18 @@
 namespace Jellyfin.Plugin.TransmissionStreaming.Library;
 
+using global::TransmissionStreaming.Core.Projection;
 using MediaBrowser.Controller.Resolvers;
 using Microsoft.Extensions.DependencyInjection;
 
-/// <summary>Registers projection ownership and per-user history reconciliation.</summary>
+/// <summary>Registers only Jellyfin-specific indexing and watch-state adapters.</summary>
 internal static class Bootstrapper
 {
-    public static void Register(IServiceCollection services)
+    public static IServiceCollection AddJellyfinLibrary(this IServiceCollection services)
     {
-        services.AddSingleton<MediaPaths>();
-        services.AddSingleton<WatchStateMerger>();
-        services.AddSingleton<LibraryProjection>();
-        services.AddSingleton<IResolverIgnoreRule, ImportedFileIgnoreRule>();
+        return services
+            .AddSingleton<IWatchStateMerger, WatchStateMerger>()
+            .AddSingleton<IProjectionIndex, LibraryProjection>()
+            .AddSingleton<IProjectionLibrary>(provider => provider.GetRequiredService<IProjectionIndex>())
+            .AddSingleton<IResolverIgnoreRule, ImportedFileIgnoreRule>();
     }
 }

@@ -1,17 +1,24 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <AssemblyName>Jellyfin.Plugin.TransmissionStreaming</AssemblyName>
-    <Version>0.1.0</Version>
-    <RootNamespace>Jellyfin.Plugin.TransmissionStreaming</RootNamespace>
-  </PropertyGroup>
-  <ItemGroup>
-    <FrameworkReference Include="Microsoft.AspNetCore.App" />
-    <PackageReference Include="Jellyfin.Controller" ExcludeAssets="runtime" />
-    <PackageReference Include="Jellyfin.Model" ExcludeAssets="runtime" />
-    <PackageReference Include="Microsoft.Data.Sqlite.Core" />
-    <ProjectReference Include="../TransmissionStreaming.Core/TransmissionStreaming.Core.csproj" />
-    <ProjectReference Include="../TransmissionStreaming.Arr/TransmissionStreaming.Arr.csproj" />
-    <EmbeddedResource Include="Configuration/settings.html" />
-    <None Update="meta.json" CopyToOutputDirectory="PreserveNewest" />
-  </ItemGroup>
+    <PropertyGroup>
+        <AssemblyName>Jellyfin.Plugin.TransmissionStreaming</AssemblyName>
+        <Version>0.1.0</Version>
+        <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+        <RootNamespace>Jellyfin.Plugin.TransmissionStreaming</RootNamespace>
+    </PropertyGroup>
+    <ItemGroup>
+        <FrameworkReference Include="Microsoft.AspNetCore.App" />
+        <PackageReference Include="Jellyfin.Controller" ExcludeAssets="runtime" />
+        <PackageReference Include="Jellyfin.Model" ExcludeAssets="runtime" />
+        <PackageReference Include="Mediator.Abstractions" />
+        <PackageReference Include="Mediator.SourceGenerator" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
+        <ProjectReference Include="../TransmissionStreaming.Core/TransmissionStreaming.Core.csproj" />
+        <ProjectReference Include="../TransmissionStreaming.Infrastructure/TransmissionStreaming.Infrastructure.csproj" />
+        <ProjectReference Include="../TransmissionStreaming.Logic/TransmissionStreaming.Logic.csproj" />
+        <EmbeddedResource Include="Configuration/settings.html" />
+        <None Update="meta.json" CopyToOutputDirectory="PreserveNewest" />
+    </ItemGroup>
+    <ItemGroup>
+        <InternalsVisibleTo Include="Jellyfin.Plugin.TransmissionStreaming.Tests" />
+        <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
+    </ItemGroup>
 </Project>

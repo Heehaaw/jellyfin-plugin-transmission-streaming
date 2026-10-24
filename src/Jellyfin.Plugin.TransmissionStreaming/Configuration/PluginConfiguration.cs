@@ -2,7 +2,6 @@ namespace Jellyfin.Plugin.TransmissionStreaming.Configuration;
 
 using MediaBrowser.Model.Plugins;
 
-
 /// <summary>Connection and bounded playback settings for the progressive library.</summary>
 public sealed class PluginConfiguration : BasePluginConfiguration
 {

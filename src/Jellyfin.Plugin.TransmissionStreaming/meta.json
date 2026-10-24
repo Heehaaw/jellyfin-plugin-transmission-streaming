@@ -11,6 +11,8 @@
     "assemblies": [
         "Jellyfin.Plugin.TransmissionStreaming.dll",
         "TransmissionStreaming.Core.dll",
-        "TransmissionStreaming.Arr.dll"
+        "TransmissionStreaming.Logic.dll",
+        "TransmissionStreaming.Infrastructure.dll",
+        "Mediator.dll"
     ]
 }

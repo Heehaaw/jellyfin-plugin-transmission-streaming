@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <ItemGroup>
+        <ProjectReference Include="../TransmissionStreaming.Core/TransmissionStreaming.Core.csproj" />
+        <PackageReference Include="Mediator.Abstractions" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    </ItemGroup>
+    <ItemGroup>
+        <InternalsVisibleTo Include="Jellyfin.Plugin.TransmissionStreaming" />
+        <InternalsVisibleTo Include="TransmissionStreaming.Logic.Tests" />
+        <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
+    </ItemGroup>
+</Project>

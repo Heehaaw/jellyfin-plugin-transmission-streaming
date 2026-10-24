@@ -1,12 +1,15 @@
 namespace Jellyfin.Plugin.TransmissionStreaming.Configuration;
 
+using global::TransmissionStreaming.Core.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
-/// <summary>Exposes the plugin instance that Jellyfin owns.</summary>
+/// <summary>Connects Jellyfin-owned configuration to application options.</summary>
 internal static class Bootstrapper
 {
-    public static void Register(IServiceCollection services)
+    public static IServiceCollection AddPluginConfiguration(this IServiceCollection services)
     {
-        services.AddSingleton(_ => Plugin.Instance ?? throw new InvalidOperationException("Plugin has not initialized."));
+        return services
+            .AddSingleton(_ => Plugin.Instance ?? throw new InvalidOperationException("Plugin has not initialized."))
+            .AddSingleton<IStreamingOptionsProvider, OptionsProvider>();
     }
 }

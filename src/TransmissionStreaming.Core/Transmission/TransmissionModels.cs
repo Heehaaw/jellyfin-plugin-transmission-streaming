@@ -2,12 +2,14 @@ namespace TransmissionStreaming.Core.Transmission;
 
 using System.Text.Json.Serialization;
 
-
 /// <summary>Connection settings for a Transmission RPC endpoint.</summary>
 public sealed record TransmissionConnection(string Url, string Username = "", string Password = "")
 {
     // Records otherwise include their property values in log messages and assertion output.
-    public override string ToString() => "Transmission RPC connection (credentials redacted)";
+    public override string ToString()
+    {
+        return "Transmission RPC connection (credentials redacted)";
+    }
 }
 
 /// <summary>A torrent's downloaded-piece map and file layout.</summary>
@@ -30,9 +32,17 @@ public sealed record TorrentSnapshot
     public long GetFileOffset(int fileIndex)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(fileIndex);
-        if (fileIndex >= Files.Count) throw new ArgumentOutOfRangeException(nameof(fileIndex));
+        if (fileIndex >= Files.Count)
+        {
+            throw new ArgumentOutOfRangeException(nameof(fileIndex));
+        }
+
         long offset = 0;
-        for (var i = 0; i < fileIndex; i++) offset = checked(offset + Files[i].Length);
+        for (var i = 0; i < fileIndex; i++)
+        {
+            offset = checked(offset + Files[i].Length);
+        }
+
         return offset;
     }
 }

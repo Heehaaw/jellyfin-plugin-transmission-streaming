@@ -3,9 +3,8 @@ namespace Jellyfin.Plugin.TransmissionStreaming.Library;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Model.Dto;
 
-
 /// <summary>Merges a duplicate's per-user history into the permanent Jellyfin entry before reconciliation.</summary>
-public sealed class WatchStateMerger
+internal sealed class WatchStateMerger : IWatchStateMerger
 {
     /// <summary>Preserves the best-known playback state and independently retains personal metadata from either entry.</summary>
     /// <remarks>
@@ -32,8 +31,15 @@ public sealed class WatchStateMerger
 
     private static UserItemData SelectPlayback(UserItemData source, UserItemData? target)
     {
-        if (target is null || !HasActivity(target)) return source;
-        if (!HasActivity(source)) return target;
+        if (target is null || !HasActivity(target))
+        {
+            return source;
+        }
+
+        if (!HasActivity(source))
+        {
+            return target;
+        }
 
         // A timestamped playback can replace another timestamped playback, but cannot
         // prove itself newer than a date-less manual change on the permanent entry.
@@ -44,6 +50,9 @@ public sealed class WatchStateMerger
             : target;
     }
 
-    private static bool HasActivity(UserItemData data) => data.LastPlayedDate.HasValue
+    private static bool HasActivity(UserItemData data)
+    {
+        return data.LastPlayedDate.HasValue
         || data.Played || data.PlayCount > 0 || data.PlaybackPositionTicks > 0;
+    }
 }

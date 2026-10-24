@@ -1,20 +1,34 @@
 namespace Jellyfin.Plugin.TransmissionStreaming;
 
+using Configuration;
+using Discovery;
+using global::TransmissionStreaming.Infrastructure;
+using global::TransmissionStreaming.Logic;
+using global::TransmissionStreaming.Logic.Discovery;
+using Library;
 using MediaBrowser.Controller;
 using MediaBrowser.Controller.Plugins;
+using Mediator;
 using Microsoft.Extensions.DependencyInjection;
 
-/// <summary>Composes feature registrations into Jellyfin's service container.</summary>
+/// <summary>Public because Jellyfin discovers exported registrators; all services behind it remain internal.</summary>
 public sealed class Bootstrapper : IPluginServiceRegistrator
 {
     public void RegisterServices(IServiceCollection services, IServerApplicationHost applicationHost)
     {
-        Configuration.Bootstrapper.Register(services);
-        Persistence.Bootstrapper.Register(services);
-        global::TransmissionStreaming.Core.Bootstrapper.Register(services);
-        global::TransmissionStreaming.Arr.Bootstrapper.Register(services);
-        Library.Bootstrapper.Register(services);
-        Streaming.Bootstrapper.Register(services);
-        Discovery.Bootstrapper.Register(services);
+        services
+            .AddPluginConfiguration()
+            .AddJellyfinLibrary()
+            .AddTransmissionStreamingInfrastructure()
+            .AddTransmissionStreamingLogic()
+            .AddJellyfinDiscovery();
+
+        services.AddMediator((MediatorOptions options) =>
+        {
+            options.Namespace = "Jellyfin.Plugin.TransmissionStreaming.Dispatch";
+            options.ServiceLifetime = ServiceLifetime.Singleton;
+            options.GenerateTypesAsInternal = true;
+            options.Assemblies = [typeof(DiscoverDownloads.Command)];
+        });
     }
 }
