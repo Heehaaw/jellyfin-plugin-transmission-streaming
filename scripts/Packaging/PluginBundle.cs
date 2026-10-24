@@ -4,6 +4,14 @@ using System.IO.Compression;
 
 internal static class PluginBundle
 {
+    public static async Task<PluginDescriptor> ReadDescriptorAsync(string archivePath, CancellationToken cancellationToken)
+    {
+        using var archive = ZipFile.OpenRead(archivePath);
+        var entry = archive.GetEntry(PluginDescriptor.FileName) ?? throw new InvalidDataException("The plugin ZIP needs metadata at its root.");
+        await using var metadata = entry.Open();
+        return await PluginDescriptor.ReadAsync(metadata, cancellationToken);
+    }
+
     public static string CreateArchive(BuiltPlugin plugin, string artifactsDirectory)
     {
         Directory.CreateDirectory(artifactsDirectory);

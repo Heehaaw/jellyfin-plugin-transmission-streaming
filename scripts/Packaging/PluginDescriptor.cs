@@ -11,6 +11,11 @@ internal sealed record PluginDescriptor(Guid Guid, string Name, string Descripti
     public static async Task<PluginDescriptor> ReadAsync(string path, CancellationToken cancellationToken)
     {
         await using var stream = File.OpenRead(path);
+        return await ReadAsync(stream, cancellationToken);
+    }
+
+    public static async Task<PluginDescriptor> ReadAsync(Stream stream, CancellationToken cancellationToken)
+    {
         var descriptor = await JsonSerializer.DeserializeAsync<PluginDescriptor>(stream, new JsonSerializerOptions(JsonSerializerDefaults.Web), cancellationToken)
             ?? throw new InvalidDataException("Plugin metadata is empty.");
         if (descriptor.Guid == Guid.Empty || !System.Version.TryParse(descriptor.Version, out _) || !System.Version.TryParse(descriptor.TargetAbi, out _)

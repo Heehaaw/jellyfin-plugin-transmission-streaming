@@ -1,12 +1,13 @@
 namespace TransmissionStreaming.Packaging;
 
-internal sealed record PackageOptions(Uri? SourceUrl, Uri? PreviousManifestUrl, string? ReleaseTag)
+internal sealed record PackageOptions(Uri? SourceUrl, Uri? PreviousManifestUrl, string? ReleaseTag, string? ArchivePath)
 {
     public static PackageOptions Parse(string[] arguments)
     {
         Uri? source = null;
         Uri? previousManifest = null;
         string? releaseTag = null;
+        string? archivePath = null;
         for (var index = 0; index < arguments.Length; index += 2)
         {
             if (index + 1 >= arguments.Length)
@@ -15,6 +16,9 @@ internal sealed record PackageOptions(Uri? SourceUrl, Uri? PreviousManifestUrl, 
             }
             switch (arguments[index])
             {
+                case "--archive":
+                    archivePath = Path.GetFullPath(arguments[index + 1]);
+                    break;
                 case "--source-url":
                     source = HttpsUrl(arguments[index + 1]);
                     if (!source.AbsolutePath.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) || source.Query.Length != 0 || source.Fragment.Length != 0)
@@ -29,14 +33,14 @@ internal sealed record PackageOptions(Uri? SourceUrl, Uri? PreviousManifestUrl, 
                     releaseTag = arguments[index + 1];
                     break;
                 default:
-                    throw new ArgumentException("Usage: Package.cs [--source-url HTTPS_ZIP_URL] [--previous-manifest-url HTTPS_JSON_URL] [--release-tag VERSION_TAG]");
+                    throw new ArgumentException("Usage: Package.cs [--archive EXISTING_ZIP] [--source-url HTTPS_ZIP_URL] [--previous-manifest-url HTTPS_JSON_URL] [--release-tag VERSION_TAG]");
             }
         }
         if (previousManifest is not null && source is null)
         {
             throw new ArgumentException("A previous manifest can only be merged when --source-url is supplied.");
         }
-        return new PackageOptions(source, previousManifest, releaseTag);
+        return new PackageOptions(source, previousManifest, releaseTag, archivePath);
     }
 
     public void ValidateVersion(string version)

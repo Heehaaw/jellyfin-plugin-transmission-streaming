@@ -37,4 +37,11 @@
 - [x] Fill missing projection and local media roots from host-local information, preserving supplied values and leaving discovery disabled.
 - [x] Suggest the connected Jellyfin URL and refresh blank path fields through a read-only administrator endpoint; persist page suggestions only on Save.
 - [x] Verify happy paths, path exclusions, ambiguous roots, supplied-value precedence, and best-effort startup failure handling.
-- [ ] Exercise initialization and settings suggestions in the real Jellyfin application flow, then verify the published package.
+- [x] Exercise initialization and settings suggestions in the real Jellyfin application flow, then verify the published package.
+
+## Release artifact reuse
+
+- [x] Run builds and tests on main and pull requests, retaining CI ZIPs for 90 days.
+- [x] Publish the successful main run's ZIP for the tagged commit, rebuilding that commit only if the artifact is missing or expired, without rerunning tests.
+- [x] Verify reuse with a real CI ZIP and verify the source-build fallback without running tests.
+- [ ] Confirm the revised tag job on the next versioned release.

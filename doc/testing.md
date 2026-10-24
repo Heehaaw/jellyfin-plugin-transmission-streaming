@@ -1,7 +1,8 @@
 # Testing and isolation
 
 Tests use xUnit, AutoFixture/AutoMoq, and FluentAssertions. The unit suites remain on xUnit v2; the container suites use xUnit v3 assembly fixtures. Integration and application tests use Testcontainers for .NET with small fixtures owned by this repository. They have no
-SGP-library dependencies. CI runs the same complete suite before packaging an artifact or publishing a tagged release.
+SGP-library dependencies. Main-branch CI and pull requests run the complete suite before packaging an artifact. Tagged releases require a successful main push run for that exact
+commit and reuse its ZIP. Missing or expired artifacts are rebuilt from the tagged commit without rerunning tests. See the [release flow](installation.md#published-release-and-repository-flow).
 
 ## Prerequisites
 
