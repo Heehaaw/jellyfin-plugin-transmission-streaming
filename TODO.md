@@ -44,7 +44,7 @@
 - [x] Run builds and tests on main and pull requests, retaining CI ZIPs for 90 days.
 - [x] Publish the successful main run's ZIP for the tagged commit, rebuilding that commit only if the artifact is missing or expired, without rerunning tests.
 - [x] Verify reuse with a real CI ZIP and verify the source-build fallback without running tests.
-- [ ] Confirm the revised tag job on the next versioned release.
+- [x] Confirm artifact reuse in the v0.1.3 tag job: no tests or rebuild, and the published ZIP matches the verified main artifact byte for byte.
 
 ## Service path discovery
 
@@ -61,4 +61,4 @@
 - [x] Split UI assets into focused modules under Ui, add underlined help, and align every input/action height; verify native module loading and resource wiring.
 - [x] Verify the final split UI in the installed local Jellyfin, including 150 ms tooltips, faint label hints, plain button cursors/text, uniform control heights, and preserved settings.
 - [x] Move real options-monitor and DI-composition checks from unit tests into a separate in-process plugin integration project.
-- [ ] Publish the locally verified build after main CI passes, then reinstall through the Jellyfin repository.
+- [x] Pass all 254 tests on main, publish v0.1.3 from that commit, and reinstall through the configured Jellyfin repository. Verify the plugin is active, saved configuration and library identities are preserved, and the desktop UI loads without errors.
