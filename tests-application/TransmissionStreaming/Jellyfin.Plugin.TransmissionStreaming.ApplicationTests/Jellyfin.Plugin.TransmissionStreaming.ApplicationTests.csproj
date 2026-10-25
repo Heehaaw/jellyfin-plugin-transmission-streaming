@@ -27,6 +27,7 @@
             <PluginBundle Include="../../../src/TransmissionStreaming/Jellyfin.Plugin.TransmissionStreaming/bin/$(Configuration)/$(TargetFramework)/Jellyfin.Plugin.TransmissionStreaming.dll" />
             <PluginBundle Include="../../../src/TransmissionStreaming/Jellyfin.Plugin.TransmissionStreaming/bin/$(Configuration)/$(TargetFramework)/TransmissionStreaming.*.dll" />
             <PluginBundle Include="../../../src/TransmissionStreaming/Jellyfin.Plugin.TransmissionStreaming/bin/$(Configuration)/$(TargetFramework)/Mediator.dll" />
+            <PluginBundle Include="../../../src/TransmissionStreaming/Jellyfin.Plugin.TransmissionStreaming/bin/$(Configuration)/$(TargetFramework)/Shared.Infrastructure.dll" />
             <PluginBundle Include="../../../src/TransmissionStreaming/Jellyfin.Plugin.TransmissionStreaming/bin/$(Configuration)/$(TargetFramework)/meta.json" />
         </ItemGroup>
         <Copy SourceFiles="@(PluginBundle)" DestinationFolder="$(OutDir)Plugin" />

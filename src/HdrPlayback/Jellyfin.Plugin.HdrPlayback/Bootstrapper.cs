@@ -11,7 +11,7 @@ using MediaBrowser.Controller.Plugins;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
-using Packaging;
+using Shared.Infrastructure;
 using Playback;
 using Transcoding;
 
@@ -21,7 +21,7 @@ public sealed class Bootstrapper : IPluginServiceRegistrator
     public void RegisterServices(IServiceCollection services, IServerApplicationHost applicationHost)
     {
         services.AddHdrPlaybackLogic().AddHdrPlaybackInfrastructure();
-        services.AddSingleton<IPluginReleaseMetadata, PluginReleaseMetadata>();
+        services.AddSharedInfrastructure();
         services.AddSingleton<HdrCapabilities>();
         services.AddScoped<HdrPlaybackFilter>();
         services.PostConfigure<MvcOptions>(options => options.Filters.AddService<HdrPlaybackFilter>());

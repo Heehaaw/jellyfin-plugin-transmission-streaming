@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+        <InternalsVisibleTo Include="Shared.Infrastructure.IntegrationTests" />
+    </ItemGroup>
+</Project>

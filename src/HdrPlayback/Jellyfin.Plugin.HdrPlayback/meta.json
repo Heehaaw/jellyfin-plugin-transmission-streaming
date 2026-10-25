@@ -13,6 +13,7 @@
         "HdrPlayback.Core.dll",
         "HdrPlayback.Logic.dll",
         "HdrPlayback.Infrastructure.dll",
-        "Mediator.dll"
+        "Mediator.dll",
+        "Shared.Infrastructure.dll"
     ]
 }

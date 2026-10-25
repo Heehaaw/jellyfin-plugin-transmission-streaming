@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <IsPackable>false</IsPackable>
+        <IsTestProject>true</IsTestProject>
+    </PropertyGroup>
+    <ItemGroup>
+        <ProjectReference Include="../../../src/Shared/Shared.Infrastructure/Shared.Infrastructure.csproj" />
+        <PackageReference Include="Microsoft.NET.Test.Sdk" />
+        <PackageReference Include="xunit" />
+        <PackageReference Include="xunit.runner.visualstudio" PrivateAssets="all" />
+        <PackageReference Include="AutoFixture.Xunit2" />
+        <PackageReference Include="AutoFixture.AutoMoq" />
+        <PackageReference Include="FluentAssertions" />
+    </ItemGroup>
+</Project>

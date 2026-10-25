@@ -1,4 +1,4 @@
-namespace Jellyfin.Plugin.TransmissionStreaming.Packaging;
+namespace Shared.Infrastructure.Packaging;
 
 using System.Text.Json;
 

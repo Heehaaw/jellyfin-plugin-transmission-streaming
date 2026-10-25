@@ -1,4 +1,10 @@
 <Solution>
+    <Folder Name="/src/Shared/">
+        <Project Path="src/Shared/Shared.Infrastructure/Shared.Infrastructure.csproj" />
+    </Folder>
+    <Folder Name="/tests-integration/Shared/">
+        <Project Path="tests-integration/Shared/Shared.Infrastructure.IntegrationTests/Shared.Infrastructure.IntegrationTests.csproj" />
+    </Folder>
     <Folder Name="/src/TransmissionStreaming/">
         <Project Path="src/TransmissionStreaming/Jellyfin.Plugin.TransmissionStreaming/Jellyfin.Plugin.TransmissionStreaming.csproj" />
         <Project Path="src/TransmissionStreaming/TransmissionStreaming.Core/TransmissionStreaming.Core.csproj" />

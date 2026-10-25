@@ -1,10 +1,10 @@
-namespace TransmissionStreaming.IntegrationTests.Host.Packaging;
+namespace Shared.Infrastructure.IntegrationTests.Packaging;
 
-using global::TransmissionStreaming.TestSupport.Testing;
+using AutoFixture.Xunit2;
 using AutoFixture;
 using AutoFixture.AutoMoq;
 using FluentAssertions;
-using Jellyfin.Plugin.TransmissionStreaming.Packaging;
+using Shared.Infrastructure.Packaging;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Xunit;
@@ -127,7 +127,11 @@ public sealed class PluginReleaseMetadataTests
 
     public sealed record MetadataDocument
     {
-        [JsonPropertyName("version")] public string? Version { get; set; }
+        [JsonPropertyName("version")]
+        public string? Version
+        {
+            get; set;
+        }
     }
 
     public sealed record NumericMetadataDocument(

@@ -1,4 +1,4 @@
-namespace TransmissionStreaming.IntegrationTests.Host.Packaging;
+namespace Shared.Infrastructure.IntegrationTests.Packaging;
 
 using System.Text.Json;
 using System.Text.Json.Serialization;

@@ -13,6 +13,7 @@
         "TransmissionStreaming.Core.dll",
         "TransmissionStreaming.Logic.dll",
         "TransmissionStreaming.Infrastructure.dll",
-        "Mediator.dll"
+        "Mediator.dll",
+        "Shared.Infrastructure.dll"
     ]
 }

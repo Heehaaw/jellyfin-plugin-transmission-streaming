@@ -9,6 +9,7 @@
         <RootNamespace>Jellyfin.Plugin.HdrPlayback</RootNamespace>
     </PropertyGroup>
     <ItemGroup>
+        <ProjectReference Include="../../Shared/Shared.Infrastructure/Shared.Infrastructure.csproj" />
         <FrameworkReference Include="Microsoft.AspNetCore.App" />
         <PackageReference Include="Jellyfin.Controller" ExcludeAssets="runtime" />
         <PackageReference Include="Jellyfin.Model" ExcludeAssets="runtime" />
@@ -24,29 +25,5 @@
         <InternalsVisibleTo Include="HdrPlayback.IntegrationTests" />
         <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
     </ItemGroup>
-    <!-- Normal builds generate development metadata; release repacking invokes this target directly without compilation. -->
-    <!-- Derive the four-part Jellyfin package version from Version, independently of the fixed binary AssemblyVersion. -->
-    <Target Name="GeneratePluginMetadata" AfterTargets="Build">
-        <GetAssemblyVersion NuGetVersion="$(Version)">
-            <Output TaskParameter="AssemblyVersion" PropertyName="PluginMetadataVersion" />
-        </GetAssemblyVersion>
-        <PropertyGroup>
-            <PluginMetadataVersion>$([System.Version]::Parse('$(PluginMetadataVersion)').ToString(4))</PluginMetadataVersion>
-            <PluginMetadataOutputPath Condition="'$(PluginMetadataOutputPath)' == ''">$(TargetDir)meta.json</PluginMetadataOutputPath>
-            <_PluginMetadataTemplatePath>$([MSBuild]::NormalizePath('$(MSBuildProjectDirectory)', 'meta.json'))</_PluginMetadataTemplatePath>
-            <_PluginMetadataDestination>$([MSBuild]::NormalizePath('$(MSBuildProjectDirectory)', '$(PluginMetadataOutputPath)'))</_PluginMetadataDestination>
-        </PropertyGroup>
-        <Error Condition="'$(_PluginMetadataDestination)' == '$(_PluginMetadataTemplatePath)'"
-               Text="Generated plugin metadata must not overwrite the source template." />
-        <PropertyGroup>
-            <_PluginMetadataTemplate>$([System.IO.File]::ReadAllText('$(_PluginMetadataTemplatePath)'))</_PluginMetadataTemplate>
-            <_PluginMetadataContent>$(_PluginMetadataTemplate.Replace('@VERSION@', '$(PluginMetadataVersion)').TrimEnd())</_PluginMetadataContent>
-            <_PluginMetadataDirectory>$([System.IO.Path]::GetDirectoryName('$(_PluginMetadataDestination)'))</_PluginMetadataDirectory>
-        </PropertyGroup>
-        <MakeDir Directories="$(_PluginMetadataDirectory)" />
-        <WriteLinesToFile File="$(_PluginMetadataDestination)"
-                          Lines="$([MSBuild]::Escape($(_PluginMetadataContent)))"
-                          Overwrite="true"
-                          WriteOnlyWhenDifferent="true" />
-    </Target>
+    <Import Project="../../Shared/PluginPackaging.targets" />
 </Project>

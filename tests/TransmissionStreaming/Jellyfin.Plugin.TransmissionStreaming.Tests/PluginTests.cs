@@ -4,7 +4,7 @@ using AutoFixture;
 using AutoFixture.AutoMoq;
 using AutoFixture.Xunit2;
 using FluentAssertions;
-using Jellyfin.Plugin.TransmissionStreaming.Packaging;
+using Shared.Infrastructure.Packaging;
 using MediaBrowser.Common.Configuration;
 using Moq;
 using System.Text.RegularExpressions;

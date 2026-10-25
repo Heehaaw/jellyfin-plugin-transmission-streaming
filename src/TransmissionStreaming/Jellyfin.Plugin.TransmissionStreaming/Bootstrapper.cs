@@ -5,7 +5,7 @@ using Discovery;
 using global::TransmissionStreaming.Infrastructure;
 using global::TransmissionStreaming.Logic;
 using Library;
-using Packaging;
+using Shared.Infrastructure;
 using MediaBrowser.Controller;
 using MediaBrowser.Controller.Plugins;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,7 +16,7 @@ public sealed class Bootstrapper : IPluginServiceRegistrator
     public void RegisterServices(IServiceCollection services, IServerApplicationHost applicationHost)
     {
         services
-            .AddSingleton<IPluginReleaseMetadata, PluginReleaseMetadata>()
+            .AddSharedInfrastructure()
             .AddPluginConfiguration()
             .AddJellyfinLibrary()
             .AddTransmissionStreamingLogic()

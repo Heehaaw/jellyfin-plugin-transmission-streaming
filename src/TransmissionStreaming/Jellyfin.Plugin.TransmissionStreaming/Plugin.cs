@@ -1,7 +1,7 @@
 namespace Jellyfin.Plugin.TransmissionStreaming;
 
 using Jellyfin.Plugin.TransmissionStreaming.Configuration;
-using Jellyfin.Plugin.TransmissionStreaming.Packaging;
+using Shared.Infrastructure.Packaging;
 using MediaBrowser.Common.Configuration;
 using MediaBrowser.Common.Plugins;
 using MediaBrowser.Model.Plugins;
@@ -12,9 +12,15 @@ public sealed class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages, IPlu
 {
     public static readonly Guid PluginId = new(PluginConstants.Id);
 
-    public static Plugin? Instance { get; private set; }
+    public static Plugin? Instance
+    {
+        get; private set;
+    }
 
-    public string StateDirectory { get; }
+    public string StateDirectory
+    {
+        get;
+    }
 
     public Plugin(IApplicationPaths paths, IXmlSerializer xmlSerializer, IPluginReleaseMetadata releaseMetadata) : base(paths, xmlSerializer)
     {

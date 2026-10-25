@@ -4,7 +4,7 @@ using Configuration;
 using MediaBrowser.Common.Configuration;
 using MediaBrowser.Common.Plugins;
 using MediaBrowser.Model.Serialization;
-using Packaging;
+using Shared.Infrastructure.Packaging;
 
 /// <summary>Adds optional HDR conversion to native Jellyfin video transcodes.</summary>
 public sealed class Plugin : BasePlugin<PluginConfiguration>
