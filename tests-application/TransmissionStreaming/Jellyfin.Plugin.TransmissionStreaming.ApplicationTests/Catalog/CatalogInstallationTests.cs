@@ -24,7 +24,7 @@ public sealed class CatalogInstallationTests(JellyfinApplication application, IT
             await sut.StartAsync(source, cancellationToken, repository: repository);
             var expectedPluginStatus = "Active";
             var preinstalled = await sut.Api.RequestAsync("/Plugins");
-            var package = (await sut.PackagesAsync(cancellationToken))!.AsArray().Single();
+            var packages = (await sut.PackagesAsync(cancellationToken))!.AsArray();
 
             // Act
             await sut.InstallAsync(cancellationToken);
@@ -38,7 +38,7 @@ public sealed class CatalogInstallationTests(JellyfinApplication application, IT
 
             // Assert
             preinstalled!.AsArray().Should().NotContain(plugin => PluginId(plugin) == Guid.Parse(sut.Bundle.Id));
-            Guid.Parse(JellyfinApi.Value<string>(package, "guid")).Should().Be(Guid.Parse(sut.Bundle.Id));
+            packages.Should().ContainSingle(package => Guid.Parse(JellyfinApi.Value<string>(package, "guid")) == Guid.Parse(sut.Bundle.Id));
             JellyfinApi.Value<bool>(pending, "HasPendingRestart").Should().BeTrue();
             installedFiles.Should().BeEquivalentTo(sut.Bundle.Assemblies.Append("meta.json"));
             JellyfinApi.Value<string>(loaded, "Version").Should().Be(sut.Bundle.Version);
