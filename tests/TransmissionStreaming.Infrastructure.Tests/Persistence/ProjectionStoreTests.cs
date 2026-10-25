@@ -71,6 +71,25 @@ public sealed class ProjectionStoreTests
         sut.All().Should().ContainSingle();
     }
 
+    [Theory, AutoMoqData]
+    internal void Should_RemoveOnlyTheExactIdAndAllowRepeatedRemoval(ProjectionEntry source, TemporaryDirectory directory, ProjectionStore sut)
+    {
+        // Arrange
+        using var root = directory;
+        var retained = source with { Id = source.Id + "-retained" };
+        source.Id += "' OR 1=1 --";
+        sut.Save(source);
+        sut.Save(retained);
+
+        // Act
+        sut.Remove(source.Id);
+        sut.Remove(source.Id);
+
+        // Assert
+        sut.Get(source.Id).Should().BeNull();
+        sut.All().Should().ContainSingle(entry => entry.Id == retained.Id);
+    }
+
     private sealed class AutoMoqDataAttribute() : AutoDataAttribute(() =>
     {
         var fixture = new Fixture { RepeatCount = 1 };

@@ -175,6 +175,8 @@ internal sealed class IntegrationApplication(DownloadServices containers) : IAsy
             return [];
         }
 
+        public Task<bool> TryRemoveAsync(Projection entry, CancellationToken cancellationToken) => Task.FromResult(true);
+
         public Task RefreshAsync(CancellationToken cancellationToken)
         {
             return Task.CompletedTask;

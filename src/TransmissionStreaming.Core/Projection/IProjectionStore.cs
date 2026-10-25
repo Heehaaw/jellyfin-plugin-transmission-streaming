@@ -12,4 +12,7 @@ public interface IProjectionStore
     /// <summary>Persists the full projection snapshot, replacing the record with the same permanent identifier.</summary>
     /// <remarks>Callers retain the existing identifier and secret when updating download or import state.</remarks>
     void Save(Projection projection);
+
+    /// <summary>Removes only the projection with this permanent identifier; missing records are unchanged.</summary>
+    void Remove(string id);
 }

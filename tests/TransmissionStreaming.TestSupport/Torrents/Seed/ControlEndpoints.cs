@@ -46,6 +46,7 @@ internal static class ControlEndpoints
                             HistoryHash = value.TryGetProperty("hash", out var hash) ? hash.GetString()! : scenario.Configuration.Hash
                         },
                         "failure" => scenario.State with { Failure = value.GetProperty("enabled").GetBoolean() },
+                        "removed" => scenario.State with { Removed = value.GetProperty("enabled").GetBoolean() },
                         "episode" => scenario.State with { Episode = value.GetProperty("enabled").GetBoolean() },
                         _ => throw new InvalidOperationException("Unknown fixture control operation.")
                     };

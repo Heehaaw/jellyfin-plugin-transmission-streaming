@@ -177,6 +177,30 @@ public sealed class DiscoverDownloadsTests
         files.Verify(value => value.WriteFiles(It.IsAny<Projection>()), Times.Never);
     }
 
+    [Theory, AutoMoqData]
+    internal async Task Should_NotRewriteOrReconcileAPrunedProjection(DiscoveryScenario source,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options, [Frozen] Mock<ITransmissionClient> transmission,
+        [Frozen] Mock<IProjectionStore> store, [Frozen] Mock<IProjectionFiles> files,
+        [Frozen] Mock<IProjectionLibrary> library, [Frozen] Mock<IMediator> mediator, DiscoverDownloads.Handler sut)
+    {
+        // Arrange
+        source.Existing.CompletedPath = null;
+        options.SetupGet(value => value.CurrentValue).Returns(source.Options with { Enabled = true });
+        transmission.Setup(value => value.GetTorrentsAsync(It.IsAny<TransmissionConnection>(), It.IsAny<CancellationToken>())).ReturnsAsync([]);
+        store.Setup(value => value.All()).Returns([source.Existing]);
+        mediator.Setup(value => value.Send(It.IsAny<IQuery<string?>>(), It.IsAny<CancellationToken>())).Returns(ValueTask.FromResult<string?>(null));
+        mediator.Setup(value => value.Send(It.Is<PruneOrphanedProjection.Command>(command =>
+            command.Entry == source.Existing && !command.TorrentPresent), It.IsAny<CancellationToken>())).Returns(ValueTask.FromResult(true));
+
+        // Act
+        await sut.Handle(source.Command, CancellationToken.None);
+
+        // Assert
+        store.Verify(value => value.Save(It.IsAny<Projection>()), Times.Never);
+        files.Verify(value => value.WriteFiles(It.IsAny<Projection>()), Times.Never);
+        library.Verify(value => value.ReconcileAsync(It.IsAny<Projection>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     private sealed class AutoMoqDataAttribute() : AutoDataAttribute(() =>
     {
         var fixture = new Fixture { RepeatCount = 2 };

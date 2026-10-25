@@ -89,6 +89,24 @@ internal sealed class LibraryProjection(
         library.DeleteItem(native, new DeleteOptions { DeleteFileLocation = false });
     }
 
+    public Task<bool> TryRemoveAsync(Projection entry, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var projected = Find(entry.StreamPath);
+        if (projected is not null)
+        {
+            if (IsPlaying(projected.Id))
+            {
+                return Task.FromResult(false);
+            }
+
+            // Files are removed separately through the confined projection adapter.
+            library.DeleteItem(projected, new DeleteOptions { DeleteFileLocation = false });
+        }
+
+        return Task.FromResult(true);
+    }
+
     public bool IsPathIndexed(string path)
     {
         return Find(path) is not null;

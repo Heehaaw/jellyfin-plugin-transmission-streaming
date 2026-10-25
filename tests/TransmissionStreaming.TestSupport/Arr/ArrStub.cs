@@ -33,6 +33,11 @@ internal sealed class ArrStub(TorrentScenario swarm)
         return swarm.ControlAsync("episode", new { enabled }, cancellationToken);
     }
 
+    public Task SetRemovedAsync(bool enabled, CancellationToken cancellationToken)
+    {
+        return swarm.ControlAsync("removed", new { enabled }, cancellationToken);
+    }
+
     public Task SetFailureAsync(bool enabled, CancellationToken cancellationToken)
     {
         return swarm.ControlAsync("failure", new { enabled }, cancellationToken);

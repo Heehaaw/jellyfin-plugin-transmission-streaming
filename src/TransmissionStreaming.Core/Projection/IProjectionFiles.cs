@@ -13,4 +13,9 @@ public interface IProjectionFiles
     /// <summary>Writes the stable stream link and metadata sidecars, replacing their contents only when they change.</summary>
     /// <remarks>Generated stream links contain capability secrets and must be treated as private.</remarks>
     void WriteFiles(Projection entry);
+
+    /// <summary>Removes the entry's generated stream, metadata and staging files from the owned projection root.</summary>
+    /// <remarks>Validates every target before deleting anything. Media payloads, shared show metadata and directories are never removed.</remarks>
+    /// <exception cref="InvalidOperationException">Ownership is unproven or a target escapes the root or traverses a symbolic link.</exception>
+    void RemoveFiles(Projection entry);
 }

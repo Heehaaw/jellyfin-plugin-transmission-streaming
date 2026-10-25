@@ -31,13 +31,17 @@ internal static class ArrEndpoints
                 case "rootfolder":
                     return Results.Json(new[] { new { path = "/arr/library" } });
                 case "queue":
-                    rows = state.ImportedPath is not null ? [] : state.Episode
+                    rows = state.Removed || state.ImportedPath is not null ? [] : state.Episode
                         ? [new { id = 1, seriesId = 1, series, episodeIds = new[] { 2 }, downloadId = configuration.Hash }]
                         : [new { id = 1, movieId = 1, movie, downloadId = configuration.Hash }];
                     return Results.Json(new { records = rows, totalRecords = rows.Length });
-                case "movie/1" when !state.Episode:
+                case "movie":
+                    return Results.Json(!state.Removed && !state.Episode ? new[] { movie } : []);
+                case "series":
+                    return Results.Json(!state.Removed && state.Episode ? new[] { series } : []);
+                case "movie/1" when !state.Removed && !state.Episode:
                     return Results.Json(movie);
-                case "series/1" when state.Episode:
+                case "series/1" when !state.Removed && state.Episode:
                     return Results.Json(series);
                 case "episode" when state.Episode:
                     return Results.Json(new[] { episode });

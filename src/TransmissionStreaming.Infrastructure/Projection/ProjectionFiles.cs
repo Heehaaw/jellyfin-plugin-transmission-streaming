@@ -1,6 +1,7 @@
 namespace TransmissionStreaming.Infrastructure.Projection;
 
 using Core.Configuration;
+using Core.Filesystem;
 using Core.Projection;
 using global::TransmissionStreaming.Core.Arr;
 using Microsoft.Extensions.Options;
@@ -9,7 +10,7 @@ using System.Xml.Linq;
 using ProjectionEntry = Core.Projection.Projection;
 
 /// <summary>Writes stable stream and metadata files without a media-server dependency.</summary>
-internal sealed class ProjectionFiles(IOptionsMonitor<StreamingOptions> options) : IProjectionFiles
+internal sealed class ProjectionFiles(IOptionsMonitor<StreamingOptions> options, IMediaPathMapper paths) : IProjectionFiles
 {
     private const string OwnershipMarker = ".transmission-streaming";
     private const string OwnershipValue = "TransmissionStreaming";
@@ -86,6 +87,42 @@ internal sealed class ProjectionFiles(IOptionsMonitor<StreamingOptions> options)
 
         Directory.CreateDirectory(Path.Combine(full, "movies"));
         Directory.CreateDirectory(Path.Combine(full, "shows"));
+    }
+
+    public void RemoveFiles(ProjectionEntry entry)
+    {
+        var root = Path.GetFullPath(Root);
+        if (root == Path.GetPathRoot(root) || new DirectoryInfo(root).LinkTarget is not null)
+        {
+            throw new InvalidOperationException("Cleanup requires an owned, dedicated projection directory without symbolic links.");
+        }
+
+        if (!Directory.Exists(root))
+        {
+            return;
+        }
+
+        var marker = Path.Combine(root, OwnershipMarker);
+        if (new FileInfo(marker).LinkTarget is not null || !File.Exists(marker) || File.ReadAllText(marker) != OwnershipValue)
+        {
+            throw new InvalidOperationException("The projection directory is not owned by this plugin.");
+        }
+
+        if (!string.Equals(Path.GetExtension(entry.StreamPath), ".strm", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("Cleanup is limited to generated stream files and their metadata.");
+        }
+
+        var metadata = Path.ChangeExtension(entry.StreamPath, ".nfo");
+        string[] candidates = [entry.StreamPath, metadata, entry.StreamPath + ".new", metadata + ".new"];
+        // Validate the complete set before the first delete; a later unsafe sidecar must not cause partial cleanup.
+        var targets = candidates.Select(candidate => paths.Map(candidate, root, root)
+                                                     ?? throw new InvalidOperationException("A generated file escapes the projection directory or traverses a symbolic link."))
+            .ToArray();
+        foreach (var target in targets)
+        {
+            File.Delete(target);
+        }
     }
 
     private static void AddIds(XElement root, MediaIdentity identity)

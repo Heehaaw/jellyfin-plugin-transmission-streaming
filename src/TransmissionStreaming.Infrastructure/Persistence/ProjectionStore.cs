@@ -62,6 +62,15 @@ internal sealed class ProjectionStore : IProjectionStore
         command.ExecuteNonQuery();
     }
 
+    public void Remove(string id)
+    {
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "DELETE FROM projections WHERE id = $id";
+        command.Parameters.AddWithValue("$id", id);
+        command.ExecuteNonQuery();
+    }
+
     private SqliteConnection Open()
     {
         var connection = new SqliteConnection(connectionString);

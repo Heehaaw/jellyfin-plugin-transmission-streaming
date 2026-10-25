@@ -84,7 +84,7 @@ public static class DiscoverDownloads
                 }
             }
 
-            foreach (var entry in entries.Values)
+            foreach (var entry in entries.Values.ToArray())
             {
                 var torrent = torrents.FirstOrDefault(item => item.Hash.Equals(entry.TorrentHash, StringComparison.OrdinalIgnoreCase));
                 var file = torrent?.Files.ElementAtOrDefault(entry.FileIndex);
@@ -96,6 +96,12 @@ public static class DiscoverDownloads
                     {
                         entry.CompletedPath = imported;
                     }
+                }
+
+                if (await mediator.Send(new PruneOrphanedProjection.Command(entry, torrent is not null), cancellationToken).ConfigureAwait(false))
+                {
+                    entries.Remove(entry.Id);
+                    continue;
                 }
 
                 // Import proof establishes completion even after the downloader has removed its progress data.

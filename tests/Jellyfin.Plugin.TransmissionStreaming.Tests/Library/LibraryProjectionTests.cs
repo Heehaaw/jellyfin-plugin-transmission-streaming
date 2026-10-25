@@ -198,6 +198,56 @@ public sealed class LibraryProjectionTests
         result.Should().BeTrue();
     }
 
+    [Theory, AutoMoqData]
+    internal async Task Should_RemoveOnlyTheOrphanedHostEntry(Projection source, Movie projected,
+        [Frozen] Mock<ILibraryManager> library, [Frozen] Mock<ISessionManager> sessions, LibraryProjection sut)
+    {
+        // Arrange
+        projected.Path = source.StreamPath;
+        Index(library, projected);
+        sessions.SetupGet(value => value.Sessions).Returns([]);
+
+        // Act
+        var removed = await sut.TryRemoveAsync(source, CancellationToken.None);
+
+        // Assert
+        removed.Should().BeTrue();
+        library.Verify(value => value.DeleteItem(projected, It.Is<DeleteOptions>(options => !options.DeleteFileLocation)), Times.Once);
+    }
+
+    [Theory, AutoMoqData]
+    internal async Task Should_DeferOrphanRemovalWhileItsItemIsPlaying(Projection source, Movie projected, SessionInfo session,
+        [Frozen] Mock<ILibraryManager> library, [Frozen] Mock<ISessionManager> sessions, LibraryProjection sut)
+    {
+        // Arrange
+        projected.Path = source.StreamPath;
+        Index(library, projected);
+        session.NowPlayingItem.Id = projected.Id;
+        sessions.SetupGet(value => value.Sessions).Returns([session]);
+
+        // Act
+        var removed = await sut.TryRemoveAsync(source, CancellationToken.None);
+
+        // Assert
+        removed.Should().BeFalse();
+        library.Verify(value => value.DeleteItem(It.IsAny<BaseItem>(), It.IsAny<DeleteOptions>()), Times.Never);
+    }
+
+    [Theory, AutoMoqData]
+    internal async Task Should_AllowCleanupAfterTheUserAlreadyRemovedTheHostEntry(Projection source,
+        [Frozen] Mock<ILibraryManager> library, LibraryProjection sut)
+    {
+        // Arrange
+        library.Setup(value => value.GetItemList(It.IsAny<InternalItemsQuery>())).Returns([]);
+
+        // Act
+        var removed = await sut.TryRemoveAsync(source, CancellationToken.None);
+
+        // Assert
+        removed.Should().BeTrue();
+        library.Verify(value => value.DeleteItem(It.IsAny<BaseItem>(), It.IsAny<DeleteOptions>()), Times.Never);
+    }
+
     private static void Index(Mock<ILibraryManager> library, BaseItem item)
     {
         library.Setup(value => value.GetItemList(It.Is<InternalItemsQuery>(query => query.Path == item.Path))).Returns([item]);

@@ -1,7 +1,7 @@
 namespace TransmissionStreaming.TestSupport.Torrents.Seed;
 
 internal sealed record SeedConfiguration(string Hash, int PieceSize, string FileName, string Title, int HttpPort, int PeerPort, string Host, string ArrKey, string CompletedRoot);
-internal sealed record SeedState(int Allowed, string? ImportedPath, bool Failure, string HistoryHash, bool Episode);
+internal sealed record SeedState(int Allowed, string? ImportedPath, bool Failure, string HistoryHash, bool Episode, bool Removed = false);
 
 internal sealed class SeedScenario : IDisposable
 {
