@@ -39,7 +39,9 @@ Run unit cases through their `.Tests.` namespace, excluding integration and appl
 dotnet test JellyfinPlugins.slnx -c Release --filter 'FullyQualifiedName~.Tests.'
 ```
 
-Run the single integration project:
+This builds the solution but runs only matching unit cases. Container support lives under `tests-integration/`; container suites belong to integration and application projects.
+
+Run the Transmission integration project:
 
 ```sh
 dotnet test tests-integration/TransmissionStreaming/TransmissionStreaming.IntegrationTests -c Release
@@ -187,7 +189,7 @@ cases serve a controlled repository and ZIP, install through Jellyfin's package 
 After publishing a release, verify the actual public repository with:
 
 ```sh
-TRANSMISSION_STREAMING_TEST_REPOSITORY="https://github.com/Heehaaw/jellyfin-plugin-transmission-streaming/releases/latest/download/manifest.json" \
+TRANSMISSION_STREAMING_TEST_REPOSITORY="https://github.com/Heehaaw/jellyfin-plugins/releases/latest/download/manifest.json" \
   dotnet test tests-application/TransmissionStreaming/Jellyfin.Plugin.TransmissionStreaming.ApplicationTests -c Release \
   -p:Version=1.2.3 --filter FullyQualifiedName~Should_InstallFromRepositoryAndLoadAfterRestart
 ```
@@ -197,3 +199,12 @@ come from the public release. This probe creates a disposable Jellyfin instance 
 local repository, so CI can verify a new version before that version is released.
 
 [Back to README](../README.md)
+
+## HDR Playback suites
+
+HDR owns separate unit, integration, and application projects beneath their `HdrPlayback` scope folders. They are all included in `JellyfinPlugins.slnx`. The unit-only command
+filters cases by their `.Tests.` namespace. Run its player transport checks with `node --test tests/HdrPlayback/Player/player.test.cjs`. See [HDR Playback](hdr-playback.md)
+for the focused commands.
+
+The HDR application fixture owns a disposable Jellyfin instance containing both plugins and synthetic SDR media, with a `/jf` base path. Its Chromium trial uses an isolated
+container and browser context. These tests do not modify the home server or establish C4 HDR display quality.

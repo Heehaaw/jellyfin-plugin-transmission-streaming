@@ -1,7 +1,7 @@
 # Package versions and artifact promotion
 
-Release tags choose the user-visible plugin version. A tag such as `v1.2.3` becomes Jellyfin version `1.2.3.0`. Missing numeric components become zero; prerelease labels are not
-used for Jellyfin package versions. There is no release-version edit or next-version bump on main.
+Release tags choose the user-visible plugin version. Transmission tags use `v1.2.3`; HDR Playback tags use `hdr-v1.2.3`. Both become Jellyfin version `1.2.3.0` for their own plugin.
+Missing numeric components become zero; prerelease labels are not used for Jellyfin package versions. There is no release-version edit or next-version bump on main.
 
 ## Development builds
 
@@ -32,3 +32,12 @@ the resulting package; its version, source URL, and checksum must describe the f
 
 The application installation tests promote a development bundle to another package version, install it through Jellyfin, restart the server, and check the reported version and
 unchanged DLL hashes. See [installation and releases](installation.md) for commands and [release guidelines](release-guidelines.md) for delivery order.
+
+For HDR Playback, select its artifact explicitly:
+
+```sh
+dotnet run --file scripts/Package.cs -- --plugin hdr-playback --archive /path/to/hdr-playback.zip --release-tag hdr-v1.2.3
+```
+
+This creates `artifacts/HDRPlayback_1.2.3.0.zip`. Each plugin has an independent version history in the shared catalog. Release jobs are serialized across both tag families to
+prevent either update overwriting the other plugin's history.

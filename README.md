@@ -1,4 +1,26 @@
-# Transmission Streaming for Jellyfin
+# Jellyfin plugins
+
+Independent plugins for Jellyfin 12.3 and .NET 10, maintained in one repository.
+
+| Plugin | Purpose | Release tags |
+| --- | --- | --- |
+| Transmission Streaming | Play arr-managed Transmission downloads before completion, retaining native library identity and watch history. | `v*` |
+| [HDR Playback](doc/hdr-playback.md) | Opt-in SDR-to-HDR conversion in the native transcode, selected in the player settings menu. AMD VA-API/Vulkan on Linux. | `hdr-v*` |
+
+Both use the same catalog URL below and install independently. Renaming the repository does not change the Transmission plugin GUID, assemblies, configuration, or routes.
+
+Source and tests are scoped by plugin:
+
+```text
+src/{TransmissionStreaming,HdrPlayback}/
+tests/{TransmissionStreaming,HdrPlayback}/
+tests-integration/{TransmissionStreaming,HdrPlayback}/
+tests-application/{TransmissionStreaming,HdrPlayback}/
+```
+
+Each plugin owns Core, Logic, Infrastructure, and Jellyfin adapter projects. Shared build scripts and CI package them separately.
+
+## Transmission Streaming
 
 A prototype Jellyfin plugin that makes Radarr- and Sonarr-managed Transmission downloads playable before they finish. Playback stays in Jellyfin, including watched status and
 resume positions. After import, the stream reads the completed file while Transmission keeps seeding. Once the torrent is removed, the plugin transfers each viewer's history to the
@@ -14,7 +36,7 @@ Back up Jellyfin's database and configuration before the first trial. Start with
 1. Open **Dashboard → Plugins → Manage Repositories** and add this repository URL:
 
    ```text
-   https://github.com/Heehaaw/jellyfin-plugin-transmission-streaming/releases/latest/download/manifest.json
+   https://github.com/Heehaaw/jellyfin-plugins/releases/latest/download/manifest.json
    ```
 
 2. Open the Catalog, select **Transmission Streaming**, and install a compatible version.
@@ -27,7 +49,7 @@ See [installation and releases](doc/installation.md) for downloading a ZIP direc
 Install the .NET 10 SDK and clone this repository. With your development Jellyfin server stopped, run:
 
 ```sh
-dotnet run --file scripts/Install.cs --plugins-dir "/path/to/jellyfin/plugins"
+dotnet run --file scripts/Install.cs -- --plugin transmission-streaming --plugins-dir "/path/to/jellyfin/plugins"
 ```
 
 This builds Debug and copies the complete plugin bundle into the chosen plugin directory. Add `--configuration Release` for a Release build. Make sure the Jellyfin service account
@@ -36,7 +58,7 @@ can read the resulting directory, then start Jellyfin. Typical plugin roots are 
 To compile a distributable Release ZIP without installing it:
 
 ```sh
-dotnet run --file scripts/Package.cs
+dotnet run --file scripts/Package.cs -- --plugin transmission-streaming
 ```
 
 The ZIP is written beneath `artifacts/`. Use the matching Jellyfin version; the package reuses the SQLite runtime supplied by Jellyfin.
@@ -62,7 +84,8 @@ With a local Docker-compatible daemon running:
 dotnet test JellyfinPlugins.slnx -c Release
 ```
 
-Main-branch CI and pull requests run these suites and retain an installable ZIP for 90 days. After main CI passes, a version tag repacks its tested DLLs with release metadata
+Main-branch CI and pull requests run these suites and retain a separate installable ZIP for each plugin for 90 days. After main CI passes, a version tag repacks its tested
+DLLs with release metadata
 and updates the Jellyfin repository manifest without rerunning tests. Missing or expired artifacts are rebuilt from the tagged commit. See [versioning](doc/versioning.md) and [testing](doc/testing.md)
 for separate test commands and coverage boundaries, and [installation and releases](doc/installation.md) for the two installation flows.
 

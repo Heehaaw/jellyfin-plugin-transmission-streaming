@@ -75,7 +75,7 @@ that catalog history, and an already published plugin version cannot be reused.
 The workflow creates a draft release, uploads the ZIP and manifest, then publishes it as the latest release. The stable repository address is:
 
 ```text
-https://github.com/Heehaaw/jellyfin-plugin-transmission-streaming/releases/latest/download/manifest.json
+https://github.com/Heehaaw/jellyfin-plugins/releases/latest/download/manifest.json
 ```
 
 The first release makes this URL available. Every subsequent release updates its contents while each version's ZIP URL remains tied to its own tag. If an upload fails and leaves
