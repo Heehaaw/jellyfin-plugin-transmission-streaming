@@ -9,6 +9,7 @@ See [category rules](testing-guidelines.md#choose-the-category) for deciding whe
 ## Prerequisites
 
 Install the .NET 10 SDK. The container suites also need a running local Docker-compatible daemon. Their first run pulls pinned Jellyfin, Transmission, and .NET SDK images.
+The catalog-install case also pulls a pinned Playwright image for headless Chromium.
 
 Assembly fixtures own one Transmission daemon, one C# peer, and their isolated network for each container suite. Each scenario acquires an exclusive lease, uses a fresh directory
 beneath `~/.cache/transmission-streaming-tests`, and removes its torrents and peer state before releasing the lease. Share that location with Docker. Containers stop at assembly
@@ -22,6 +23,10 @@ its own server. This skips repeated migrations without sharing mutable databases
 Each container-test assembly starts one Transmission daemon, one C# peer/HTTP process, and one isolated network. An exclusive scenario lease gives each test a fresh media and
 projection directory. Releasing the lease removes its torrents, cancels old peer connections, resets controlled upstream state, and deletes the scenario data. The next case borrows
 the same processes rather than recompiling or restarting them. The controlled HTTP process also serves local plugin repositories.
+
+Import and handoff cases that begin with completed media prepare a file, add its torrent paused, and ask the real daemon to verify it before starting seeding. They do not wait
+for another peer transfer. Partial playback and the complete download-to-import case still transfer real pieces. Application fixtures release the first piece only when a case
+requests a stream, so configuration checks do not wait for media.
 
 Jellyfin remains a separate process for each scenario. A stopped, empty server baseline amortizes database migrations and initial setup. Each scenario gets its own copied database
 and configuration; mutable library data and watch history are never shared. Installation tests still begin without the plugin and load it through the intended installation path.
@@ -91,7 +96,11 @@ The playback flow verifies the description activity link while downloading, afte
 
 The cancellation application case also verifies that the actual Jellyfin item disappears, its old playback URL returns not found, and restart does not recreate it.
 
-The container application suites verify server behavior through HTTP, not the web client's component lifecycle. Local installation also needs a browser check: load saved settings,
+The catalog-install case also opens Jellyfin's dashboard in headless Chromium, follows the plugin sidebar link, and verifies the settings page loads. Testcontainers owns the
+browser server on the isolated test network. It starts lazily, reuses its process, and gives each trial a fresh context. It never uses a host browser or personal profile.
+The Playwright package and browser image must share a version; the first browser startup installs the matching Node server package inside its container.
+
+Other container application scenarios verify server behavior through HTTP, not the web client's component lifecycle. Local installation also needs a browser check: load saved settings,
 discover paths for each service, edit a mapping, rediscover without losing that edit, save, and reload. Jellyfin's bundled component polyfill requires its own dynamic-element
 creation conventions; a plain DOM mock cannot establish compatibility.
 
@@ -101,6 +110,14 @@ restart, and viewer-history assertions therefore also verify that the explicit m
 
 ## Measured runtime
 
+The same integration suite was measured before and after preparing verified completed downloads for import-focused cases:
+
+| Run | Before | After | Reduction |
+| --- | ---: | ---: | ---: |
+| Integration, including build and container lifecycle | 94.1 s | 36.8 s | 61% |
+
+An earlier optimized run took 40.1 seconds. All runs pass the same behavioral assertions. Transmission 4.1.3 updates peer interest on a hardcoded ten-second cycle; there is no supported session setting for that interval.
+The transfer cases retain that real scheduling behavior. These local Docker measurements include warmed image caches and are not CI guarantees.
 
 Before the additional business scenarios, the same six scenarios were measured before and after assembly reuse, including fixture setup and teardown:
 

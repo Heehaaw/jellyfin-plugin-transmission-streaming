@@ -41,6 +41,7 @@
 - [x] Explain settings through unobtrusive hover hints.
 - [x] Align form controls and keep action buttons consistent.
 - [x] Preserve configuration through reloads and plugin updates.
+- [x] Open settings directly from Jellyfin's Plugins sidebar.
 
 ## Installation and maintenance
 
@@ -56,4 +57,6 @@
 - [x] Preserve configuration, libraries, and viewer history during updates.
 - [x] Verify playback, import, cleanup, history, installation, and restart behavior automatically.
 - [x] Keep automated checks repeatable and efficient.
+- [x] Reduce waiting in import and handoff checks.
+- [x] Verify settings navigation in an isolated headless browser.
 - [x] Document setup, operation, design, and contributor expectations.

@@ -18,6 +18,8 @@ It does not control the Jellyfin service. Make the resulting files readable by i
 The destination name comes from plugin metadata. Development builds use `Transmission Streaming_0.0.0.0`; published packages use the tag-derived version in the same format.
 If you previously installed the same plugin manually under another folder name, keep only one installation of that version before restarting.
 
+After restart, open **Dashboard → Plugins → Transmission Streaming** in the left sidebar to configure the plugin.
+
 Typical plugin roots are `/var/lib/jellyfin/plugins/` for native Linux and `/config/plugins/` inside the Jellyfin container. Choose the path belonging to the server you intend to
 load; a path on the development machine does not automatically reach a remote server.
 
