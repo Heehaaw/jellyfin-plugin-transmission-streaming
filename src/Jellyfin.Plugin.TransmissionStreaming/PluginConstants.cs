@@ -8,9 +8,10 @@ internal static class PluginConstants
     public const string SettingsPage = "transmission-streaming";
     public const string DataDirectory = "transmission-streaming";
 
-    /// <summary>Native configuration-page resource names used by the browser module loader.</summary>
+    /// <summary>Native configuration-page resources and sidebar presentation.</summary>
     internal static class Ui
     {
+        public const string MenuIcon = "cloud_download";
         public const string Styles = SettingsPage + ".css";
         public const string Controller = SettingsPage + "-controller.js";
         public const string Configuration = SettingsPage + "-configuration.js";

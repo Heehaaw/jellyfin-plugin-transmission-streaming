@@ -52,7 +52,10 @@ public sealed class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages, IPlu
             new()
             {
                 Name = PluginConstants.SettingsPage,
-                EmbeddedResourcePath = resourcePrefix + "settings.html"
+                DisplayName = PluginConstants.Name,
+                EmbeddedResourcePath = resourcePrefix + "settings.html",
+                EnableInMainMenu = true,
+                MenuIcon = PluginConstants.Ui.MenuIcon
             },
             new()
             {

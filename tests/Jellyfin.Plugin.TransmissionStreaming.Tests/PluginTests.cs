@@ -49,6 +49,24 @@ public sealed class PluginTests
     }
 
     [Theory, AutoMoqData]
+    internal void Should_RegisterOnlyTheSettingsPageInThePluginsSidebar(HostPlugin sut)
+    {
+        // Arrange
+        var expectedPage = PluginConstants.SettingsPage;
+        var expectedIcon = PluginConstants.Ui.MenuIcon;
+
+        // Act
+        var menuPages = sut.GetPages().Where(page => page.EnableInMainMenu).ToArray();
+
+        // Assert
+        menuPages.Should().ContainSingle();
+        var page = menuPages.Single();
+        page.Name.Should().Be(expectedPage);
+        page.DisplayName.Should().Be(sut.Name);
+        page.MenuIcon.Should().Be(expectedIcon);
+    }
+
+    [Theory, AutoMoqData]
     internal void Should_EmbedEveryAdvertisedAssetAndRegisterItsModuleDependencies(HostPlugin sut)
     {
         // Arrange
