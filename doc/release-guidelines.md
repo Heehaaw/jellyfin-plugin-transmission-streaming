@@ -12,16 +12,13 @@ Describe pending verification plainly. Passing unit tests or packaging a ZIP doe
 
 1. Review the complete change and use semantic commits when publication is authorized.
 2. Push main and wait for its successful CI run for the exact commit.
-3. Open **Actions → Build, test, and package → Run workflow** on main. Select `release` mode, enter the successful build run ID from its summary, and choose a version bump.
-4. Follow **Review and publish the prepared release** in the preparation run's summary. Verify both plugin ZIPs and the merged manifest, then publish the draft as Latest.
+3. Open **Actions → Prepare release → Run workflow**. Select the tested branch and a patch, minor, major, or custom version. The branch commit must have passing main CI.
+4. Follow **Review and publish the prepared release** in the preparation summary. Verify both plugin ZIPs and the merged manifest, then publish the draft as Latest.
 5. Verify Catalog installation and restart through a disposable server, then perform any separately authorized remote installation.
 
-Main and pull-request CI run all tests and package both installable ZIPs. Artifacts are retained for 90 days. Manual release mode verifies the selected run is a successful
-main push build from this workflow. It checks out that run's exact commit and preserves its tested DLLs while generating shared version metadata and repacking both ZIPs.
-It does not rebuild or rerun tests. Missing or expired artifacts cause an error rather than silently releasing rebuilt binaries.
-
-Build and release preparation are jobs in the same workflow definition. GitHub's dropdown is on **Run workflow**, so preparation is a new run, not an appended job in the
-completed build run. The summaries link preparation back to its source build and onward to the actual draft URL.
+Main and pull-request CI run all tests and package both installable ZIPs. Artifacts are retained for 90 days. The manually dispatched preparation job preserves the
+successful main artifacts' DLLs, generates shared version metadata, and repacks both ZIPs without rebuilding plugin assemblies or rerunning tests. Missing or expired
+artifacts stop preparation.
 
 Tag pushes never create or publish releases. The preparation job leaves a draft; only a user publishes it. Publish or discard the pending draft before preparing another
 release so its catalog includes the latest published history.

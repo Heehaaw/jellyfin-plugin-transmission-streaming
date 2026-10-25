@@ -50,31 +50,30 @@ The artifact is already the plugin ZIP; it is uploaded without another wrapping 
 ```mermaid
 flowchart LR
     P[Push main] --> C[Build and all tests]
-    C --> A[Retain both tested plugin ZIPs]
-    A --> D[Run the same workflow in release mode]
-    D --> V[Verify selected build run and exact commit]
-    V --> Z[Repack both tested ZIPs]
-    Z --> R[Summary links to prepared draft]
+    C --> D[Manually run Prepare release]
+    D --> V[Require successful main CI for selected commit]
+    V --> Z[Promote both plugin ZIPs]
+    Z --> R[Draft release with merged catalog]
     R --> U[Review and publish as Latest]
     U --> J[Jellyfin Catalog install]
+    J --> S[Restart Jellyfin]
 ```
 
 1. Push the release commit to `main` and wait for passing CI.
-2. Open that build's summary and copy its **Build run ID**. The summary also links to release preparation in the same workflow.
-3. Choose **Actions → Build, test, and package → Run workflow**, with the workflow on `main` and **mode: release**.
-4. Paste the successful build run ID. Choose `patch`, `minor`, or `major` to increment the highest published stable version, or `custom` with a `vMAJOR.MINOR.PATCH` tag.
-5. Run the workflow. Its build job is skipped; **Prepare draft release** verifies and downloads the selected run's artifacts and checks out that run's exact commit.
-6. Follow **Review and publish the prepared release** in the finished summary. Review the notes and all three assets, then **Publish release** as Latest.
-
-GitHub shows input dropdowns when starting a workflow. Preparation therefore has its own run in the same workflow, with a link back to the source build. It does not append a
-manual job to an already completed build. No environment approval gates or duplicate version jobs are needed.
+2. Open **Actions → Prepare release → Run workflow**, using the workflow on `main`.
+3. Choose `patch`, `minor`, or `major` to increment the highest published stable version. Alternatively, choose `custom` and enter a `vMAJOR.MINOR.PATCH` tag.
+4. Use GitHub's **Branch** selector to choose the tested branch, normally `main`, then run the workflow. There is no commit or build-run-ID input.
+5. Follow **Review and publish the prepared release** in the completed run's summary. Review the notes and all three assets, then **Publish release** as Latest.
 
 Both plugins receive the same version. For example, `v1.2.3` produces `TransmissionStreaming_1.2.3.0.zip`, `HDRPlayback_1.2.3.0.zip`, and `manifest.json`. No source-version edit
 or post-release bump is needed. See [versioning](versioning.md) for development versions and stable assembly identity. Pushing a tag alone does not create or publish a release.
 
-Preparation accepts only a completed, successful `main` push run from this build workflow. Pull-request, failed, and release-preparation runs cannot substitute for it. The
-job reuses both retained bundles without recompiling plugin DLLs or rerunning tests; missing or expired artifacts cause an error. It never falls back to rebuilding a
-different bundle.
+Preparation pins the selected branch's commit when the workflow starts and requires successful `main` push CI for that exact commit. A passing pull-request or manual build
+cannot substitute for it. The job downloads both tested ZIPs, preserves their DLLs, and regenerates package metadata and catalog checksums. It does not rebuild plugin DLLs or
+rerun tests. Missing or expired artifacts stop preparation.
+
+GitHub's built-in token cannot authorize tagging an older commit whose workflow files differ from current `main`. Preparation checks for that condition early; select `main`
+after its CI passes. See the [GitHub release API permissions](https://docs.github.com/en/rest/releases/releases#create-a-release).
 
 The repository manifest contains both plugin identities, their versions and target Jellyfin ABI, tag-specific ZIP URLs, and MD5 checksums of the final ZIP bytes. MD5 is the
 checksum Jellyfin's repository protocol requires. The newest published catalog asset is merged so older versions remain available, even if a newer release has no catalog yet.

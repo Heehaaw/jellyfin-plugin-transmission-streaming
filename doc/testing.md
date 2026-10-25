@@ -2,7 +2,7 @@
 
 Tests use xUnit, AutoFixture/AutoMoq, and FluentAssertions. Unit suites use xUnit v2. Integration and application suites use xUnit v3, with shared fixtures for scenarios that
 need containers. The integration project groups host wiring, packaging, and service flows by feature. Main CI verifies the complete suite before publishing a retained artifact;
-manual release mode in the same workflow promotes a selected successful build's DLLs into a draft and reruns no tests.
+the manual Prepare release job promotes both plugins' DLLs into a draft with shared version metadata and reruns no tests.
 
 See [category rules](testing-guidelines.md#choose-the-category) for deciding where a test belongs. Packaging and installed-metadata file checks live in integration suites.
 
