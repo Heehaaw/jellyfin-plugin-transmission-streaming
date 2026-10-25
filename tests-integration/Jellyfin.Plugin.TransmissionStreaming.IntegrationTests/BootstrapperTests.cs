@@ -15,6 +15,7 @@ using MediaBrowser.Controller.Library;
 using MediaBrowser.Controller.Plugins;
 using MediaBrowser.Controller.Resolvers;
 using MediaBrowser.Controller.Session;
+using MediaBrowser.Model.IO;
 using Mediator;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -32,6 +33,7 @@ public sealed class BootstrapperTests
         Mock<IUserManager> users,
         Mock<IUserDataManager> userData,
         Mock<ISessionManager> sessions,
+        Mock<IFileSystem> fileSystem,
         Mock<IOptionsMonitor<StreamingOptions>> options,
         Mock<IProjectionStore> store,
         Mock<IPluginSettings> settings,
@@ -43,7 +45,7 @@ public sealed class BootstrapperTests
         services.AddLogging();
         sut.RegisterServices(services, host.Object);
         services.AddSingleton(library.Object).AddSingleton(users.Object).AddSingleton(userData.Object)
-            .AddSingleton(sessions.Object).AddSingleton(options.Object).AddSingleton(store.Object).AddSingleton(settings.Object);
+            .AddSingleton(sessions.Object).AddSingleton(fileSystem.Object).AddSingleton(options.Object).AddSingleton(store.Object).AddSingleton(settings.Object);
 
         // Act
         using var provider = services.BuildServiceProvider(

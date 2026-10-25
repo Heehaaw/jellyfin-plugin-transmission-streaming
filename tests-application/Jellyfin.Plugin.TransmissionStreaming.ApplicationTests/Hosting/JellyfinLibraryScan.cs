@@ -42,6 +42,15 @@ internal sealed class JellyfinLibraryScan(JellyfinApi api)
         await TestWait.UntilAsync(async () => (await ReadAsync()).StartedAfter(idle!), "a post-folder library scan to start");
     }
 
+    public Task WaitForIdleAsync()
+    {
+        return TestWait.UntilAsync(async () =>
+        {
+            var snapshot = await ReadAsync();
+            return snapshot.State == Idle;
+        }, "the configured library scan to finish before import");
+    }
+
     private async Task<ScanSnapshot> ReadAsync()
     {
         var tasks = await api.RequestAsync("/ScheduledTasks");

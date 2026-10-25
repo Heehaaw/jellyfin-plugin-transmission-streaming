@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <AssemblyName>Jellyfin.Plugin.TransmissionStreaming</AssemblyName>
-        <Version>0.1.5</Version>
+        <Version>0.1.6</Version>
         <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
         <RootNamespace>Jellyfin.Plugin.TransmissionStreaming</RootNamespace>
     </PropertyGroup>

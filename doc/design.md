@@ -59,6 +59,9 @@ While the torrent remains in Transmission, the projection owns playback and hist
 normally. Active readers or playback defer retirement. It transfers every user's state, removes only its generated link/metadata and projected database entry, then archives a small
 completion record. A failed step leaves durable state for retry. The native item then plays without the plugin. See [operations](operations.md) for merge and rollback details.
 
+Indexing scans the physical folder that contains the import. A virtual collection can combine several folders without scanning their contents itself. If an initially empty folder
+has no indexed root yet, a shallow root refresh registers it before the targeted scan; other libraries are not scanned recursively.
+
 ## Application boundaries
 
 The domain defines media identities, playback state, and external-service contracts. Application requests coordinate discovery, authorization, streaming, and completion through

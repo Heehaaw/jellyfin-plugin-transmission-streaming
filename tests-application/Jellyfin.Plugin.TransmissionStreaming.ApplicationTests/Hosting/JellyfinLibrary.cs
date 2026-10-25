@@ -5,7 +5,7 @@ using System.Text.Json.Nodes;
 /// <summary>Drives indexing through Jellyfin's API with internet metadata and automatic extraction disabled.</summary>
 internal sealed class JellyfinLibrary(JellyfinApi api, string administrator, string sourceName)
 {
-    public async Task AddAsync(string name, string path)
+    public async Task AddAsync(string name, IReadOnlyList<string> paths)
     {
         var options = new
         {
@@ -26,7 +26,9 @@ internal sealed class JellyfinLibrary(JellyfinApi api, string administrator, str
                 }
             }
         };
-        var query = $"name={Uri.EscapeDataString(name)}&collectionType=movies&refreshLibrary=false&paths={Uri.EscapeDataString(path)}";
+        var pathParameters = paths.Select(path => "paths=" + Uri.EscapeDataString(path));
+        var pathQuery = string.Join('&', pathParameters);
+        var query = $"name={Uri.EscapeDataString(name)}&collectionType=movies&refreshLibrary=false&{pathQuery}";
         // A refresh requested during an existing scan can be dropped before the new root is included.
         await api.RequestAsync(
             path: $"/Library/VirtualFolders?{query}",

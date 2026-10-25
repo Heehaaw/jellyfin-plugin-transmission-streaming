@@ -96,9 +96,14 @@ public sealed class JellyfinTestServer(DownloadServices containers, JellyfinBase
         return StreamingScenario.StreamForHost(permanentUrl, Address);
     }
 
-    internal Task AddLibraryAsync(string name, string path)
+    internal Task AddLibraryAsync(string name, params string[] paths)
     {
-        return library.AddAsync(name, path);
+        return library.AddAsync(name, paths);
+    }
+
+    internal Task WaitForLibraryScanIdleAsync()
+    {
+        return new JellyfinLibraryScan(api).WaitForIdleAsync();
     }
 
     internal Task<JsonNode?> FindItemAsync(bool projected)

@@ -82,7 +82,16 @@
 - [x] Audit remaining layer leaks and add concise on-demand architecture, testing, UI, and release guidance linked from root AGENTS.md.
 - [x] Pass the assembled unit, integration, and real-Jellyfin suites for native handoff and playback independence; verify the final playback-race guards with focused unit tests.
 - [x] Install v0.1.5 locally after a verified full backup; preserve configuration, all five library IDs, all 25 movie IDs, and every user's saved Moana data. Verify the collapsed completion panel at desktop width.
-- [ ] Publish through successful main CI and the tag-only release, then reinstall and verify the existing LXC without interrupting playback.
+- [x] Publish v0.1.5 through successful main CI and the tag-only release, then reinstall from the repository and verify the active plugin, configuration, libraries, and saved viewer state.
 
 - [x] Give Logic its own composition root and use scoped Mediator handlers with explicit non-HTTP entry scopes.
 - [x] Complete the readability/formatting pass and scoped-composition regressions; pass all 319 unit, integration, and real-Jellyfin tests.
+
+## Physical library indexing
+
+- [x] Scan physical library folders instead of virtual collections.
+- [x] Register initially empty roots with a shallow refresh and update collection membership after scanning.
+- [x] Test handoff in one library containing both roots, with its initial scan finished before import.
+- [x] Pass all 324 unit, integration, and real-Jellyfin tests, including native listing, viewer history, playback independence, and restart.
+
+The physical-indexing correction is verified locally. Its LXC installation and publication follow the separate release-versioning changes.

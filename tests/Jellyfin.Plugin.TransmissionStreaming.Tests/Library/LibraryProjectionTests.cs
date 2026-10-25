@@ -202,15 +202,7 @@ public sealed class LibraryProjectionTests
         state.UserId.Should().Be(user.Id.ToString("N"));
         AssertWatchState(state.Source!, sourceState);
         AssertWatchState(state.Target!, targetState);
-        userData.Verify(
-            expression: value => value.GetUserDataBatch(
-                items: It.Is<IReadOnlyList<BaseItem>>(items =>
-                    items.Count == 2 && items[0] == source && items[1] == target
-                ),
-                user: user
-            ),
-            times: Times.Once
-        );
+        userData.Verify(value => value.GetUserDataBatch(It.Is<IReadOnlyList<BaseItem>>(items => items.Count == 2 && items[0] == source && items[1] == target), user), Times.Once);
     }
 
     [Theory, AutoMoqData]
@@ -343,6 +335,168 @@ public sealed class LibraryProjectionTests
         library.Verify(value => value.GetItemById(It.IsAny<Guid>()), Times.Never);
     }
 
+    [Theory, AutoMoqData]
+    internal async Task Should_ResolveOnlyThePhysicalRootContainingTheImportedFile(
+        VirtualFolderInfo source,
+        ScanProbe physical,
+        string fileName,
+        [Frozen] Mock<ILibraryManager> library,
+        LibraryProjection sut
+    )
+    {
+        // Arrange
+        var root = Path.Combine(Path.GetTempPath(), source.Name);
+        var movieRoot = Path.Combine(root, "movies");
+        var showRoot = Path.Combine(root, "shows");
+        source.Locations = [movieRoot, showRoot];
+        library.Setup(value => value.GetVirtualFolders(false)).Returns([source]);
+        var collectionId = Guid.Parse(source.ItemId);
+        library.Setup(value => value.GetItemById(collectionId)).Returns((BaseItem?)null);
+        library.Setup(value => value.FindByPath(movieRoot, true)).Returns(physical);
+        var importedPath = Path.Combine(movieRoot, fileName);
+        const int expectedScans = 1;
+
+        // Act
+        await sut.IndexImportedAsync(importedPath, CancellationToken.None);
+
+        // Assert
+        physical.ScanCount.Should().Be(expectedScans);
+        physical.Recursive.Should().BeTrue();
+        library.Verify(value => value.FindByPath(movieRoot, true), Times.Once);
+        library.Verify(value => value.FindByPath(showRoot, true), Times.Never);
+        library.Verify(value => value.GetItemById(collectionId), Times.Once);
+        library.VerifyGet(value => value.RootFolder, Times.Never);
+    }
+
+    [Theory, AutoMoqData]
+    internal async Task Should_ResolvePhysicalProjectionRootsWithoutScanningVirtualCollections(
+        VirtualFolderInfo source,
+        ScanProbe movies,
+        ScanProbe shows,
+        [Frozen] Mock<IProjectionFiles> files,
+        [Frozen] Mock<ILibraryManager> library,
+        LibraryProjection sut
+    )
+    {
+        // Arrange
+        var projectionRoot = Path.Combine(Path.GetTempPath(), source.Name);
+        var movieRoot = Path.Combine(projectionRoot, "movies");
+        var showRoot = Path.Combine(projectionRoot, "shows");
+        source.Locations = [movieRoot, showRoot];
+        files.SetupGet(value => value.Root).Returns(projectionRoot);
+        library.Setup(value => value.GetVirtualFolders(false)).Returns([source]);
+        var collectionId = Guid.Parse(source.ItemId);
+        library.Setup(value => value.GetItemById(collectionId)).Returns((BaseItem?)null);
+        library.Setup(value => value.FindByPath(movieRoot, true)).Returns(movies);
+        library.Setup(value => value.FindByPath(showRoot, true)).Returns(shows);
+        const int expectedScans = 1;
+
+        // Act
+        await sut.RefreshAsync(CancellationToken.None);
+
+        // Assert
+        movies.ScanCount.Should().Be(expectedScans);
+        shows.ScanCount.Should().Be(expectedScans);
+        movies.Recursive.Should().BeTrue();
+        shows.Recursive.Should().BeTrue();
+        library.VerifyGet(value => value.RootFolder, Times.Never);
+        library.Verify(value => value.GetItemById(collectionId), Times.Once);
+    }
+
+    [Theory, AutoMoqData]
+    internal async Task Should_RegisterAMissingPhysicalRootBeforeScanningItsChildren(
+        VirtualFolderInfo source,
+        ScanProbe root,
+        ScanProbe physical,
+        CancellationTokenSource cancellation,
+        [Frozen] Mock<ILibraryManager> library,
+        LibraryProjection sut
+    )
+    {
+        // Arrange
+        using var lifetime = cancellation;
+        var location = Path.Combine(Path.GetTempPath(), source.Name);
+        source.Locations = [location];
+        library.Setup(value => value.GetVirtualFolders(false)).Returns([source]);
+        var collectionId = Guid.Parse(source.ItemId);
+        library.Setup(value => value.GetItemById(collectionId)).Returns((BaseItem?)null);
+        library.SetupGet(value => value.RootFolder).Returns(root);
+        library.SetupSequence(value => value.FindByPath(location, true)).Returns((BaseItem?)null).Returns(physical);
+        var importedPath = Path.Combine(location, source.Name);
+        const int expectedScans = 1;
+        const int expectedLookups = 2;
+
+        // Act
+        await sut.IndexImportedAsync(importedPath, lifetime.Token);
+
+        // Assert
+        root.ScanCount.Should().Be(expectedScans);
+        root.Recursive.Should().BeFalse();
+        root.CancellationToken.Should().Be(lifetime.Token);
+        physical.ScanCount.Should().Be(expectedScans);
+        physical.Recursive.Should().BeTrue();
+        physical.CancellationToken.Should().Be(lifetime.Token);
+        library.Verify(value => value.FindByPath(location, true), Times.Exactly(expectedLookups));
+    }
+
+    [Theory, AutoMoqData]
+    internal async Task Should_LeaveAnUnresolvedPhysicalRootAfterOneShallowRefresh(
+        VirtualFolderInfo source,
+        ScanProbe root,
+        CancellationTokenSource cancellation,
+        [Frozen] Mock<ILibraryManager> library,
+        LibraryProjection sut
+    )
+    {
+        // Arrange
+        using var lifetime = cancellation;
+        var location = Path.Combine(Path.GetTempPath(), source.Name);
+        source.Locations = [location];
+        library.Setup(value => value.GetVirtualFolders(false)).Returns([source]);
+        var collectionId = Guid.Parse(source.ItemId);
+        library.Setup(value => value.GetItemById(collectionId)).Returns((BaseItem?)null);
+        library.SetupGet(value => value.RootFolder).Returns(root);
+        library.Setup(value => value.FindByPath(location, true)).Returns((BaseItem?)null);
+        var importedPath = Path.Combine(location, source.Name);
+        const int expectedScans = 1;
+        const int expectedLookups = 2;
+
+        // Act
+        await sut.IndexImportedAsync(importedPath, lifetime.Token);
+
+        // Assert
+        root.ScanCount.Should().Be(expectedScans);
+        root.Recursive.Should().BeFalse();
+        root.CancellationToken.Should().Be(lifetime.Token);
+        library.Verify(value => value.FindByPath(location, true), Times.Exactly(expectedLookups));
+    }
+
+    [Theory, AutoMoqData]
+    internal async Task Should_ScanThePhysicalRootWhenTheVirtualCollectionIdIsInvalid(
+        VirtualFolderInfo source,
+        ScanProbe physical,
+        [Frozen] Mock<ILibraryManager> library,
+        LibraryProjection sut
+    )
+    {
+        // Arrange
+        var location = Path.Combine(Path.GetTempPath(), source.Name);
+        source.Locations = [location];
+        source.ItemId += "-invalid";
+        library.Setup(value => value.GetVirtualFolders(false)).Returns([source]);
+        library.Setup(value => value.FindByPath(location, true)).Returns(physical);
+        var importedPath = Path.Combine(location, source.Name);
+        const int expectedScans = 1;
+
+        // Act
+        await sut.IndexImportedAsync(importedPath, CancellationToken.None);
+
+        // Assert
+        physical.ScanCount.Should().Be(expectedScans);
+        physical.Recursive.Should().BeTrue();
+        library.Verify(value => value.GetItemById(It.IsAny<Guid>()), Times.Never);
+    }
+
     private static void AssertWatchState(LibraryWatchState actual, UserItemData expected)
     {
         actual.Should().NotBeNull();
@@ -378,6 +532,8 @@ public sealed class LibraryProjectionTests
                 .With(value => value.Path).With(value => value.Name).With(value => value.Overview)
             );
             fixture.Customize<Folder>(composer => composer.OmitAutoProperties().With(value => value.Id).With(value => value.Path));
+            fixture.Customize<ScanProbe>(composer => composer.OmitAutoProperties());
+            fixture.Customize<VirtualFolderInfo>(composer => composer.With(value => value.ItemId, () => fixture.Create<Guid>().ToString("N")));
             fixture.Customize<BaseItemDto>(composer => composer.OmitAutoProperties().With(value => value.Id));
             fixture.Customize<SessionInfo>(composer => composer.OmitAutoProperties().With(value => value.NowPlayingItem));
             fixture.Customize<User>(composer => composer.OmitAutoProperties());

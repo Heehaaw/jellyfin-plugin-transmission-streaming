@@ -3,9 +3,11 @@ namespace Jellyfin.Plugin.TransmissionStreaming.Library;
 using global::TransmissionStreaming.Core.Projection;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Library;
+using MediaBrowser.Controller.Providers;
 using MediaBrowser.Controller.Session;
 using MediaBrowser.Model.Dto;
 using MediaBrowser.Model.Entities;
+using MediaBrowser.Model.IO;
 
 /// <summary>Maps Jellyfin indexing, metadata, sessions, and user-data APIs onto host-neutral contracts.</summary>
 internal sealed class LibraryProjection(
@@ -13,7 +15,8 @@ internal sealed class LibraryProjection(
     ILibraryManager library,
     IUserManager users,
     IUserDataManager userData,
-    ISessionManager sessions
+    ISessionManager sessions,
+    IFileSystem fileSystem
 ) : IProjectionLibrary
 {
     public Task RefreshAsync(CancellationToken cancellationToken)
@@ -107,19 +110,54 @@ internal sealed class LibraryProjection(
 
     private async Task RefreshContainingAsync(string path, bool includeDescendants, CancellationToken cancellationToken)
     {
-        foreach (var folder in library.GetVirtualFolders(false))
+        var folders = library.GetVirtualFolders(false);
+        var locations = folders
+            .SelectMany(folder => folder.Locations)
+            .Where(location => IsWithin(location, path) || includeDescendants && IsWithin(path, location))
+            .ToHashSet(StringComparer.Ordinal);
+        var directoryService = new DirectoryService(fileSystem);
+        var refreshOptions = new MetadataRefreshOptions(directoryService);
+        var progress = new Progress<double>();
+        foreach (var location in locations)
         {
-            if (!folder.Locations.Any(location => IsWithin(location, path) || includeDescendants && IsWithin(path, location)))
+            // CollectionFolder validation is a no-op; scan its actual filesystem roots instead.
+            var physicalFolder = await FindPhysicalFolderAsync(location, progress, refreshOptions, cancellationToken).ConfigureAwait(false);
+            if (physicalFolder is null)
             {
                 continue;
             }
 
-            if (Guid.TryParse(folder.ItemId, out var id) && library.GetItemById(id) is Folder item)
-            {
-                var progress = new Progress<double>();
-                await item.ValidateChildren(progress, cancellationToken).ConfigureAwait(false);
-            }
+            await physicalFolder.ValidateChildren(progress, refreshOptions, cancellationToken: cancellationToken).ConfigureAwait(false);
         }
+
+        foreach (var folder in folders.Where(folder => folder.Locations.Any(locations.Contains)))
+        {
+            await RefreshCollectionAsync(folder.ItemId, refreshOptions, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private async Task<Folder?> FindPhysicalFolderAsync(string location, IProgress<double> progress, MetadataRefreshOptions refreshOptions, CancellationToken cancellationToken)
+    {
+        if (library.FindByPath(location, true) is Folder physicalFolder)
+        {
+            return physicalFolder;
+        }
+
+        // Empty library roots may have no indexed Folder. Register newly populated roots without scanning other libraries.
+        var root = library.RootFolder;
+        await root.ValidateChildren(progress, refreshOptions, recursive: false, cancellationToken: cancellationToken).ConfigureAwait(false);
+        return library.FindByPath(location, true) as Folder;
+    }
+
+    private async Task RefreshCollectionAsync(string itemId, MetadataRefreshOptions refreshOptions, CancellationToken cancellationToken)
+    {
+        if (!Guid.TryParse(itemId, out var id) || library.GetItemById(id) is not CollectionFolder collection)
+        {
+            return;
+        }
+
+        // A collection caches its physical root IDs separately from each folder's children.
+        await collection.RefreshMetadata(refreshOptions, cancellationToken).ConfigureAwait(false);
     }
 
     private BaseItem RequiredItem(string id)

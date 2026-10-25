@@ -70,7 +70,16 @@ public sealed class PlaybackFlowTests(JellyfinTestServer sut, ITestOutputHelper 
 
     private async Task<DownloadPlayback> CaptureDownloadAsync(string permanentUrl, string activityAddress, CancellationToken cancellationToken)
     {
-        await sut.AddLibraryAsync("Streaming", sut.ProjectionMoviesPath);
+        await sut.AddLibraryAsync("Streaming", sut.ProjectionMoviesPath, sut.ImportedMoviesPath);
+        // Settle the initial scan while the import root is empty. Handoff must later index the physical folder itself.
+        await sut.WaitForLibraryScanIdleAsync();
+        var folderResponse = await sut.Api.RequestAsync("/Library/VirtualFolders");
+        var folders = folderResponse!.AsArray();
+        var library = folders.Single();
+        var libraryType = JellyfinApi.Value<string>(library, "CollectionType");
+        var locations = JellyfinApi.Field(library, "Locations")!.AsArray();
+        var libraryPaths = locations.Select(path => path!.GetValue<string>()).ToArray();
+
         var itemId = await sut.WaitForItemAsync();
         var overview = await WaitForActivityLinkAsync(itemId, activityAddress);
         var download = await sut.Swarm.ProgressAsync(cancellationToken);
@@ -86,7 +95,7 @@ public sealed class PlaybackFlowTests(JellyfinTestServer sut, ITestOutputHelper 
         };
         var hostUrl = sut.HostStream(permanentUrl);
         var playback = await ProgressivePlayback.CaptureAsync(sut, client, hostUrl, cancellationToken);
-        return new DownloadPlayback(itemId, overview, download.Complete, advertisedPath == permanentUrl, playback);
+        return new DownloadPlayback(itemId, overview, download.Complete, advertisedPath == permanentUrl, playback, libraryType, libraryPaths);
     }
 
     private async Task<string?> WaitForActivityLinkAsync(string itemId, string activityAddress)
@@ -107,7 +116,6 @@ public sealed class PlaybackFlowTests(JellyfinTestServer sut, ITestOutputHelper 
     private async Task<SeedingPlayback> CaptureSeedingAsync(string permanentUrl, CancellationToken cancellationToken)
     {
         await sut.ImportAsync();
-        await sut.AddLibraryAsync("Imported movies", sut.ImportedMoviesPath);
         using var client = new HttpClient
         {
             Timeout = TimeSpan.FromSeconds(60)
@@ -174,6 +182,14 @@ public sealed class PlaybackFlowTests(JellyfinTestServer sut, ITestOutputHelper 
         download.AdvertisedProxy.Should().BeTrue("Jellyfin playback must resolve the projected stream link");
         download.Playback.ShouldMatch(sut.ExpectedBytes, sut.Swarm.PieceSize);
         download.Overview.Should().Contain(activityAddress);
+
+        const string expectedLibraryType = "movies";
+        download.LibraryType.Should().Be(expectedLibraryType);
+        download.LibraryPaths.Should().BeEquivalentTo(new[]
+        {
+            sut.ProjectionMoviesPath,
+            sut.ImportedMoviesPath
+        });
     }
 
     private void AssertSeeding(SeedingPlayback seeding, string projectedItemId)
@@ -224,7 +240,8 @@ public sealed class PlaybackFlowTests(JellyfinTestServer sut, ITestOutputHelper 
         File.Exists(importedFile).Should().BeTrue();
     }
 
-    private sealed record DownloadPlayback(string ItemId, string? Overview, bool WasComplete, bool AdvertisedProxy, ProgressivePlayback Playback);
+    private sealed record DownloadPlayback(string ItemId, string? Overview, bool WasComplete, bool AdvertisedProxy, ProgressivePlayback Playback,
+        string LibraryType, string[] LibraryPaths);
 
     private sealed record SeedingPlayback(byte[] Bytes, string ItemId, bool TorrentComplete, int ActiveCount, int CompletedCount);
 

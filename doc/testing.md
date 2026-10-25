@@ -137,7 +137,9 @@ This makes missing-piece assertions independent of Internet traffic and public-s
 The scenarios exercise discovery before completion, HEAD and range responses, waiting for missing bytes without returning sparse zeros, cancellation, and a bounded stall. They
 complete the torrent and move the file into the simulated arr library. While it remains in Transmission, the same proxy and Jellyfin item retain each viewer's state. After torrent
 removal, the flow waits for native handoff and checks all seven transferred user-data fields, retired capabilities and generated files, bounded history, and retained media. Native
-Jellyfin streaming is then checked after disabling the plugin and restarting the server. A separate scan-race scenario checks duplicate reconciliation during seeding.
+Jellyfin streaming is then checked after disabling the plugin and restarting the server. Both projection and import folders belong to one library configured before completion.
+Its initial scan finishes while the import folder is empty, so library creation or a later global scan cannot mask a failed handoff scan. A separate scan-race scenario checks
+duplicate reconciliation during seeding.
 
 Container readiness checks and bounded condition polling replace fixed startup sleeps. A restarted container can receive a new host port; the test client rebinds while the
 permanent URL inside the test network stays unchanged. Failure diagnostics include sanitized container logs without capability secrets.
