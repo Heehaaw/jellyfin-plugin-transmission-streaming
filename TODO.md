@@ -70,4 +70,5 @@
 - [x] Verify happy paths, playback/import retention, upstream failures, and cleanup across restart in 289 unit, integration, and real-Jellyfin tests.
 - [x] Add an idempotent description link to the administrator activity page, preserving the synopsis and reverse-proxy base path.
 - [x] Verify the description link through download, import, and restart in the real Jellyfin playback test.
-- [ ] Publish v0.1.4 after main CI, install through the Jellyfin repository, and verify The Cycle stays removed.
+- [x] Pass all 295 tests on main, publish v0.1.4 by reusing the exact CI ZIP without release-time builds/tests, and install through the Jellyfin repository.
+- [x] Verify The Cycle is absent from tracking, Jellyfin, and generated files; preserve settings/library/movie identities; click Moana’s description link into the activity listing with its synopsis intact.
