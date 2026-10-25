@@ -28,7 +28,7 @@ saves the reviewed mappings. Each service has an independent namespace, with the
 for examples and checks.
 
 The plugin keeps Jellyfin's XML configuration as its persisted source. A host adapter configures standard .NET options and translates configuration-save events into change
-tokens. Singleton handlers read the current monitored options, while a previously obtained snapshot retains its own mapping values. Core and Logic do not depend on Jellyfin
+tokens. Handlers read the current monitored options, while a previously obtained snapshot retains its own mapping values. Core and Logic do not depend on Jellyfin
 packages or configuration APIs.
 
 ## Discovery
@@ -67,8 +67,8 @@ Infrastructure supplies HTTP clients, physical path confinement, offset reads, a
 waiting and cancellation rules without disk access. The plugin composes these layers
 and adapts them to Jellyfin's configuration, HTTP endpoints, indexing, and user metadata.
 
-Each layer uses feature folders. Infrastructure and the plugin compose their adapters through feature bootstrappers. Logic contains Mediator queries and commands; generated
-registration discovers their internal handlers without per-feature bootstrappers. Service implementations remain internal behind Core contracts. Jellyfin's public entry points
+Each layer uses feature folders and a root Bootstrapper. Logic owns its generated Mediator and handler registration; Plugin composes the Logic and Infrastructure roots with its
+host adapters. Feature bootstrappers group explicit registrations where needed. Logic handlers are discovered without per-feature registration. Service implementations remain internal behind Core contracts. Jellyfin's public entry points
 are the framework-required exceptions. The installed plugin needs no separate server, torrent engine, or database service.
 
 Playback commands carry media identity, output, range, and read options. Each copy creates data-only session state for its cached torrent metadata, timestamps, and imported path.

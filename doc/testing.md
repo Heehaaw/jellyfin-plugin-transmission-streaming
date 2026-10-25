@@ -32,7 +32,7 @@ Run the fast unit and adapter tests without building or discovering the containe
 dotnet test tests/UnitTests.slnx -c Release
 ```
 
-Run the in-process plugin integration tests without containers. These compose DI registrations and verify options reload through the real framework monitor:
+Run the in-process plugin integration tests without containers. These compose DI registrations, verify scoped Mediator/handler reuse and isolation, and check options reload through the real framework monitor:
 
 ```sh
 dotnet test tests-integration/Jellyfin.Plugin.TransmissionStreaming.IntegrationTests -c Release
@@ -121,7 +121,7 @@ Container tests use the real clocks of Jellyfin and Transmission and bounded con
 ## Service integration flow
 
 The integration suite composes real application handlers, HTTP adapters, filesystem access, and the SQLite store through dependency injection. Jellyfin's indexing boundary is
-replaced for these tests, so they can exercise discovery and playback without starting a media server.
+replaced for these tests, so they can exercise discovery and playback without starting a media server. Each discovery or read entry owns a DI scope, matching the host's operation lifetime.
 
 A real Transmission daemon downloads a private synthetic torrent from a controlled local peer. The tests check verified partial reads, exact import matching, persisted identity
 after reopening the application, and playback after torrent removal. Separate scenarios cover an unrelated import, an arr failure, disabled discovery, and Sonarr episode ownership.

@@ -74,6 +74,7 @@ for separate test commands and coverage boundaries, and [installation and releas
 - [Completion, watch history, and rollback](doc/operations.md)
 - [Testing and isolation](doc/testing.md)
 - [Architecture rules](doc/architecture.md)
+- [C# readability and layout](doc/csharp-style.md)
 - [Architecture audit](doc/architecture-audit.md)
 - [Testing guidelines](doc/testing-guidelines.md)
 - [UI guidelines](doc/ui-guidelines.md)

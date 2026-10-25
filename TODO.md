@@ -83,3 +83,6 @@
 - [x] Pass the assembled unit, integration, and real-Jellyfin suites for native handoff and playback independence; verify the final playback-race guards with focused unit tests.
 - [x] Install v0.1.5 locally after a verified full backup; preserve configuration, all five library IDs, all 25 movie IDs, and every user's saved Moana data. Verify the collapsed completion panel at desktop width.
 - [ ] Publish through successful main CI and the tag-only release, then reinstall and verify the existing LXC without interrupting playback.
+
+- [x] Give Logic its own composition root and use scoped Mediator handlers with explicit non-HTTP entry scopes.
+- [x] Complete the readability/formatting pass and scoped-composition regressions; pass all 319 unit, integration, and real-Jellyfin tests.

@@ -4,7 +4,7 @@ Reviewed on 2026-10-25 during native-handoff implementation. This audit distingu
 
 ## Established boundaries
 
-Core has no package dependencies. Logic references Core, Mediator abstractions, and framework options; it has no Jellyfin or Infrastructure dependency. Infrastructure references Core. Plugin composes those layers and owns Jellyfin/HTTP integration.
+Core has no package dependencies. Logic references Core, Mediator, and framework options/DI abstractions; it has no Jellyfin or Infrastructure dependency. Infrastructure references Core. Logic owns its Mediator generation and registrations through its root Bootstrapper. Plugin composes the layer roots and owns Jellyfin/HTTP integration.
 
 Playback progression, prioritization, service-path decisions, resolver visibility, reconciliation, per-user history merging, native handoff, and completion-history retention now live in Logic use cases. Playback state and requests carry data. The adapter store takes a retention limit rather than choosing one.
 

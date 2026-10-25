@@ -17,9 +17,11 @@ Use a public static container with a nested public Query or Command and an inter
 
 Inject interfaces for external behavior. DI creates services; code creates data records. Per-playback state may cache facts and timestamps, but it must not capture services or delegates. Avoid factories whose only purpose is passing a service graph into a request-specific object.
 
-Register generated handlers once at the composition root. Feature bootstrappers compose adapter registrations only when there are registrations to own. Small internal interfaces can live beside their implementation; shared Core contracts remain separate.
+Each layer owns a root Bootstrapper. Logic registers its generated Mediator, handlers, and any other application services. Plugin composes that root with Infrastructure and the host adapters. Hosts and test fixtures call the same Logic entry point, without duplicating its registrations. Feature bootstrappers are needed only for explicit registrations beyond generated handlers. Small internal interfaces can live beside their implementation; shared Core contracts remain separate.
 
 ## State and failure boundaries
+
+Use scoped Mediator and handler registrations. HTTP controllers inherit the host request scope. Background polls, startup initialization, and synchronous resolver hooks own explicit scopes and dispose them after their work. Singleton adapters must not retain scoped handlers.
 
 Use `IOptionsMonitor` for current settings. Rebuild independent snapshots after a Jellyfin save, including copied mapping rows. Do not mutate old snapshots.
 

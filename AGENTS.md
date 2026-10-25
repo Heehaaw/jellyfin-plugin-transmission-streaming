@@ -11,8 +11,11 @@ Read the relevant linked guide before changing that area. Keep changes focused a
 - Inject contracts through DI. Requests and state records carry data, never services, delegates, or factories.
 - Use a public static use-case container, a nested public Query or Command, and a nested internal Handler. Name files `Name.Query.cs` or `Name.Command.cs`.
 - Default implementations to internal. Expose interfaces only where callers need a boundary. A small implementation-local interface can share its class file.
-- Compose adapter registrations through feature bootstrappers. Do not add Logic bootstrappers for generated handlers.
+- Give each layer one root Bootstrapper. Logic owns Mediator and its service graph; the Plugin composes layer roots. Add feature bootstrappers only when a feature needs explicit registrations.
 - Use records and modern C# where useful, central package versions, semantic feature folders, and the repository editorconfig. Avoid partial classes.
+- Use scoped Mediator handlers. HTTP uses the host request scope; singleton hooks and workers create and dispose a scope per entry. Never capture scoped services in singletons.
+- Follow [C# style](doc/csharp-style.md): multiline braces, short methods, guard returns, descriptive names, nearby declarations, and useful helper ordering.
+- Chopped calls use one argument per line and names only with multiple supplied arguments, except required optional-parameter binding. Public results use semantic records, never tuples.
 - Add brief comments for ownership, timing, retries, concurrency, and other non-obvious intent. Document public contracts.
 - Check the [architecture audit](doc/architecture-audit.md) before extending a known mixed responsibility.
 
