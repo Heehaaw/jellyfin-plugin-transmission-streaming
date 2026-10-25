@@ -3,7 +3,6 @@ namespace Jellyfin.Plugin.TransmissionStreaming.ApplicationTests.Playback;
 using AutoFixture;
 using AutoFixture.AutoMoq;
 using FluentAssertions;
-using global::TransmissionStreaming.TestSupport.Testing;
 using Hosting;
 using System.Text.Json.Nodes;
 using Xunit;
@@ -104,7 +103,7 @@ public sealed class DuplicateReconciliationTests(JellyfinTestServer sut, ITestOu
         }
     }
 
-    private sealed class AutoMoqDataAttribute() : AutoDataAttribute(() =>
+    private sealed class AutoMoqDataAttribute() : ApplicationDataAttribute(() =>
         {
             var fixture = new Fixture();
             fixture.Customize(new AutoMoqCustomization());

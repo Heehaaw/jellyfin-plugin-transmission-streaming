@@ -5,6 +5,7 @@
         <OutputType>Exe</OutputType>
     </PropertyGroup>
     <ItemGroup>
+        <ProjectReference Include="../Jellyfin.ApplicationTestHost/Jellyfin.ApplicationTestHost.csproj" ReferenceOutputAssembly="false" />
         <ProjectReference Include="../../../tests-integration/TransmissionStreaming/TransmissionStreaming.TestSupport/TransmissionStreaming.TestSupport.csproj" />
         <ProjectReference Include="../../../src/TransmissionStreaming/Jellyfin.Plugin.TransmissionStreaming/Jellyfin.Plugin.TransmissionStreaming.csproj" ReferenceOutputAssembly="false" />
         <PackageReference Include="Microsoft.Playwright" />
@@ -29,5 +30,9 @@
             <PluginBundle Include="../../../src/TransmissionStreaming/Jellyfin.Plugin.TransmissionStreaming/bin/$(Configuration)/$(TargetFramework)/meta.json" />
         </ItemGroup>
         <Copy SourceFiles="@(PluginBundle)" DestinationFolder="$(OutDir)Plugin" />
+        <ItemGroup>
+            <TestHostBundle Include="../Jellyfin.ApplicationTestHost/bin/$(Configuration)/$(TargetFramework)/Jellyfin.ApplicationTestHost.dll" />
+        </ItemGroup>
+        <Copy SourceFiles="@(TestHostBundle)" DestinationFolder="$(OutDir)TestHost" />
     </Target>
 </Project>

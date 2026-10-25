@@ -19,6 +19,7 @@ public sealed class DiscoveryHostedServiceTests
     [Theory, AutoMoqData]
     internal async Task Should_PollOnlyAtTheConfiguredInterval(
         StreamingOptions source,
+        DiscoveryStatus initial,
         [Frozen] ObservableFakeTimeProvider clock,
         [Frozen] Mock<IOptionsMonitor<StreamingOptions>> configuration,
         [Frozen] Mock<IMediator> mediator,
@@ -38,7 +39,16 @@ public sealed class DiscoveryHostedServiceTests
         );
         mediator.Setup(value => value.Send(It.IsAny<ICommand>(), It.IsAny<CancellationToken>())).Returns(ValueTask.FromResult(Unit.Value));
         var updates = new List<DiscoveryStatus>();
-        status.Setup(value => value.Set(It.IsAny<DiscoveryStatus>())).Callback<DiscoveryStatus>(updates.Add);
+        var latest = initial;
+        status.Setup(value => value.Get()).Returns(() => latest);
+        status.Setup(value => value.Set(It.IsAny<DiscoveryStatus>())).Callback<DiscoveryStatus>(value =>
+        {
+            latest = value;
+            if (!value.IsPolling)
+            {
+                updates.Add(value);
+            }
+        });
         var expectedDelay = TimeSpan.FromSeconds(Math.Clamp(source.PollSeconds, 2, 300));
         var boundaryRemainder = TimeSpan.FromTicks(1);
         var startedAt = clock.GetUtcNow();
@@ -144,6 +154,56 @@ public sealed class DiscoveryHostedServiceTests
         failed.LastFailure.Should().Be(failure.GetType().Name);
         latest.LastSuccessfulPoll.Should().Be(firstSuccessAt + firstDelay + retryDelay);
         latest.LastFailure.Should().BeNull();
+        latest.IsPolling.Should().BeFalse();
+    }
+
+    [Theory, AutoMoqData]
+    internal async Task Should_StayBusyUntilADisabledPollFinishes(
+        StreamingOptions source,
+        DiscoveryStatus initial,
+        [Frozen] ObservableFakeTimeProvider clock,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> configuration,
+        [Frozen] Mock<IMediator> mediator,
+        [Frozen] Mock<IDiscoveryStatus> status,
+        DiscoveryHostedService sut
+    )
+    {
+        // Arrange
+        using var worker = sut;
+        var current = source with
+        {
+            Enabled = true
+        };
+        configuration.SetupGet(value => value.CurrentValue).Returns(() => current);
+        var latest = initial;
+        status.Setup(value => value.Get()).Returns(() => latest);
+        status.Setup(value => value.Set(It.IsAny<DiscoveryStatus>())).Callback<DiscoveryStatus>(value => latest = value);
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var pending = new TaskCompletionSource<Unit>(TaskCreationOptions.RunContinuationsAsynchronously);
+        mediator.Setup(value => value.Send(It.IsAny<ICommand>(), It.IsAny<CancellationToken>()))
+            .Callback(() => entered.SetResult())
+            .Returns(new ValueTask<Unit>(pending.Task));
+
+        // Act
+        await worker.StartAsync(CancellationToken.None);
+        await entered.Task;
+        current = source with
+        {
+            Enabled = false
+        };
+        var whileDisabled = latest.IsPolling;
+        pending.SetResult(Unit.Value);
+        var delay = await clock.NextDelayAsync();
+        var afterDrain = latest.IsPolling;
+        clock.Advance(delay);
+        await clock.NextDelayAsync();
+        await worker.StopAsync(CancellationToken.None);
+
+        // Assert
+        whileDisabled.Should().BeTrue("disabling discovery does not complete its in-flight work");
+        afterDrain.Should().BeFalse();
+        latest.IsPolling.Should().BeFalse();
+        mediator.Verify(value => value.Send(It.IsAny<ICommand>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     private sealed class AutoMoqDataAttribute() : AutoDataAttribute(() =>

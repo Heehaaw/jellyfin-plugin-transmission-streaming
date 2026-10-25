@@ -3,7 +3,6 @@ namespace Jellyfin.Plugin.TransmissionStreaming.ApplicationTests.Playback;
 using AutoFixture;
 using AutoFixture.AutoMoq;
 using FluentAssertions;
-using global::TransmissionStreaming.TestSupport.Testing;
 using Hosting;
 using System.Net;
 using Xunit;
@@ -57,7 +56,7 @@ public sealed class OrphanCleanupTests(JellyfinTestServer sut, ITestOutputHelper
         }
     }
 
-    private sealed class AutoMoqDataAttribute() : AutoDataAttribute(() =>
+    private sealed class AutoMoqDataAttribute() : ApplicationDataAttribute(() =>
         {
             var fixture = new Fixture
             {

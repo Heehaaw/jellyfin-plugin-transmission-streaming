@@ -40,6 +40,7 @@ public sealed class GetStatusTests
         result.Enabled.Should().Be(source.Options.Enabled);
         result.LastSuccessfulPoll.Should().Be(source.Discovery.LastSuccessfulPoll);
         result.LastFailure.Should().Be(source.Discovery.LastFailure);
+        result.IsPolling.Should().Be(source.Discovery.IsPolling);
         result.Completed.Should().ContainSingle().Which.Should().Be(completed);
         var entry = result.Entries.Should().ContainSingle().Subject;
         entry.Id.Should().Be(source.Entry.Id);

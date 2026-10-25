@@ -3,14 +3,12 @@ namespace Jellyfin.Plugin.TransmissionStreaming.ApplicationTests.Catalog;
 using AutoFixture;
 using AutoFixture.AutoMoq;
 using FluentAssertions;
-using global::TransmissionStreaming.TestSupport.Testing;
 using Hosting;
-using Ui;
 using System.Security.Cryptography;
 using System.Text.Json.Nodes;
 using Xunit;
 
-public sealed class CatalogInstallationTests(HeadlessBrowser browser, ITestOutputHelper output)
+public sealed class CatalogInstallationTests(JellyfinApplication application, ITestOutputHelper output)
 {
     [Theory, AutoMoqData]
     internal async Task Should_InstallFromRepositoryAndLoadAfterRestart(CatalogSource source, CatalogInstallation sut)
@@ -36,7 +34,7 @@ public sealed class CatalogInstallationTests(HeadlessBrowser browser, ITestOutpu
             var status = await sut.Api.RequestAsync("/TransmissionStreaming/status");
             var plugins = await sut.Api.RequestAsync("/Plugins");
             var loaded = plugins!.AsArray().Single(plugin => PluginId(plugin) == Guid.Parse(sut.Bundle.Id));
-            await browser.VerifySettingsNavigationAsync(sut.Network, sut.Bundle.Name, cancellationToken);
+            await application.Browser.VerifySettingsNavigationAsync(sut.Network, CatalogInstallation.InternalAddress, sut.Bundle.Name, cancellationToken);
 
             // Assert
             preinstalled!.AsArray().Should().NotContain(plugin => PluginId(plugin) == Guid.Parse(sut.Bundle.Id));
@@ -140,7 +138,7 @@ public sealed class CatalogInstallationTests(HeadlessBrowser browser, ITestOutpu
         return Guid.Parse(JellyfinApi.Value<string>(plugin, "Id"));
     }
 
-    private sealed class AutoMoqDataAttribute() : AutoDataAttribute(() =>
+    private sealed class AutoMoqDataAttribute() : ApplicationDataAttribute(() =>
         {
             var fixture = new Fixture
             {

@@ -27,7 +27,10 @@ public static class GetStatus
             var status = discovery.Get();
             var entries = store.All().Select(ToStatus).ToArray();
             var completed = store.Completed();
-            var result = new StreamingStatus(options.CurrentValue.Enabled, status.LastSuccessfulPoll, status.LastFailure, entries, completed);
+            var result = new StreamingStatus(options.CurrentValue.Enabled, status.LastSuccessfulPoll, status.LastFailure, entries, completed)
+            {
+                IsPolling = status.IsPolling
+            };
             return ValueTask.FromResult(result);
         }
 
@@ -46,7 +49,11 @@ public sealed record StreamingStatus(
     string? LastFailure,
     IReadOnlyList<StreamStatus> Entries,
     IReadOnlyList<CompletedProjection> Completed
-);
+)
+{
+    /// <summary>Whether a discovery attempt is still running, including one started before discovery was disabled.</summary>
+    public bool IsPolling { get; init; }
+}
 
 /// <summary>Progress and reader counts for a single projected title.</summary>
 public sealed record StreamStatus(string Id, string Title, string Status, double Progress, int Readers);

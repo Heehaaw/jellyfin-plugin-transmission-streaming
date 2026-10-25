@@ -39,13 +39,18 @@ internal sealed class DiscoveryHostedService(
 
     private async Task PollAsync(CancellationToken cancellationToken)
     {
-        if (!configuration.CurrentValue.Enabled)
+        // Publish activity before checking Enabled so disabled + idle cannot hide an in-flight poll.
+        status.Set(status.Get() with
         {
-            return;
-        }
-
+            IsPolling = true
+        });
         try
         {
+            if (!configuration.CurrentValue.Enabled)
+            {
+                return;
+            }
+
             // A hosted worker outlives requests; each poll owns and disposes its application scope.
             await using var scope = scopeFactory.CreateAsyncScope();
             var mediator = scope.ServiceProvider.GetRequiredService<IMediator>();
@@ -54,7 +59,8 @@ internal sealed class DiscoveryHostedService(
 
             var successfulPoll = new DiscoveryStatus
             {
-                LastSuccessfulPoll = timeProvider.GetUtcNow()
+                LastSuccessfulPoll = timeProvider.GetUtcNow(),
+                IsPolling = true
             };
             status.Set(successfulPoll);
         }
@@ -72,6 +78,13 @@ internal sealed class DiscoveryHostedService(
             };
             status.Set(failedPoll);
             logger.LogWarning("Transmission discovery failed ({FailureType}). Check connections and paths.", failureType);
+        }
+        finally
+        {
+            status.Set(status.Get() with
+            {
+                IsPolling = false
+            });
         }
     }
 }

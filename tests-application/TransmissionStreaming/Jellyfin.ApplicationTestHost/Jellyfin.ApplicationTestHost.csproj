@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <IsPackable>false</IsPackable>
+    </PropertyGroup>
+    <ItemGroup>
+        <FrameworkReference Include="Microsoft.AspNetCore.App" />
+        <PackageReference Include="Jellyfin.Controller" ExcludeAssets="runtime" />
+        <PackageReference Include="Jellyfin.Model" ExcludeAssets="runtime" />
+        <PackageReference Include="Microsoft.Data.Sqlite.Core" ExcludeAssets="runtime" />
+        <ProjectReference Include="../../../src/TransmissionStreaming/TransmissionStreaming.Core/TransmissionStreaming.Core.csproj" />
+    </ItemGroup>
+</Project>

@@ -13,13 +13,19 @@ public abstract class AutoDataAttribute(Func<IFixture> createFixture) : DataAttr
 {
     public override async ValueTask<IReadOnlyCollection<ITheoryDataRow>> GetData(MethodInfo testMethod, DisposalTracker disposalTracker)
     {
-        var containers = await TestContext.Current.GetFixture<DownloadServices>()
-                         ?? throw new InvalidOperationException("Register DownloadServices as an xUnit assembly fixture.");
         var fixture = createFixture();
-        fixture.Inject(containers);
+        await CustomizeAsync(fixture);
         var context = new SpecimenContext(fixture);
         var arguments = testMethod.GetParameters().Select(context.Resolve).ToArray();
         return [new TheoryDataRow(arguments)];
+    }
+
+    /// <summary>Injects the assembly-owned external services before resolving generated test inputs.</summary>
+    protected virtual async ValueTask CustomizeAsync(IFixture fixture)
+    {
+        var containers = await TestContext.Current.GetFixture<DownloadServices>()
+                         ?? throw new InvalidOperationException("Register DownloadServices as an xUnit assembly fixture.");
+        fixture.Inject(containers);
     }
 
     public override bool SupportsDiscoveryEnumeration()

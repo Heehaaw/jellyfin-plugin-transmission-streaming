@@ -24,7 +24,7 @@ public sealed class HeadlessBrowser : IAsyncLifetime
         return ValueTask.CompletedTask;
     }
 
-    internal async Task VerifySettingsNavigationAsync(INetwork network, string pluginName, CancellationToken cancellationToken)
+    internal async Task VerifySettingsNavigationAsync(INetwork network, Uri address, string pluginName, CancellationToken cancellationToken)
     {
         // Container scenarios are serialized by the assembly's exclusive downloader lease.
         startup ??= StartAsync(network, cancellationToken);
@@ -41,7 +41,7 @@ public sealed class HeadlessBrowser : IAsyncLifetime
         );
         context.SetDefaultTimeout(15_000);
         var page = await context.NewPageAsync();
-        var dashboard = new JellyfinDashboard(page);
+        var dashboard = new JellyfinDashboard(page, address);
         await dashboard.SignInAsync(cancellationToken);
         var plugins = page.GetByRole(
             role: AriaRole.List,

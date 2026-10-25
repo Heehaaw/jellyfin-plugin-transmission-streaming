@@ -10,6 +10,7 @@
         <Project Path="tests-integration/TransmissionStreaming/TransmissionStreaming.IntegrationTests/TransmissionStreaming.IntegrationTests.csproj" />
     </Folder>
     <Folder Name="/tests-application/TransmissionStreaming/">
+        <Project Path="tests-application/TransmissionStreaming/Jellyfin.ApplicationTestHost/Jellyfin.ApplicationTestHost.csproj" />
         <Project Path="tests-application/TransmissionStreaming/Jellyfin.Plugin.TransmissionStreaming.ApplicationTests/Jellyfin.Plugin.TransmissionStreaming.ApplicationTests.csproj" />
     </Folder>
     <Folder Name="/tests/TransmissionStreaming/">

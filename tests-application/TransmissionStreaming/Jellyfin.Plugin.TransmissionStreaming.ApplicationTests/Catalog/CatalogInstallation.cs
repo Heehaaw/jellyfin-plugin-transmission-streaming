@@ -10,6 +10,8 @@ using Xunit;
 /// <summary>Installs exclusively through Jellyfin's repository API, starting with an empty plugin directory.</summary>
 internal sealed class CatalogInstallation(DownloadServices containers) : IAsyncDisposable
 {
+    private const string NetworkAlias = "jellyfin-installation";
+    internal static readonly Uri InternalAddress = new($"http://{NetworkAlias}:{JellyfinContainer.HttpPort}");
     private TorrentScenario? scenario;
     private CatalogServer? catalog;
     private JellyfinContainer? server;
@@ -72,10 +74,17 @@ internal sealed class CatalogInstallation(DownloadServices containers) : IAsyncD
     {
         scenario = await containers.BeginScenarioAsync(cancellationToken);
         workspace = scenario.Workspace;
-        var baseline = await TestContext.Current.GetFixture<JellyfinBaseline>()
-                       ?? throw new InvalidOperationException("Register the Jellyfin baseline assembly fixture.");
-        baseline.Populate(Path.Combine(workspace, "jellyfin"));
-        server = new JellyfinContainer(workspace, containers.Network, installPlugin: false, containers.Workspace);
+        var application = await TestContext.Current.GetFixture<JellyfinApplication>()
+                          ?? throw new InvalidOperationException("Register the Jellyfin application assembly fixture.");
+        application.Baseline.Populate(Path.Combine(workspace, "jellyfin"));
+        // The live playback host stays on this network; the browser must address the fresh installation server.
+        server = new JellyfinContainer(
+            workspace: workspace,
+            network: containers.Network,
+            installPlugin: false,
+            mediaRoot: containers.Workspace,
+            networkAlias: NetworkAlias
+        );
     }
 
     private async Task StartJellyfinAsync(CancellationToken cancellationToken)

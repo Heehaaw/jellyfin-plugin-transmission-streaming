@@ -15,8 +15,9 @@ Assembly fixtures own one Transmission daemon, one C# peer, and their isolated n
 beneath `~/.cache/transmission-streaming-tests`, and removes its torrents and peer state before releasing the lease. Share that location with Docker. Containers stop at assembly
 teardown rather than after every test.
 
-Jellyfin cases retain independent configuration, databases, and media libraries. An empty server is initialized and stopped once; each case copies that baseline before starting
-its own server. This skips repeated migrations without sharing mutable databases or carrying watch state between scenarios. The tests use synthetic media and generated state.
+One application assembly fixture owns the downloader, peer, browser, initialized baseline, and live Jellyfin host. Playback and configuration cases reuse that host while keeping
+separate media paths and viewers. Installation cases copy the stopped baseline into a fresh server so they still begin without the plugin. The tests use synthetic media
+and generated state.
 
 ## Reuse without shared scenario state
 
@@ -28,8 +29,15 @@ Import and handoff cases that begin with completed media prepare a file, add its
 for another peer transfer. Partial playback and the complete download-to-import case still transfer real pieces. Application fixtures release the first piece only when a case
 requests a stream, so configuration checks do not wait for media.
 
-Jellyfin remains a separate process for each scenario. A stopped, empty server baseline amortizes database migrations and initial setup. Each scenario gets its own copied database
-and configuration; mutable library data and watch history are never shared. Installation tests still begin without the plugin and load it through the intended installation path.
+Playback and configuration scenarios reuse one live Jellyfin process. Cleanup disables discovery and waits for `IsPolling` and active readers to drain, removes libraries and
+scenario viewers through Jellyfin's APIs, clears plugin projection and completion rows, restores disabled defaults, and verifies the empty state before releasing the scenario.
+The [test-only helper](../tests-application/TransmissionStreaming/Jellyfin.ApplicationTestHost/README.md) performs the SQLite reset inside Jellyfin so its WAL and pooled
+connections stay coherent. It lives under `tests-application`, is loaded only by the disposable
+playback host, and is excluded from both published plugin ZIPs. A failed reset stops the host and prevents further reuse. The assembly fixture stops Jellyfin and the browser before
+removing download services, networks, and files. Explicit restart assertions remain part of each scenario that tests persistence.
+
+A stopped, empty server baseline still amortizes migrations for installation cases. Each gets its own copied database and configuration, begins without the plugin, and
+loads it through the intended installation path.
 
 ## Run the suites
 
@@ -111,6 +119,16 @@ override after a Jellyfin restart. Playback scenarios use independent Transmissi
 restart, and viewer-history assertions therefore also verify that the explicit mappings drive the real file handoff.
 
 ## Measured runtime
+
+The current nine-case Transmission application suite was measured with warmed images using `dotnet test ... -c Release --no-build`, including fixture setup and teardown:
+
+| Setup | Wall time | Jellyfin containers | Jellyfin starts |
+| --- | ---: | ---: | ---: |
+| Fresh server per scenario | 219.3 s | 10 | 17 |
+| One live playback/configuration host | 171.2 s | 6 | 13 |
+
+The shared host saved 48.1 seconds, or 22%. A separate reuse run took 173.2 seconds. All nine cases passed in both reuse runs, and the seven intentional persistence/install
+restarts remained. Installation cases still use fresh servers. These are local warmed-image measurements, not CI timing guarantees.
 
 The same integration suite was measured before and after preparing verified completed downloads for import-focused cases:
 

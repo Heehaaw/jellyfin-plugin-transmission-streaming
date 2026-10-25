@@ -8,8 +8,10 @@ using System.Text.RegularExpressions;
 using Xunit;
 
 /// <summary>Composes the disposable application and owns every resource through the xUnit fixture lifecycle.</summary>
-public sealed class JellyfinTestServer(DownloadServices containers, JellyfinBaseline baseline) : IAsyncLifetime
+public sealed class JellyfinTestServer(JellyfinApplication application) : IAsyncLifetime
 {
+    private readonly DownloadServices containers = application.Downloads;
+    private readonly JellyfinHost host = application.Host;
     private string workspace = null!;
     private JellyfinContainer? server;
     private JellyfinApi api = null!;
@@ -48,15 +50,20 @@ public sealed class JellyfinTestServer(DownloadServices containers, JellyfinBase
             using var deadline = new CancellationTokenSource(TimeSpan.FromMinutes(4));
             Swarm = await containers.BeginScenarioAsync(deadline.Token);
             workspace = Swarm.Workspace;
-            baseline.Populate(Path.Combine(workspace, "jellyfin"));
-            server = new JellyfinContainer(workspace, containers.Network, true, containers.Workspace);
-            await server.StartAsync(deadline.Token);
+            server = await host.GetOrStartAsync(containers, application.Baseline, deadline.Token);
             api = new JellyfinApi(Address);
-            administrator = await api.AuthenticateAsync();
-            // This authenticated call proves that plugin discovery composed the real DI graph.
-            await api.RequestAsync("/TransmissionStreaming/status");
-
-            var media = await server.CreateVideoAsync(deadline.Token);
+            await api.AuthenticateAsync();
+            // A fresh viewer owns this scenario's history; the infrastructure administrator survives resets.
+            var viewer = await api.RequestAsync("/Users/New", new
+            {
+                Name = "scenario-" + Guid.NewGuid().ToString("N")
+            });
+            administrator = JellyfinApi.Value<string>(viewer, "Id");
+            var policy = JellyfinApi.Field(viewer, "Policy")!.DeepClone().AsObject();
+            policy["IsAdministrator"] = true;
+            await api.RequestAsync($"/Users/{administrator}/Policy", policy);
+            var media = host.ReferenceVideo;
+            await File.WriteAllBytesAsync(Path.Combine(workspace, "reference.mkv"), media, deadline.Token);
             await Swarm.AddAsync(media, "Prototype Movie.mkv", deadline.Token);
             Arr = await ArrStub.StartAsync(workspace, containers.Network, Swarm, deadline.Token);
             ComposeAdapters();
@@ -139,7 +146,7 @@ public sealed class JellyfinTestServer(DownloadServices containers, JellyfinBase
         // retain their network alias, while the test client must bind the current host port.
         api.Dispose();
         api = new JellyfinApi(Address);
-        administrator = await api.AuthenticateAsync();
+        await api.AuthenticateAsync();
         ComposeAdapters();
         await api.RequestAsync("/TransmissionStreaming/status");
     }
@@ -163,14 +170,15 @@ public sealed class JellyfinTestServer(DownloadServices containers, JellyfinBase
     {
         try
         {
-            api?.Dispose();
-            if (server is not null)
+            if (api is not null && server is not null)
             {
-                await server.DisposeAsync();
+                using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(45));
+                await host.ResetAsync(api, deadline.Token);
             }
         }
         finally
         {
+            api?.Dispose();
             if (Swarm is not null)
             {
                 await Swarm.DisposeAsync();

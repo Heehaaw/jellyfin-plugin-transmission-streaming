@@ -4,6 +4,7 @@ using DotNet.Testcontainers.Builders;
 using DotNet.Testcontainers.Containers;
 using DotNet.Testcontainers.Networks;
 using global::TransmissionStreaming.TestSupport;
+using System.Text.Json.Nodes;
 
 /// <summary>Packages the built plugin and owns one fresh Jellyfin process and its persistent configuration.</summary>
 internal sealed class JellyfinContainer : IAsyncDisposable
@@ -18,7 +19,7 @@ internal sealed class JellyfinContainer : IAsyncDisposable
     private readonly string mediaRoot;
     private readonly IContainer container;
 
-    public JellyfinContainer(string workspace, INetwork network, bool installPlugin, string? mediaRoot = null)
+    public JellyfinContainer(string workspace, INetwork network, bool installPlugin, string? mediaRoot = null, string networkAlias = NetworkAlias)
     {
         this.workspace = workspace;
         this.mediaRoot = mediaRoot ?? workspace;
@@ -28,7 +29,7 @@ internal sealed class JellyfinContainer : IAsyncDisposable
         container = new ContainerBuilder(Image)
             .WithCreateParameterModifier(parameters => parameters.User = ContainerIdentity.User)
             .WithNetwork(network)
-            .WithNetworkAliases(NetworkAlias)
+            .WithNetworkAliases(networkAlias)
             .WithPortBinding(HttpPort, true)
             .WithBindMount(configuration, "/config")
             .WithBindMount(cache, "/cache")
@@ -93,6 +94,14 @@ internal sealed class JellyfinContainer : IAsyncDisposable
         if (installPlugin)
         {
             PluginBundle.BuildOutput.InstallTo(Path.Combine(configuration, "plugins"));
+            var pluginDirectory = Path.Combine(configuration, "plugins", PluginBundle.BuildOutput.FolderName);
+            const string testAssembly = "Jellyfin.ApplicationTestHost.dll";
+            File.Copy(Path.Combine(AppContext.BaseDirectory, "TestHost", testAssembly), Path.Combine(pluginDirectory, testAssembly));
+            // Load fixture controls in the plugin's own assembly context so Core service identities match.
+            var metadataPath = Path.Combine(pluginDirectory, "meta.json");
+            var metadata = JsonNode.Parse(File.ReadAllText(metadataPath))!;
+            metadata["assemblies"]!.AsArray().Add(testAssembly);
+            File.WriteAllText(metadataPath, metadata.ToJsonString());
         }
 
         var settings = Directory.CreateDirectory(Path.Combine(configuration, "config")).FullName;
