@@ -22,7 +22,7 @@ internal static class Catalog
         var existing = previous.SingleOrDefault(package => package.Guid == descriptor.Guid);
         if (existing?.Versions.Any(version => version.Version == descriptor.Version) == true)
         {
-            throw new InvalidOperationException("The catalog already contains this plugin version. Increment metadata before publishing another release.");
+            throw new InvalidOperationException("The catalog already contains this plugin version. Choose a new release tag before publishing another release.");
         }
 
         await using var archive = File.OpenRead(archivePath);

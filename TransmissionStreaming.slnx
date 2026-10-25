@@ -4,7 +4,6 @@
         <Project Path="src/TransmissionStreaming.Logic/TransmissionStreaming.Logic.csproj" />
     </Folder>
     <Folder Name="/tests-integration/">
-        <Project Path="tests-integration/Jellyfin.Plugin.TransmissionStreaming.IntegrationTests/Jellyfin.Plugin.TransmissionStreaming.IntegrationTests.csproj" />
         <Project Path="tests-integration/TransmissionStreaming.IntegrationTests/TransmissionStreaming.IntegrationTests.csproj" />
     </Folder>
     <Folder Name="/tests-application/">

@@ -16,7 +16,8 @@ public sealed class DownloadServices : IAsyncLifetime
         Timeout = TimeSpan.FromSeconds(15)
     };
 
-    private readonly INetwork network = new NetworkBuilder().Build();
+    private INetwork? network;
+    private Task? startup;
     private IContainer? seed;
     private IContainer? transmission;
     private TransmissionRpcClient rpc = null!;
@@ -28,31 +29,30 @@ public sealed class DownloadServices : IAsyncLifetime
         "assembly-" + Guid.NewGuid().ToString("N")
     );
 
-    internal INetwork Network => network;
+    internal INetwork Network => network ?? throw new InvalidOperationException("Download services have not started.");
     internal Uri RpcUrl => new UriBuilder("http", transmission!.Hostname, transmission.GetMappedPublicPort(SwarmSettings.RpcPort), SwarmSettings.RpcPath).Uri;
     internal Uri ControlUrl => new UriBuilder("http", seed!.Hostname, seed.GetMappedPublicPort(SwarmSettings.HttpPort)).Uri;
     internal TransmissionRpcClient Rpc => rpc;
 
-    /// <summary>Starts shared infrastructure without adding a test torrent or library identity.</summary>
-    public async ValueTask InitializeAsync()
+    /// <summary>Defers shared infrastructure until a scenario actually needs the downloader.</summary>
+    public ValueTask InitializeAsync()
     {
-        using var deadline = new CancellationTokenSource(TimeSpan.FromMinutes(3));
-        var cancellationToken = deadline.Token;
-        try
-        {
-            var bootstrapMedia = new byte[SwarmSettings.PieceSize * 3];
-            var bootstrap = await TorrentWorkspace.PrepareAsync(Workspace, bootstrapMedia, "bootstrap.mkv", cancellationToken);
-            await network.CreateAsync(cancellationToken);
-            seed = SwarmContainers.Seed(bootstrap.SeedRoot, network);
-            transmission = SwarmContainers.Transmission(Workspace, network);
-            await Task.WhenAll(seed.StartAsync(cancellationToken), transmission.StartAsync(cancellationToken));
-            rpc = new TransmissionRpcClient(http, () => RpcUrl);
-        }
-        catch
-        {
-            await DisposeAsync();
-            throw;
-        }
+        // Assembly fixtures also support package and host checks that never require Docker.
+        return ValueTask.CompletedTask;
+    }
+
+    private async Task StartSharedAsync(CancellationToken cancellationToken)
+    {
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        deadline.CancelAfter(TimeSpan.FromMinutes(3));
+        var bootstrapMedia = new byte[SwarmSettings.PieceSize * 3];
+        var bootstrap = await TorrentWorkspace.PrepareAsync(Workspace, bootstrapMedia, "bootstrap.mkv", deadline.Token);
+        network = new NetworkBuilder().Build();
+        await network.CreateAsync(deadline.Token);
+        seed = SwarmContainers.Seed(bootstrap.SeedRoot, network);
+        transmission = SwarmContainers.Transmission(Workspace, network);
+        await Task.WhenAll(seed.StartAsync(deadline.Token), transmission.StartAsync(deadline.Token));
+        rpc = new TransmissionRpcClient(http, () => RpcUrl);
     }
 
     internal async Task<TorrentScenario> BeginScenarioAsync(CancellationToken cancellationToken)
@@ -60,6 +60,9 @@ public sealed class DownloadServices : IAsyncLifetime
         await scenarios.WaitAsync(cancellationToken);
         try
         {
+            // The exclusive scenario lease serializes startup and retains a failure for subsequent callers.
+            startup ??= StartSharedAsync(cancellationToken);
+            await startup;
             await RemoveTorrentsAsync(cancellationToken);
             var path = Path.Combine(Workspace, "scenarios", Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(path);
@@ -178,7 +181,10 @@ public sealed class DownloadServices : IAsyncLifetime
         {
             try
             {
-                await network.DisposeAsync();
+                if (network is not null)
+                {
+                    await network.DisposeAsync();
+                }
             }
             finally
             {

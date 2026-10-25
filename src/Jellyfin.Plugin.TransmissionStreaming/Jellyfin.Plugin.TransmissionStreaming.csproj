@@ -1,7 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <AssemblyName>Jellyfin.Plugin.TransmissionStreaming</AssemblyName>
-        <Version>0.1.6</Version>
+        <!-- Development builds stay neutral; release repacking supplies Version from the tag as a global property. -->
+        <Version Condition="'$(Version)' == ''">0.0.0-dev</Version>
+        <!-- Binary identity stays fixed when a release stamps metadata into an already-built master artifact. -->
+        <AssemblyVersion>1.0.0.0</AssemblyVersion>
         <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
         <RootNamespace>Jellyfin.Plugin.TransmissionStreaming</RootNamespace>
     </PropertyGroup>
@@ -14,11 +17,36 @@
         <ProjectReference Include="../TransmissionStreaming.Infrastructure/TransmissionStreaming.Infrastructure.csproj" />
         <ProjectReference Include="../TransmissionStreaming.Logic/TransmissionStreaming.Logic.csproj" />
         <EmbeddedResource Include="Ui/*.html;Ui/*.css;Ui/*.js" />
-        <None Update="meta.json" CopyToOutputDirectory="PreserveNewest" />
+        <None Update="meta.json" CopyToOutputDirectory="Never" CopyToPublishDirectory="Never" />
     </ItemGroup>
     <ItemGroup>
         <InternalsVisibleTo Include="Jellyfin.Plugin.TransmissionStreaming.Tests" />
-        <InternalsVisibleTo Include="Jellyfin.Plugin.TransmissionStreaming.IntegrationTests" />
+        <InternalsVisibleTo Include="TransmissionStreaming.IntegrationTests" />
         <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
     </ItemGroup>
+    <!-- Normal builds generate development metadata; release repacking invokes this target directly without compilation. -->
+    <!-- Derive the four-part Jellyfin package version from Version, independently of the fixed binary AssemblyVersion. -->
+    <Target Name="GeneratePluginMetadata" AfterTargets="Build">
+        <GetAssemblyVersion NuGetVersion="$(Version)">
+            <Output TaskParameter="AssemblyVersion" PropertyName="PluginMetadataVersion" />
+        </GetAssemblyVersion>
+        <PropertyGroup>
+            <PluginMetadataVersion>$([System.Version]::Parse('$(PluginMetadataVersion)').ToString(4))</PluginMetadataVersion>
+            <PluginMetadataOutputPath Condition="'$(PluginMetadataOutputPath)' == ''">$(TargetDir)meta.json</PluginMetadataOutputPath>
+            <_PluginMetadataTemplatePath>$([MSBuild]::NormalizePath('$(MSBuildProjectDirectory)', 'meta.json'))</_PluginMetadataTemplatePath>
+            <_PluginMetadataDestination>$([MSBuild]::NormalizePath('$(MSBuildProjectDirectory)', '$(PluginMetadataOutputPath)'))</_PluginMetadataDestination>
+        </PropertyGroup>
+        <Error Condition="'$(_PluginMetadataDestination)' == '$(_PluginMetadataTemplatePath)'"
+               Text="Generated plugin metadata must not overwrite the source template." />
+        <PropertyGroup>
+            <_PluginMetadataTemplate>$([System.IO.File]::ReadAllText('$(_PluginMetadataTemplatePath)'))</_PluginMetadataTemplate>
+            <_PluginMetadataContent>$(_PluginMetadataTemplate.Replace('@VERSION@', '$(PluginMetadataVersion)').TrimEnd())</_PluginMetadataContent>
+            <_PluginMetadataDirectory>$([System.IO.Path]::GetDirectoryName('$(_PluginMetadataDestination)'))</_PluginMetadataDirectory>
+        </PropertyGroup>
+        <MakeDir Directories="$(_PluginMetadataDirectory)" />
+        <WriteLinesToFile File="$(_PluginMetadataDestination)"
+                          Lines="$([MSBuild]::Escape($(_PluginMetadataContent)))"
+                          Overwrite="true"
+                          WriteOnlyWhenDifferent="true" />
+    </Target>
 </Project>

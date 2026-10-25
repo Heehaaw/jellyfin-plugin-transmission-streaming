@@ -1,3 +1,3 @@
 namespace Jellyfin.Plugin.TransmissionStreaming.ApplicationTests.Catalog;
 
-internal sealed record CatalogSource(string RepositoryName, Guid RunId);
+internal sealed record CatalogSource(string RepositoryName, Guid RunId, Version ReleaseVersion);

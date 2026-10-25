@@ -66,27 +66,30 @@ jobs:
 
           artifact=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/artifacts" \
             --jq '[.artifacts[] | select(.expired == false and (.name | endswith(".zip")))][0] // empty')
-          mkdir -p artifacts
+          mkdir -p artifacts/input
           if [[ -n "$artifact" ]]; then
             archive_name=$(jq -r '.name' <<< "$artifact")
             download_url=$(jq -r '.archive_download_url' <<< "$artifact")
             # Download the unwrapped plugin ZIP as bytes; gh run download would extract it.
-            gh api "$download_url" > "artifacts/${archive_name}"
+            gh api "$download_url" > "artifacts/input/${archive_name}"
           fi
       - name: Package versioned release and repository manifest
         env:
           RELEASE_TAG: ${{ github.ref_name }}
         shell: bash
         run: |
-          if ! compgen -G 'artifacts/*.zip' > /dev/null; then
-            dotnet run --file scripts/Package.cs
+          if compgen -G 'artifacts/input/*.zip' > /dev/null; then
+            inputs=(artifacts/input/*.zip)
+            dotnet run --file scripts/Package.cs -- --archive "${inputs[0]}" --release-tag "$RELEASE_TAG"
+          else
+            dotnet run --file scripts/Package.cs -- --release-tag "$RELEASE_TAG"
           fi
           archives=(artifacts/*.zip)
           archive="${archives[0]}"
           archive_name=$(basename "$archive")
           release_url="https://github.com/${GITHUB_REPOSITORY}/releases/download/${RELEASE_TAG}/${archive_name}"
           previous_manifest="https://github.com/${GITHUB_REPOSITORY}/releases/latest/download/manifest.json"
-          dotnet run --file scripts/Package.cs --archive "$archive" --source-url "$release_url" --previous-manifest-url "$previous_manifest" --release-tag "$RELEASE_TAG"
+          dotnet run --file scripts/Package.cs -- --archive "$archive" --source-url "$release_url" --previous-manifest-url "$previous_manifest"
       - name: Publish GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}

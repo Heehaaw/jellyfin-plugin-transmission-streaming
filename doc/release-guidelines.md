@@ -16,9 +16,11 @@ Describe pending verification plainly. Passing unit tests or packaging a ZIP doe
 4. Let the tag job publish the plugin ZIP and repository manifest.
 5. Verify Catalog installation and restart through a disposable server, then perform any separately authorized remote installation.
 
-Main and pull-request CI run all tests and package an installable ZIP. Artifacts are retained for 90 days. The tag job reuses the exact successful main artifact and does not rerun tests. If the artifact is missing or expired, it repackages the tagged source after verifying successful main CI.
+Main and pull-request CI run all tests and package an installable ZIP. Artifacts are retained for 90 days. The tag job preserves the successful main artifact's DLLs, generates tag-derived metadata, and repacks the ZIP without rerunning tests. If the artifact is missing or expired, it builds the tagged source before the same promotion step.
 
-The release manifest must describe the ZIP actually published, including its version, source URL, and checksum. Preserve catalog history and serialize competing release jobs.
+The tag is the package-version source of truth. Do not bump release versions in source or mutate the tested DLLs. See [versioning](versioning.md) for the development and promotion flows.
+
+The release manifest must describe the final repacked ZIP, including its version, source URL, and checksum. Preserve catalog history and serialize competing release jobs.
 
 ## Installation evidence
 

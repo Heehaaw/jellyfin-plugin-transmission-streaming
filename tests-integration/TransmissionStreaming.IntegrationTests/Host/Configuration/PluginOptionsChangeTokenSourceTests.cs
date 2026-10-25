@@ -1,8 +1,8 @@
-namespace Jellyfin.Plugin.TransmissionStreaming.IntegrationTests.Configuration;
+namespace TransmissionStreaming.IntegrationTests.Host.Configuration;
 
+using global::TransmissionStreaming.TestSupport.Testing;
 using AutoFixture;
 using AutoFixture.AutoMoq;
-using AutoFixture.Xunit2;
 using FluentAssertions;
 using global::TransmissionStreaming.Core.Configuration;
 using Jellyfin.Plugin.TransmissionStreaming.Configuration;
@@ -18,7 +18,7 @@ public sealed class PluginOptionsChangeTokenSourceTests
     internal void Should_RebuildOptionsOnHostSaveAndUnsubscribeOnDisposal(
         PluginConfiguration source,
         ServiceCollection services,
-        [Frozen] Mock<IPluginSettings> settings,
+        Mock<IPluginSettings> settings,
         ConfigureStreamingOptions configure,
         PluginOptionsChangeTokenSource sut
     )
@@ -75,6 +75,8 @@ public sealed class PluginOptionsChangeTokenSourceTests
                 }
             );
             fixture.Customize<ServiceCollection>(composer => composer.OmitAutoProperties());
+            // The options collaborators observe one host settings source throughout the test.
+            fixture.Freeze<Mock<IPluginSettings>>();
             return fixture;
         }
     );

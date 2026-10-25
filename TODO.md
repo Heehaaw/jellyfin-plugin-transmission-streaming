@@ -50,6 +50,9 @@
 - [x] Provide a stable plugin-repository address.
 - [x] Retain verified build artifacts and recover when they expire.
 - [x] Reuse verified artifacts without repeating release tests.
+- [x] Derive the installed plugin version from release tags.
+- [x] Repack verified artifacts without changing their assemblies.
+- [x] Run lightweight integration checks without starting containers.
 - [x] Preserve configuration, libraries, and viewer history during updates.
 - [x] Verify playback, import, cleanup, history, installation, and restart behavior automatically.
 - [x] Keep automated checks repeatable and efficient.

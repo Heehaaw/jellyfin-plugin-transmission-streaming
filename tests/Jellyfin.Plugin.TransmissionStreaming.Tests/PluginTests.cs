@@ -4,6 +4,7 @@ using AutoFixture;
 using AutoFixture.AutoMoq;
 using AutoFixture.Xunit2;
 using FluentAssertions;
+using Jellyfin.Plugin.TransmissionStreaming.Packaging;
 using MediaBrowser.Common.Configuration;
 using Moq;
 using System.Text.RegularExpressions;
@@ -70,6 +71,21 @@ public sealed class PluginTests
         advertisedNames.Should().Contain(PluginConstants.Ui.Controller).And.Contain(PluginConstants.Ui.Styles);
     }
 
+    [Theory, AutoMoqData]
+    internal void Should_ReportThePackageVersionThroughJellyfin([Frozen] Version version, [Frozen] Mock<IPluginReleaseMetadata> metadata, HostPlugin sut)
+    {
+        // Arrange
+        var assemblyFilePath = sut.AssemblyFilePath;
+
+        // Act
+        var info = sut.GetPluginInfo();
+
+        // Assert
+        sut.Version.Should().Be(version);
+        info.Version.Should().Be(version);
+        metadata.Verify(value => value.ReadVersion(assemblyFilePath), Times.Once);
+    }
+
     private sealed class AutoMoqDataAttribute() : AutoDataAttribute(() =>
         {
             var fixture = new Fixture
@@ -83,6 +99,8 @@ public sealed class PluginTests
                     GenerateDelegates = true
                 }
             );
+            // Package versions differ from the fixed binary identity in this suite.
+            fixture.Register(() => new Version(fixture.Create<byte>() + 2, fixture.Create<byte>(), fixture.Create<byte>(), fixture.Create<byte>()));
             fixture.Customize<HostPlugin>(composer => composer.OmitAutoProperties());
             return fixture;
         }

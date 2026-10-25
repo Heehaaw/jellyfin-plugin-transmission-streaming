@@ -1,6 +1,7 @@
 namespace Jellyfin.Plugin.TransmissionStreaming;
 
 using Jellyfin.Plugin.TransmissionStreaming.Configuration;
+using Jellyfin.Plugin.TransmissionStreaming.Packaging;
 using MediaBrowser.Common.Configuration;
 using MediaBrowser.Common.Plugins;
 using MediaBrowser.Model.Plugins;
@@ -15,8 +16,15 @@ public sealed class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages, IPlu
 
     public string StateDirectory { get; }
 
-    public Plugin(IApplicationPaths paths, IXmlSerializer xmlSerializer) : base(paths, xmlSerializer)
+    public Plugin(IApplicationPaths paths, IXmlSerializer xmlSerializer, IPluginReleaseMetadata releaseMetadata) : base(paths, xmlSerializer)
     {
+        var releaseVersion = releaseMetadata.ReadVersion(AssemblyFilePath);
+        if (releaseVersion is not null)
+        {
+            // Jellyfin reports package metadata while verified master DLLs retain their original assembly identity.
+            SetAttributes(AssemblyFilePath, DataFolderPath, releaseVersion);
+        }
+
         Instance = this;
         StateDirectory = Path.Combine(paths.DataPath, PluginConstants.DataDirectory);
     }

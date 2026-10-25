@@ -1,51 +1,42 @@
 namespace Jellyfin.Plugin.TransmissionStreaming.ApplicationTests.Catalog;
 
-using Hosting;
-using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 
-/// <summary>Creates the same flat ZIP and manifest shape consumed by Jellyfin's package manager.</summary>
+/// <summary>Serves a tag-stamped package and manifest through Jellyfin's repository protocol.</summary>
 internal static class CatalogPackage
 {
-    public static void Write(string destination, Uri packageUrl, bool corruptChecksum)
+    public static async Task<string> WriteAsync(string destination, Uri packageUrl, bool corruptChecksum, Version version, CancellationToken cancellationToken)
     {
-        var bundle = PluginBundle.BuildOutput;
-        Directory.CreateDirectory(destination);
+        var release = await TaggedCatalogPackage.CreateAsync(destination, version, cancellationToken);
+        var metadata = release.Descriptor;
         var packagePath = Path.Combine(destination, "package.zip");
-        using (var archive = ZipFile.Open(packagePath, ZipArchiveMode.Create))
-        {
-            foreach (var name in bundle.Assemblies.Append("meta.json"))
-            {
-                archive.CreateEntryFromFile(Path.Combine(bundle.Directory, name), name);
-            }
-        }
+        File.Copy(release.ArchivePath, packagePath);
 
-        using var zip = File.OpenRead(packagePath);
+        await using var zip = File.OpenRead(packagePath);
         // Jellyfin's repository protocol requires MD5, rather than a security signature.
-        var checksum = Convert.ToHexStringLower(MD5.HashData(zip));
+        var checksumBytes = await MD5.HashDataAsync(zip, cancellationToken);
+        var checksum = Convert.ToHexStringLower(checksumBytes);
         if (corruptChecksum)
         {
             checksum = (checksum[0] == '0' ? "1" : "0") + checksum[1..];
         }
 
-        var metadata = JsonNode.Parse(File.ReadAllText(Path.Combine(bundle.Directory, "meta.json")));
         var manifest = new[]
         {
             new
             {
-                guid = bundle.Id,
-                name = bundle.Name,
-                description = JellyfinApi.Value<string>(metadata, "description"),
-                owner = JellyfinApi.Value<string>(metadata, "owner"),
-                category = JellyfinApi.Value<string>(metadata, "category"),
+                guid = metadata.Guid,
+                name = metadata.Name,
+                description = metadata.Description,
+                owner = metadata.Owner,
+                category = metadata.Category,
                 versions = new[]
                 {
                     new
                     {
-                        version = bundle.Version,
-                        targetAbi = JellyfinApi.Value<string>(metadata, "targetAbi"),
+                        version = metadata.Version,
+                        targetAbi = metadata.TargetAbi,
                         sourceUrl = packageUrl.AbsoluteUri,
                         checksum,
                         timestamp = DateTimeOffset.UtcNow,
@@ -54,6 +45,9 @@ internal static class CatalogPackage
                 }
             }
         };
-        File.WriteAllText(Path.Combine(destination, "manifest.json"), JsonSerializer.Serialize(manifest));
+        var manifestPath = Path.Combine(destination, "manifest.json");
+        var contents = JsonSerializer.Serialize(manifest);
+        await File.WriteAllTextAsync(manifestPath, contents, cancellationToken);
+        return metadata.Version;
     }
 }

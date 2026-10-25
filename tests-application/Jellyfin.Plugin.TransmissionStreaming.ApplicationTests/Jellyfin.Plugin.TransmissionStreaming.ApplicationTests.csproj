@@ -15,6 +15,9 @@
         <PackageReference Include="FluentAssertions" />
     </ItemGroup>
     <ItemGroup>
+        <Compile Include="../../scripts/Packaging/*.cs" Link="Packaging/%(Filename)%(Extension)" />
+    </ItemGroup>
+    <ItemGroup>
         <None Update="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
     </ItemGroup>
     <Target Name="CopyPluginBundle" AfterTargets="Build">

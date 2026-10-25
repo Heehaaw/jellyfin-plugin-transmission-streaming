@@ -29,6 +29,38 @@ internal static class PluginBundle
         return archivePath;
     }
 
+    public static async Task<string> RepackAsync(
+        string sourcePath,
+        string metadataPath,
+        PluginDescriptor descriptor,
+        string outputDirectory,
+        CancellationToken cancellationToken
+    )
+    {
+        Directory.CreateDirectory(outputDirectory);
+        var destinationPath = Path.Combine(outputDirectory, descriptor.ArchiveName);
+        var stagingPath = Path.ChangeExtension(metadataPath, ".zip");
+        using (var source = ZipFile.OpenRead(sourcePath))
+        using (var destination = ZipFile.Open(stagingPath, ZipArchiveMode.Create))
+        {
+            foreach (var assembly in descriptor.Assemblies)
+            {
+                var original = source.GetEntry(assembly) ?? throw new InvalidDataException($"The verified artifact is missing {assembly}.");
+                var copied = destination.CreateEntry(assembly, CompressionLevel.Optimal);
+                copied.LastWriteTime = original.LastWriteTime;
+                await using var input = original.Open();
+                await using var output = copied.Open();
+                await input.CopyToAsync(output, cancellationToken);
+            }
+
+            destination.CreateEntryFromFile(metadataPath, PluginDescriptor.FileName, CompressionLevel.Optimal);
+        }
+
+        // Close both ZIPs first so an already-versioned input can be replaced on every supported platform.
+        File.Move(stagingPath, destinationPath, overwrite: true);
+        return destinationPath;
+    }
+
     private static IEnumerable<string> BundleFiles(PluginDescriptor descriptor)
     {
         return descriptor.Assemblies.Append(PluginDescriptor.FileName);

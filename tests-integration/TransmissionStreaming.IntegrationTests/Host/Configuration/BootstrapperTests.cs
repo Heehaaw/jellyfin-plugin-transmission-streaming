@@ -1,8 +1,8 @@
-namespace Jellyfin.Plugin.TransmissionStreaming.IntegrationTests.Configuration;
+namespace TransmissionStreaming.IntegrationTests.Host.Configuration;
 
 using AutoFixture;
 using AutoFixture.AutoMoq;
-using AutoFixture.Xunit2;
+using global::TransmissionStreaming.TestSupport.Testing;
 using FluentAssertions;
 using global::TransmissionStreaming.Core.Configuration;
 using Jellyfin.Plugin.TransmissionStreaming.Configuration;

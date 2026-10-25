@@ -14,7 +14,7 @@ internal static class DevelopmentInstall
         return (await DotnetAsync(root, ["msbuild", project, "-property:Configuration=Debug", "-getProperty:TargetDir", "-nologo"], cancellationToken)).Trim();
     }
 
-    private static string FindRepositoryRoot()
+    internal static string FindRepositoryRoot()
     {
         for (var directory = new DirectoryInfo(AppContext.BaseDirectory); directory is not null; directory = directory.Parent)
         {

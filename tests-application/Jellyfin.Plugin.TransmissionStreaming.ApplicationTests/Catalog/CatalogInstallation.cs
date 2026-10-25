@@ -16,7 +16,7 @@ internal sealed class CatalogInstallation(DownloadServices containers) : IAsyncD
     private string? workspace;
     private Uri? repositoryUrl;
 
-    public PluginBundle Bundle => PluginBundle.BuildOutput;
+    public PluginBundle Bundle => catalog?.Bundle ?? PluginBundle.BuildOutput;
     public string InstalledDirectory => Path.Combine(workspace!, "jellyfin", "plugins", Bundle.FolderName);
     public JellyfinApi Api => api!;
 
@@ -37,7 +37,7 @@ internal sealed class CatalogInstallation(DownloadServices containers) : IAsyncD
         await PrepareAsync(source, cancellationToken);
         if (repository is null)
         {
-            catalog = new CatalogServer(containers, scenario!, corruptChecksum);
+            catalog = new CatalogServer(containers, scenario!, corruptChecksum, source.ReleaseVersion);
             await catalog.StartAsync(cancellationToken);
         }
 

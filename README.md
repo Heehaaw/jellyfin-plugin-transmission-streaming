@@ -62,8 +62,8 @@ With a local Docker-compatible daemon running:
 dotnet test TransmissionStreaming.slnx -c Release
 ```
 
-Main-branch CI and pull requests run these suites and retain an installable ZIP for 90 days. After main CI passes, a version tag publishes its ZIP and updates the Jellyfin
-repository manifest without rerunning tests. Missing or expired artifacts are rebuilt from the tagged commit. See [testing](doc/testing.md)
+Main-branch CI and pull requests run these suites and retain an installable ZIP for 90 days. After main CI passes, a version tag repacks its tested DLLs with release metadata
+and updates the Jellyfin repository manifest without rerunning tests. Missing or expired artifacts are rebuilt from the tagged commit. See [versioning](doc/versioning.md) and [testing](doc/testing.md)
 for separate test commands and coverage boundaries, and [installation and releases](doc/installation.md) for the two installation flows.
 
 ## Further reading

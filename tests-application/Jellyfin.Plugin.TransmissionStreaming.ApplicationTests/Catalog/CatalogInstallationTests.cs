@@ -42,6 +42,11 @@ public sealed class CatalogInstallationTests(ITestOutputHelper output)
             JellyfinApi.Value<bool>(pending, "HasPendingRestart").Should().BeTrue();
             installedFiles.Should().BeEquivalentTo(sut.Bundle.Assemblies.Append("meta.json"));
             JellyfinApi.Value<string>(loaded, "Version").Should().Be(sut.Bundle.Version);
+            if (repository is null)
+            {
+                sut.Bundle.Version.Should().Be(source.ReleaseVersion.ToString(4));
+                await AssertInstalledAssembliesAsync(sut, cancellationToken);
+            }
             JellyfinApi.Value<string>(loaded, "Status").Should().Be(expectedPluginStatus);
             JellyfinApi.Value<bool>(status, "Enabled").Should().BeFalse("repository installation must retain the safe disabled default");
         }
@@ -113,6 +118,20 @@ public sealed class CatalogInstallationTests(ITestOutputHelper output)
         }
     }
 
+    private static async Task AssertInstalledAssembliesAsync(CatalogInstallation installation, CancellationToken cancellationToken)
+    {
+        foreach (var assembly in installation.Bundle.Assemblies)
+        {
+            var originalPath = Path.Combine(installation.Bundle.Directory, assembly);
+            var installedPath = Path.Combine(installation.InstalledDirectory, assembly);
+            await using var original = File.OpenRead(originalPath);
+            await using var installed = File.OpenRead(installedPath);
+            var expectedHash = await SHA256.HashDataAsync(original, cancellationToken);
+            var installedHash = await SHA256.HashDataAsync(installed, cancellationToken);
+            installedHash.Should().Equal(expectedHash, "release repacking must retain the verified master DLL bytes");
+        }
+    }
+
     private static Guid PluginId(JsonNode? plugin)
     {
         return Guid.Parse(JellyfinApi.Value<string>(plugin, "Id"));
@@ -131,6 +150,8 @@ public sealed class CatalogInstallationTests(ITestOutputHelper output)
                     GenerateDelegates = true
                 }
             );
+            // Generate all numeric fields; Version's parameterless constructor only supplies two.
+            fixture.Register(() => new Version(fixture.Create<ushort>(), fixture.Create<ushort>(), fixture.Create<ushort>(), fixture.Create<ushort>()));
             return fixture;
         }
     );

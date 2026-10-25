@@ -1,8 +1,10 @@
 # Testing and isolation
 
-Tests use xUnit, AutoFixture/AutoMoq, and FluentAssertions. The unit and in-process plugin integration suites use xUnit v2; the container suites use xUnit v3 assembly fixtures. Container integration and application tests use Testcontainers for .NET with small fixtures owned by this repository. They have no
-SGP-library dependencies. Main-branch CI and pull requests run the complete suite before packaging an artifact. Tagged releases require a successful main push run for that exact
-commit and reuse its ZIP. Missing or expired artifacts are rebuilt from the tagged commit without rerunning tests. See the [release flow](installation.md#published-release-and-repository-flow).
+Tests use xUnit, AutoFixture/AutoMoq, and FluentAssertions. Unit suites use xUnit v2. Integration and application suites use xUnit v3, with shared fixtures for scenarios that
+need containers. The integration project groups host wiring, packaging, and service flows by feature. Main CI verifies the complete suite before publishing a retained artifact;
+tag jobs promote its DLLs with release metadata and rerun no tests.
+
+See [category rules](testing-guidelines.md#choose-the-category) for deciding where a test belongs. Packaging and installed-metadata file checks live in integration suites.
 
 ## Prerequisites
 
@@ -32,17 +34,20 @@ Run the fast unit and adapter tests without building or discovering the containe
 dotnet test tests/UnitTests.slnx -c Release
 ```
 
-Run the in-process plugin integration tests without containers. These compose DI registrations, verify scoped Mediator/handler reuse and isolation, and check options reload through the real framework monitor:
-
-```sh
-dotnet test tests-integration/Jellyfin.Plugin.TransmissionStreaming.IntegrationTests -c Release
-```
-
-Run the service integration tests:
+Run the single integration project:
 
 ```sh
 dotnet test tests-integration/TransmissionStreaming.IntegrationTests -c Release
 ```
+
+Run only host wiring and packaging checks without starting containers:
+
+```sh
+dotnet test tests-integration/TransmissionStreaming.IntegrationTests -c Release \
+  --filter "FullyQualifiedName~Host|FullyQualifiedName~Packaging"
+```
+
+Downloader services start only when a scenario borrows them. Filtered host and packaging checks need no Docker daemon; service flows retain shared containers and isolated data.
 
 Run the Jellyfin application tests:
 
@@ -63,7 +68,8 @@ The suites divide responsibilities so failures point to a specific behavior:
 | Layer | Behaviors |
 | --- | --- |
 | Unit | Service-path suggestions, mount confinement, range and piece boundaries, ownership and video selection, import validation, authorization, reader cleanup, virtual deadlines and caches, status, history merging, and host adapters. |
-| Plugin integration | Jellyfin-owned settings, DI composition, options snapshots and live reload, and change-subscription disposal without starting a server. |
+| Plugin integration | Jellyfin-owned settings, DI composition, options snapshots and live reload, installed metadata, and subscription disposal without starting a server. |
+| Packaging integration | Tag normalization, generated package metadata, archive contents, missing files, repeat repacking, and preservation of tested DLL bytes. |
 | Component integration | Real handlers, HTTP adapters, SQLite, projection files, and Transmission working together across discovery, playback, import through independent arr mounts, and application restart. |
 | Jellyfin application | Actual plugin loading and DI, indexing unfinished media, HTTP delivery and video decoding, duplicate reconciliation, per-user history, server restart, and installation. |
 
@@ -77,6 +83,9 @@ mapping, persistence, authorization, and service composition rather than tests t
 
 Each behavior-bearing unit gets a happy-path call plus tests for meaningful branches, loops, main failures, and obvious edge cases. Property defaults and metadata declarations
 do not need separate assertion-only tests. Integration and application tests establish whether the assembled plugin performs its intended work; coverage percentages are not a target.
+
+The repository installation flow promotes a development bundle to a tag-derived version without compiling it again, then checks Jellyfin's displayed version after restart and
+compares every installed DLL with the master bundle. The final ZIP and catalog checksum describe the repacked package.
 
 The playback flow verifies the description activity link while downloading, after import, and across restart, including duplicate-link prevention.
 
@@ -163,10 +172,11 @@ After publishing a release, verify the actual public repository with:
 ```sh
 TRANSMISSION_STREAMING_TEST_REPOSITORY="https://github.com/Heehaaw/jellyfin-plugin-transmission-streaming/releases/latest/download/manifest.json" \
   dotnet test tests-application/Jellyfin.Plugin.TransmissionStreaming.ApplicationTests -c Release \
-  --filter FullyQualifiedName~Should_InstallFromRepositoryAndLoadAfterRestart
+  -p:Version=1.2.3 --filter FullyQualifiedName~Should_InstallFromRepositoryAndLoadAfterRestart
 ```
 
-Use a checkout whose plugin version matches the release. This probe creates a disposable Jellyfin instance and installs the published ZIP. The regular suite uses its controlled
+Replace the example Version with the published package version and use the matching tagged checkout. The property sets the probe's expected package metadata; the installed DLLs
+come from the public release. This probe creates a disposable Jellyfin instance and installs the published ZIP. The regular suite uses its controlled
 local repository, so CI can verify a new version before that version is released.
 
 [Back to README](../README.md)

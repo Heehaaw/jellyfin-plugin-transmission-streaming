@@ -62,23 +62,29 @@ internal sealed record PackageOptions(Uri? SourceUrl, Uri? PreviousManifestUrl, 
         return uri;
     }
 
+    public Version? ReleaseVersion
+    {
+        get
+        {
+            if (ReleaseTag is null)
+            {
+                return null;
+            }
+
+            var value = ReleaseTag.StartsWith('v') ? ReleaseTag[1..] : ReleaseTag;
+            if (!Version.TryParse(value, out var version))
+            {
+                throw new ArgumentException("Release tags must contain a numeric version, optionally prefixed with v.");
+            }
+
+            return Normalize(version);
+        }
+    }
+
     public void ValidateVersion(string version)
     {
-        if (ReleaseTag is null)
-        {
-            return;
-        }
-
-        var tagVersion = ReleaseTag.StartsWith('v') ? ReleaseTag[1..] : ReleaseTag;
-        if (!Version.TryParse(tagVersion, out var parsed))
-        {
-            throw new ArgumentException(VersionMismatch);
-        }
-
-        var metadataVersion = Version.Parse(version);
-        var expected = Normalize(metadataVersion);
-        var supplied = Normalize(parsed);
-        if (supplied != expected)
+        var expected = ReleaseVersion;
+        if (expected is not null && Normalize(Version.Parse(version)) != expected)
         {
             throw new ArgumentException(VersionMismatch);
         }

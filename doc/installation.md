@@ -8,13 +8,14 @@ repository and Catalog.
 Install the .NET 10 SDK and clone the repository. Stop the development Jellyfin server, then run from the checkout:
 
 ```sh
-dotnet run --file scripts/Install.cs --plugins-dir "/path/to/jellyfin/plugins"
+dotnet run --file scripts/Install.cs -- --plugins-dir "/path/to/jellyfin/plugins"
 ```
 
-The command builds Debug and copies the plugin's declared assemblies and metadata into a versioned directory beneath the chosen root. Use `--configuration Release` for Release.
+The command builds Debug and copies the plugin's declared assemblies and generated metadata into a versioned directory beneath the chosen root. Add `--configuration Release`
+after the CLI separator for a Release build.
 It does not control the Jellyfin service. Make the resulting files readable by its service account, then start or restart Jellyfin to load them.
 
-The destination name comes from plugin metadata. For version `0.1.0.0` it is `Transmission Streaming_0.1.0.0`, matching the directory Jellyfin's Catalog installer creates.
+The destination name comes from plugin metadata. Development builds use `Transmission Streaming_0.0.0.0`; published packages use the tag-derived version in the same format.
 If you previously installed the same plugin manually under another folder name, keep only one installation of that version before restarting.
 
 Typical plugin roots are `/var/lib/jellyfin/plugins/` for native Linux and `/config/plugins/` inside the Jellyfin container. Choose the path belonging to the server you intend to
@@ -49,18 +50,20 @@ flowchart LR
     P[Push main] --> C[Build and all tests]
     C --> T[Tag the passing commit]
     T --> V[Require successful main CI]
-    V --> Z[Reuse ZIP or rebuild if absent]
-    Z --> R[GitHub Release]
+    V --> Z[Reuse DLLs or rebuild if absent]
+    Z --> P2[Stamp tag metadata and repack]
+    P2 --> R[GitHub Release]
     R --> M[Stable repository manifest URL]
     M --> J[Jellyfin Catalog install]
     J --> S[Restart Jellyfin]
 ```
 
-Push the release commit to `main` and let CI pass, then create a `v` version tag on that same commit. The tag must match the version in plugin metadata; a missing fourth version
-component is treated as zero. For example, `v0.1.0` matches metadata version `0.1.0.0`.
+Push the release commit to `main` and let CI pass, then create a numeric `v` version tag on that same commit. The tag determines the package version; for example, `v1.2.3`
+produces `1.2.3.0`. No source-version edit or post-release bump is needed. See [versioning](versioning.md) for development versions and stable assembly identity.
 
-Tag runs require a successful `main` push run for the exact tagged commit. A passing pull-request or manual run cannot substitute for it. The release reuses that run's ZIP bytes
-when available. If the artifact is missing or expired, it builds and packages the same tagged commit. Neither path reruns tests. If the tag arrives before main CI passes, the
+Tag runs require a successful `main` push run for the exact tagged commit. A passing pull-request or manual run cannot substitute for it. The release reuses that run's DLLs,
+generates tag-derived metadata, and repacks the ZIP without compilation. If the artifact is missing or expired, it builds and packages the tagged source. Neither path reruns tests.
+If the tag arrives before main CI passes, the
 release fails immediately; rerun the release job after main CI succeeds.
 
 The release package includes a repository manifest with the plugin identity, version, target Jellyfin ABI, immutable tag-specific ZIP URL, and MD5 checksum of those exact ZIP bytes.

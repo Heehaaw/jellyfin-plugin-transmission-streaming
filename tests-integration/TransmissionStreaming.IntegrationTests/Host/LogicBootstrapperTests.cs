@@ -1,8 +1,8 @@
-namespace Jellyfin.Plugin.TransmissionStreaming.IntegrationTests;
+namespace TransmissionStreaming.IntegrationTests.Host;
 
+using global::TransmissionStreaming.TestSupport.Testing;
 using AutoFixture;
 using AutoFixture.AutoMoq;
-using AutoFixture.Xunit2;
 using FluentAssertions;
 using global::TransmissionStreaming.Logic;
 using global::TransmissionStreaming.Logic.Discovery;
@@ -36,7 +36,7 @@ public sealed class LogicBootstrapperTests
         var expectedIndexes = Enumerable.Range(0, source.Files.Count);
 
         // Act
-        var result = await mediator.Send(source);
+        var result = await mediator.Send(source, TestContext.Current.CancellationToken);
         var repeatedMediator = scopedServices.GetRequiredService<IMediator>();
         var otherMediator = secondScope.ServiceProvider.GetRequiredService<IMediator>();
         var handler = scopedServices.GetRequiredService<IQueryHandler<SelectVideoFiles.Query, SelectVideoFiles.Result>>();
