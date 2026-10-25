@@ -20,47 +20,46 @@ internal sealed class HdrPlayerBrowser : IAsyncDisposable
     {
         await StartAsync(server, cancellationToken);
         await VerifyVideoSelectionAsync(server);
-        await using var context = await browser!.NewContextAsync(new BrowserNewContextOptions
-        {
-            ViewportSize = new ViewportSize
-            {
-                Width = 1600,
-                Height = 1000
-            }
-        });
-        context.SetDefaultTimeout(20_000);
-        var page = await context.NewPageAsync();
         var errors = new List<string>();
-        page.PageError += (_, error) => errors.Add(error);
-        await PlayAsync(page, server);
-        await page.Mouse.MoveAsync(800, 500);
-        await page.Locator(".btnVideoOsdSettings:visible").ClickAsync();
-        await Expect(MenuItem(page, "HDR conversion")).ToBeVisibleAsync();
-        await Expect(MenuItem(page, "Quality")).ToBeVisibleAsync();
-
-        await page.SetViewportSizeAsync(390, 844);
-        await Expect(MenuItem(page, "HDR conversion")).ToBeVisibleAsync();
-        var explanation = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
-        page.Dialog += async (_, dialog) =>
+        foreach (var viewport in new[] { new ViewportSize { Width = 1600, Height = 1000 }, new ViewportSize { Width = 390, Height = 844 } })
         {
-            explanation.TrySetResult(dialog.Message);
-            await dialog.AcceptAsync();
-        };
-        await MenuItem(page, "HDR conversion").ClickAsync();
-        var unavailableReason = await explanation.Task.WaitAsync(TimeSpan.FromSeconds(10), cancellationToken);
-        unavailableReason.Should().Contain("VA-API");
+            // A fresh context evaluates Jellyfin's responsive/player state at the intended size without dismissing an open native sheet.
+            await using var context = await browser!.NewContextAsync(new BrowserNewContextOptions { ViewportSize = viewport });
+            context.SetDefaultTimeout(20_000);
+            var page = await context.NewPageAsync();
+            page.PageError += (_, error) => errors.Add(viewport.Width + ": " + error);
+            await PlayAsync(page, server);
+            await page.Mouse.MoveAsync(viewport.Width / 2, viewport.Height / 2);
+            await page.Locator(".btnVideoOsdSettings:visible").ClickAsync();
+            await Expect(MenuItem(page, "HDR conversion")).ToBeVisibleAsync();
+            await Expect(MenuItem(page, "Quality")).ToBeVisibleAsync();
+            if (viewport.Width > 600)
+            {
+                await MenuItem(page, "Quality").ClickAsync();
+                // Target the native bitrate ID; the closing parent sheet also contains an Auto aside label.
+                var automatic = page.Locator(".actionSheetMenuItem[data-id='0']");
+                await Expect(automatic).ToBeVisibleAsync();
+                await automatic.ClickAsync();
+                await Expect(automatic).ToHaveCountAsync(0);
+            }
+            else
+            {
+                var explanation = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+                page.Dialog += async (_, dialog) =>
+                {
+                    explanation.TrySetResult(dialog.Message);
+                    await dialog.AcceptAsync();
+                };
+                await MenuItem(page, "HDR conversion").ClickAsync();
+                var unavailableReason = await explanation.Task.WaitAsync(TimeSpan.FromSeconds(10), cancellationToken);
+                unavailableReason.Should().Contain("VA-API");
+                await Expect(MenuItem(page, "HDR conversion")).ToHaveCountAsync(0);
+            }
+        }
 
-        await page.SetViewportSizeAsync(1600, 1000);
-        await page.Mouse.MoveAsync(800, 500);
-        await page.Locator(".btnVideoOsdSettings:visible").ClickAsync();
-        await MenuItem(page, "Quality").ClickAsync();
-        await Expect(MenuItem(page, "Auto").First).ToBeVisibleAsync();
-        await MenuItem(page, "Auto").First.ClickAsync();
-        await Expect(MenuItem(page, "Auto")).ToHaveCountAsync(0);
-        await page.CloseAsync();
-        await using var convertedContext = await browser.NewContextAsync();
+        await using var convertedContext = await browser!.NewContextAsync();
         var convertedPage = await convertedContext.NewPageAsync();
-        convertedPage.PageError += (_, error) => errors.Add(error);
+        convertedPage.PageError += (_, error) => errors.Add("converted player: " + error);
         // Isolate the UI contract from this CPU-only server's hardware rejection. Real HDR encoding is a separate GPU check.
         await convertedPage.RouteAsync("**/PlaybackInfo", async route =>
         {
@@ -76,10 +75,15 @@ internal sealed class HdrPlayerBrowser : IAsyncDisposable
             });
         });
         await PlayAsync(convertedPage, server);
-        await convertedPage.Mouse.MoveAsync(800, 500);
+        await convertedPage.Mouse.MoveAsync(640, 360);
         await convertedPage.Locator(".btnVideoOsdSettings:visible").ClickAsync();
         await Expect(MenuItem(convertedPage, "Quality")).ToBeVisibleAsync();
         await Expect(MenuItem(convertedPage, "HDR conversion")).ToHaveCountAsync(0);
+        await MenuItem(convertedPage, "Quality").ClickAsync();
+        var convertedAutomatic = convertedPage.Locator(".actionSheetMenuItem[data-id='0']");
+        await Expect(convertedAutomatic).ToBeVisibleAsync();
+        await convertedAutomatic.ClickAsync();
+        await Expect(convertedAutomatic).ToHaveCountAsync(0);
         errors.Should().BeEmpty("the extended native menu must run without JavaScript exceptions");
     }
 
@@ -170,6 +174,10 @@ internal sealed class HdrPlayerBrowser : IAsyncDisposable
         try
         {
             await Expect(page.Locator("video")).ToBeVisibleAsync();
+            await page.WaitForFunctionAsync(
+                "() => { const video = document.querySelector('video'); " +
+                "return video && video.readyState >= 2 && video.videoWidth > 0 && !video.paused && video.currentTime > 0; }"
+            );
         }
         catch (PlaywrightException)
         {
