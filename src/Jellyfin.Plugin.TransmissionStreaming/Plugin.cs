@@ -45,6 +45,7 @@ public sealed class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages, IPlu
             new() { Name = PluginConstants.Ui.Configuration, EmbeddedResourcePath = resourcePrefix + "configuration.js" },
             new() { Name = PluginConstants.Ui.Mappings, EmbeddedResourcePath = resourcePrefix + "mappings.js" },
             new() { Name = PluginConstants.Ui.Activity, EmbeddedResourcePath = resourcePrefix + "activity.js" },
+            new() { Name = PluginConstants.Ui.History, EmbeddedResourcePath = resourcePrefix + "history.js" },
             new() { Name = PluginConstants.Ui.Tooltips, EmbeddedResourcePath = resourcePrefix + "tooltips.js" },
             new() { Name = PluginConstants.Ui.TooltipDisplay, EmbeddedResourcePath = resourcePrefix + "tooltip-display.js" },
             new() { Name = PluginConstants.Ui.Elements, EmbeddedResourcePath = resourcePrefix + "elements.js" }

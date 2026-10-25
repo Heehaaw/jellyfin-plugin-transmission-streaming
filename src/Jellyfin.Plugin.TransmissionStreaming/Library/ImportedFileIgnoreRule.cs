@@ -1,33 +1,17 @@
 namespace Jellyfin.Plugin.TransmissionStreaming.Library;
 
-using global::TransmissionStreaming.Core.Configuration;
-using global::TransmissionStreaming.Core.Projection;
+using global::TransmissionStreaming.Logic.Library;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Resolvers;
 using MediaBrowser.Model.IO;
-using Microsoft.Extensions.Options;
+using Mediator;
 
-/// <summary>Prevents an imported file from duplicating a permanent projected item.</summary>
-internal sealed class ImportedFileIgnoreRule(
-    IOptionsMonitor<StreamingOptions> configuration,
-    IProjectionStore store,
-    IProjectionIndex projection) : IResolverIgnoreRule
+/// <summary>Adapts Jellyfin's synchronous resolver hook to the local indexing policy query.</summary>
+internal sealed class ImportedFileIgnoreRule(IMediator mediator) : IResolverIgnoreRule
 {
     public bool ShouldIgnore(FileSystemMetadata fileInfo, BaseItem? parent)
     {
-        if (!configuration.CurrentValue.Enabled || fileInfo.IsDirectory)
-        {
-            return false;
-        }
-
-        var managed = store.All().FirstOrDefault(entry => entry.CompletedPath == fileInfo.FullName);
-        if (managed is null || !File.Exists(managed.StreamPath) || !projection.IsIndexed(managed))
-        {
-            return false;
-        }
-
-        // Existing native entries stay visible until explicit reconciliation copies history.
-        // A concurrent scan must not remove them as missing before that merge.
-        return !projection.IsPathIndexed(fileInfo.FullName);
+        // The host hook is synchronous; this query reads only synchronous local snapshots.
+        return mediator.Send(new ShouldIgnoreImportedFile.Query(fileInfo.FullName, fileInfo.IsDirectory)).GetAwaiter().GetResult();
     }
 }

@@ -16,7 +16,7 @@ using Xunit;
 public sealed class GetStatusTests
 {
     [Theory, AutoMoqData]
-    internal async Task Should_ReportDiscoveryAndActivePlayback(StatusScenario source,
+    internal async Task Should_ReportDiscoveryAndActivePlayback(StatusScenario source, CompletedProjection completed,
         [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options, [Frozen] Mock<IDiscoveryStatus> discovery,
         [Frozen] Mock<IProjectionStore> store, [Frozen] Mock<IStreamActivity> activity, GetStatus.Handler sut)
     {
@@ -24,6 +24,7 @@ public sealed class GetStatusTests
         options.SetupGet(value => value.CurrentValue).Returns(source.Options);
         discovery.Setup(value => value.Get()).Returns(source.Discovery);
         store.Setup(value => value.All()).Returns([source.Entry]);
+        store.Setup(value => value.Completed()).Returns([completed]);
         activity.Setup(value => value.Count(source.Entry.Id)).Returns(source.Readers);
 
         // Act
@@ -33,6 +34,7 @@ public sealed class GetStatusTests
         result.Enabled.Should().Be(source.Options.Enabled);
         result.LastSuccessfulPoll.Should().Be(source.Discovery.LastSuccessfulPoll);
         result.LastFailure.Should().Be(source.Discovery.LastFailure);
+        result.Completed.Should().ContainSingle().Which.Should().Be(completed);
         var entry = result.Entries.Should().ContainSingle().Subject;
         entry.Id.Should().Be(source.Entry.Id);
         entry.Title.Should().Be(source.Entry.Identity.Title);

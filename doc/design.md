@@ -1,15 +1,16 @@
 # Design and playback flow
 
-The plugin gives an incomplete torrent a permanent Jellyfin library entry. Its small stream link stays in place while the media moves from an incomplete download to the final
-arr library. Transmission owns downloading and seeding; Jellyfin owns playback and each viewer's history.
+The plugin gives an incomplete torrent a Jellyfin library entry. Its small stream link stays in place while the media moves into the final arr library and Transmission keeps
+seeding. After torrent removal, the normal Jellyfin item takes over with each viewer's saved history. Transmission owns downloading and seeding; Jellyfin owns playback.
 
 ```mermaid
 flowchart LR
     A[Radarr or Sonarr] -->|starts download| T[Transmission]
     T -->|file list and verified pieces| P[Jellyfin plugin]
-    P -->|permanent stream entry| J[Jellyfin library and players]
+    P -->|stream entry while downloading or seeding| J[Jellyfin library and players]
     A -->|imports completed file| F[Local media library]
     F -->|same entry, imported backing file| P
+    P -->|torrent removed, transfer history| N[Native Jellyfin item]
 ```
 
 ## Configuration initialization
@@ -35,12 +36,12 @@ packages or configuration APIs.
 The plugin polls Transmission and matches each playable file to a configured arr queue entry by torrent hash. A movie download uses its primary video file. Standard single-episode
 filenames identify episodes within a season pack. Unmanaged downloads, samples, and ambiguous identities are skipped.
 
-Discovery creates a permanent stream link and metadata sidecars beneath a dedicated projection folder. Jellyfin scans these as ordinary movies and episodes. Persisted state keeps
+Discovery creates a stable stream link and metadata sidecars beneath a dedicated projection folder. Jellyfin scans these as ordinary movies and episodes. Persisted state keeps
 the entry's identity, capability secret, original torrent file, and eventual imported path together across restarts.
 
 ## Progressive playback
 
-Pressing Play opens the permanent stream URL. The reader checks Transmission's verified piece map before reading each byte range from the shared filesystem. An allocated file may
+While a projection is managed, pressing Play opens its stable stream URL. The reader checks Transmission's verified piece map before reading each byte range from the shared filesystem. An allocated file may
 already have its final length while much of its content is still missing, so file length alone never proves that a range is playable.
 
 The reader sends available bytes and waits for missing pieces. It does not substitute zeros for missing data. By default, starting playback enables sequential downloading for that
@@ -54,7 +55,9 @@ error document to the video. HEAD requests report length without starting a torr
 After arr imports the download, the plugin checks the import history against the torrent hash, original filename, byte size, and imported file identity. A matching title or an
 older library copy is insufficient proof. Once the exact import is confirmed, the same stream URL reads the imported local file, including after Transmission removes the torrent.
 
-The permanent Jellyfin entry remains the owner of watch history. Native duplicate detection and rollback are described in [operations](operations.md).
+While the torrent remains in Transmission, the projection owns playback and history. Once the torrent disappears, the plugin revalidates the imported file and lets Jellyfin index it
+normally. Active readers or playback defer retirement. It transfers every user's state, removes only its generated link/metadata and projected database entry, then archives a small
+completion record. A failed step leaves durable state for retry. The native item then plays without the plugin. See [operations](operations.md) for merge and rollback details.
 
 ## Application boundaries
 
@@ -106,6 +109,7 @@ and can be configured from 2 to 300 seconds. Import checks follow the polling ca
 - Transmission has one sequential cursor per torrent. Viewers at different positions can compete, so seeking is best effort.
 - There is one stable projection per movie or episode. A later upgrade does not take it over automatically.
 - Import matching rejects ambiguous history, different file sizes, and unrelated older releases.
-- Permanent stream links continue to route through the plugin after completion. Removing it requires a library migration or restoring a backup.
+- Native handoff needs the imported folder in a normal Jellyfin library. Until indexing succeeds and playback is idle, the projection remains managed.
+- Jellyfin gives the native path its own item ID. Saved watch data is transferred, but old projection bookmarks and playback URLs stop working after retirement.
 
 [Back to README](../README.md)

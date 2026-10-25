@@ -104,7 +104,7 @@ public sealed class PruneOrphanedProjectionTests
 
         // Assert
         removed.Should().BeFalse();
-        library.Verify(value => value.TryRemoveAsync(It.IsAny<Projection>(), It.IsAny<CancellationToken>()), Times.Never);
+        library.Verify(value => value.Remove(It.IsAny<string>()), Times.Never);
     }
 
     [Theory, AutoMoqData]
@@ -131,7 +131,7 @@ public sealed class PruneOrphanedProjectionTests
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_DeferCleanupWhileTheHostItemIsPlaying(PruneOrphanedProjection.Command source, StreamingOptions configuration,
+    internal async Task Should_DeferCleanupWhileTheHostItemIsPlaying(PruneOrphanedProjection.Command source, StreamingOptions configuration, LibraryItem projected,
         [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options, [Frozen] Mock<IStreamActivity> activity,
         [Frozen] Mock<IArrClient> arr, [Frozen] Mock<IProjectionLibrary> library, [Frozen] Mock<IProjectionFiles> files,
         PruneOrphanedProjection.Handler sut)
@@ -143,7 +143,7 @@ public sealed class PruneOrphanedProjectionTests
         activity.Setup(value => value.Count(source.Entry.Id)).Returns(0);
         options.SetupGet(value => value.CurrentValue).Returns(configuration);
         arr.Setup(value => value.IsMediaTrackedAsync(It.IsAny<ArrConnection>(), source.Entry.Identity, It.IsAny<CancellationToken>())).ReturnsAsync(false);
-        library.Setup(value => value.TryRemoveAsync(source.Entry, It.IsAny<CancellationToken>())).ReturnsAsync(false);
+        library.Setup(value => value.Find(source.Entry.StreamPath)).Returns(projected with { IsPlaying = true });
 
         // Act
         var removed = await sut.Handle(command, CancellationToken.None);
@@ -154,7 +154,7 @@ public sealed class PruneOrphanedProjectionTests
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_RemoveAnOrphanInRetryableOrderUsingItsOwner(PruneOrphanedProjection.Command source, StreamingOptions configuration,
+    internal async Task Should_RemoveAnOrphanInRetryableOrderUsingItsOwner(PruneOrphanedProjection.Command source, StreamingOptions configuration, LibraryItem projected,
         [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options, [Frozen] Mock<IStreamActivity> activity,
         [Frozen] Mock<IMediaFiles> media, [Frozen] Mock<IArrClient> arr, [Frozen] Mock<IProjectionLibrary> library,
         [Frozen] Mock<IProjectionFiles> files, [Frozen] Mock<IProjectionStore> store, PruneOrphanedProjection.Handler sut)
@@ -172,7 +172,8 @@ public sealed class PruneOrphanedProjectionTests
         var hostStep = "host";
         var filesStep = "files";
         var storeStep = "store";
-        library.Setup(value => value.TryRemoveAsync(source.Entry, It.IsAny<CancellationToken>())).Callback(() => operations.Add(hostStep)).ReturnsAsync(true);
+        library.Setup(value => value.Find(source.Entry.StreamPath)).Returns(projected with { IsPlaying = false });
+        library.Setup(value => value.Remove(projected.Id)).Callback(() => operations.Add(hostStep));
         files.Setup(value => value.RemoveFiles(source.Entry)).Callback(() => operations.Add(filesStep));
         store.Setup(value => value.Remove(source.Entry.Id)).Callback(() => operations.Add(storeStep));
 
@@ -187,7 +188,7 @@ public sealed class PruneOrphanedProjectionTests
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_RetainTheRecordWhenFileCleanupFails(PruneOrphanedProjection.Command source, StreamingOptions configuration,
+    internal async Task Should_RetainTheRecordWhenFileCleanupFails(PruneOrphanedProjection.Command source, StreamingOptions configuration, LibraryItem projected,
         [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options, [Frozen] Mock<IStreamActivity> activity,
         [Frozen] Mock<IArrClient> arr, [Frozen] Mock<IProjectionLibrary> library, [Frozen] Mock<IProjectionFiles> files,
         [Frozen] Mock<IProjectionStore> store, PruneOrphanedProjection.Handler sut)
@@ -199,7 +200,7 @@ public sealed class PruneOrphanedProjectionTests
         activity.Setup(value => value.Count(source.Entry.Id)).Returns(0);
         options.SetupGet(value => value.CurrentValue).Returns(configuration);
         arr.Setup(value => value.IsMediaTrackedAsync(It.IsAny<ArrConnection>(), source.Entry.Identity, It.IsAny<CancellationToken>())).ReturnsAsync(false);
-        library.Setup(value => value.TryRemoveAsync(source.Entry, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        library.Setup(value => value.Find(source.Entry.StreamPath)).Returns(projected with { IsPlaying = false });
         files.Setup(value => value.RemoveFiles(source.Entry)).Throws<IOException>();
 
         // Act

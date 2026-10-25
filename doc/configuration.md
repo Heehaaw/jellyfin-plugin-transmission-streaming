@@ -67,7 +67,8 @@ After saving and enabling discovery:
 1. The plugin creates `movies` and `shows` beneath the projection folder.
 2. Add `movies` to a Jellyfin Movies library and `shows` to a Shows library. They can be additional folders in your existing libraries.
 3. Start a download through Radarr or Sonarr. Wait for its torrent metadata and the next discovery poll.
-4. Check the plugin settings page for status, then open the new item in Jellyfin and press Play.
+4. Add the normal arr movie/show folders to Jellyfin too, so imported media can take over after seeding.
+5. Check the plugin settings page for status, then open the new item in Jellyfin and press Play.
 
 You can keep the default projection folder or choose an explicit dedicated folder that is easier to locate and back up. On first use, the plugin refuses a nonempty folder so it
 cannot adopt unrelated contents. Keep the projection folder and its persisted state together when backing up or moving the installation.
@@ -83,7 +84,7 @@ progressive playback when neither condition holds. The plugin does not change th
 ## Status and buffering
 
 With status display enabled, downloading items receive a temporary title suffix such as `[Downloading 23%]`. Other states include waiting for import, an unavailable download, and a
-download error. Completion removes the suffix while retaining the entry. The item description includes a **View download status** link to the plugin activity page. This preserves
+download error. Import removes the suffix while retaining the entry during seeding. The item description includes a **View download status** link to the plugin activity page. This preserves
 the synopsis and remains available after import; opening the activity page requires a Jellyfin administrator account.
 
 The standard Jellyfin Movies grid uses cached lists and batched library notifications. New items and updated title suffixes may take longer to appear there; it is not a live
@@ -97,7 +98,8 @@ The settings page groups each remote folder and its Jellyfin folder into one tra
 translations only. Unsaved edits are marked explicitly, and Save reports success or failure without discarding the draft. Credentials stay collapsed until needed.
 
 Live activity reports the saved download-scan state, last successful scan, item count, per-item download progress, and active HTTP readers. It refreshes every 10 seconds while
-the page is active, with a manual Refresh button. Reader counts describe streaming requests, not distinct viewers. Folder checks have their own timestamp and result count; they
+the page is active, with a manual Refresh button. After torrent removal, an imported item remains active until native indexing and history transfer succeed. A collapsed Completed
+section lists the newest 20 handoffs and links to their native Jellyfin items. Those items play without the proxy. See [completion and history](operations.md). Reader counts describe streaming requests, not distinct viewers. Folder checks have their own timestamp and result count; they
 are administrator-triggered checks, not continuous service-health monitoring. Empty or failed status responses do not imply that every service is healthy.
 
 The player controls its buffering indicator. There is no custom badge understood by every native Jellyfin client. The plugin settings page provides a separate discovery/status view.

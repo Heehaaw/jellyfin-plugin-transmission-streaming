@@ -26,13 +26,13 @@ public static class GetStatus
             var status = discovery.Get();
             var entries = store.All().Select(entry => new StreamStatus(entry.Id, entry.Identity.Title,
                 entry.Status, entry.Progress, activity.Count(entry.Id))).ToArray();
-            return ValueTask.FromResult(new StreamingStatus(options.CurrentValue.Enabled, status.LastSuccessfulPoll, status.LastFailure, entries));
+            return ValueTask.FromResult(new StreamingStatus(options.CurrentValue.Enabled, status.LastSuccessfulPoll, status.LastFailure, entries, store.Completed()));
         }
     }
 }
 
 /// <summary>Discovery diagnostics safe to expose to an administrator.</summary>
-public sealed record StreamingStatus(bool Enabled, DateTimeOffset? LastSuccessfulPoll, string? LastFailure, IReadOnlyList<StreamStatus> Entries);
+public sealed record StreamingStatus(bool Enabled, DateTimeOffset? LastSuccessfulPoll, string? LastFailure, IReadOnlyList<StreamStatus> Entries, IReadOnlyList<CompletedProjection> Completed);
 
 /// <summary>Progress and reader counts for a single projected title.</summary>
 public sealed record StreamStatus(string Id, string Title, string Status, double Progress, int Readers);

@@ -8,11 +8,12 @@ using TransmissionStreaming.Core.Configuration;
 using TransmissionStreaming.Core.Projection;
 using TransmissionStreaming.Core.Transmission;
 using TransmissionStreaming.Logic.Imports;
+using TransmissionStreaming.Logic.Library;
 
 /// <summary>Defines the DiscoverDownloads command and its application handler.</summary>
 public static class DiscoverDownloads
 {
-    /// <summary>Discovers arr-owned downloads and reconciles permanent playback entries.</summary>
+    /// <summary>Discovers arr-owned downloads and reconciles managed playback entries.</summary>
     public sealed record Command : ICommand;
 
     /// <summary>Coordinates download discovery and import handoff without owning network or filesystem adapters.</summary>
@@ -98,6 +99,12 @@ public static class DiscoverDownloads
                     }
                 }
 
+                if (await mediator.Send(new HandoffCompletedProjection.Command(entry, torrent is not null), cancellationToken).ConfigureAwait(false))
+                {
+                    entries.Remove(entry.Id);
+                    continue;
+                }
+
                 if (await mediator.Send(new PruneOrphanedProjection.Command(entry, torrent is not null), cancellationToken).ConfigureAwait(false))
                 {
                     entries.Remove(entry.Id);
@@ -110,7 +117,8 @@ public static class DiscoverDownloads
                     entry.Progress = 1;
                 }
 
-                entry.Status = entry.CompletedPath is not null ? "Complete"
+                entry.Status = entry.CompletedPath is not null && entry.HandoffPending ? "Waiting for Jellyfin handoff"
+                    : entry.CompletedPath is not null ? "Complete"
                     : torrent is null ? "Download unavailable"
                     : !string.IsNullOrEmpty(torrent.ErrorString) ? "Download error"
                     : entry.Progress >= 1 ? "Waiting for import"
@@ -126,7 +134,7 @@ public static class DiscoverDownloads
 
             foreach (var entry in entries.Values)
             {
-                await library.ReconcileAsync(entry, cancellationToken).ConfigureAwait(false);
+                await mediator.Send(new ReconcileProjection.Command(entry), cancellationToken).ConfigureAwait(false);
             }
 
             return Unit.Value;

@@ -50,6 +50,7 @@ public sealed class DuplicateReconciliationTests(JellyfinTestServer sut, ITestOu
             {
                 after[user] = await sut.Api.RequestAsync($"/UserItems/{projectedId}/UserData?userId={user}");
             }
+
             await sut.RestartAsync();
             await sut.Api.RequestAsync("/Library/Refresh", new { });
             var restartedId = await sut.WaitForItemAsync();
@@ -58,6 +59,7 @@ public sealed class DuplicateReconciliationTests(JellyfinTestServer sut, ITestOu
             {
                 persisted[user] = await sut.Api.RequestAsync($"/UserItems/{projectedId}/UserData?userId={user}");
             }
+
             using var client = new HttpClient();
             var playback = await client.GetByteArrayAsync(sut.HostStream(permanentUrl), cancellationToken);
 
@@ -90,6 +92,7 @@ public sealed class DuplicateReconciliationTests(JellyfinTestServer sut, ITestOu
     {
         var fixture = new Fixture();
         fixture.Customize(new AutoMoqCustomization());
+        fixture.Customize<WatchState>(composer => composer.With(value => value.Rating, () => fixture.Create<int>() % 11d));
         return fixture;
     });
 }

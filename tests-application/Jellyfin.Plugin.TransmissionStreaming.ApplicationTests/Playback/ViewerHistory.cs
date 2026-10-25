@@ -7,7 +7,7 @@ using System.Text.Json.Nodes;
 /// <summary>Owns the two-viewer setup and compares persisted playback fields across the handoff.</summary>
 internal sealed class ViewerHistory(string itemId, IReadOnlyDictionary<string, JsonNode?> before)
 {
-    private static readonly string[] Fields = ["Played", "PlaybackPositionTicks", "PlayCount", "IsFavorite"];
+    private static readonly string[] Fields = ["Played", "PlaybackPositionTicks", "PlayCount", "IsFavorite", "LastPlayedDate", "Rating", "Likes"];
 
     public static async Task<ViewerHistory> SaveAsync(JellyfinTestServer server, string itemId, WatchState[] states)
     {
@@ -20,14 +20,15 @@ internal sealed class ViewerHistory(string itemId, IReadOnlyDictionary<string, J
             await server.Api.RequestAsync($"/UserItems/{itemId}/UserData?userId={user}", state);
             before[user] = await server.Api.RequestAsync($"/UserItems/{itemId}/UserData?userId={user}");
         }
+
         return new ViewerHistory(itemId, before);
     }
 
-    public async Task ShouldBeRetainedAsync(JellyfinApi api)
+    public async Task ShouldBeRetainedAsync(JellyfinApi api, string? targetItemId = null)
     {
         foreach (var (user, original) in before)
         {
-            var current = await api.RequestAsync($"/UserItems/{itemId}/UserData?userId={user}");
+            var current = await api.RequestAsync($"/UserItems/{targetItemId ?? itemId}/UserData?userId={user}");
             foreach (var field in Fields)
             {
                 JsonNode.DeepEquals(JellyfinApi.Field(current, field), JellyfinApi.Field(original, field))

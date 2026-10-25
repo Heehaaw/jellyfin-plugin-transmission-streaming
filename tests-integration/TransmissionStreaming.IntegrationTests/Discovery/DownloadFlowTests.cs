@@ -58,7 +58,7 @@ public sealed class DownloadFlowTests(ITestOutputHelper output)
             sut.UseIndependentArrMounts();
             await sut.Mediator.Send(source.Discover, cancellationToken);
             var original = sut.Store.All().Single();
-            var expectedStatus = "Complete";
+            var expectedStatus = "Waiting for Jellyfin handoff";
             await sut.Swarm.AllowAllPiecesAsync(cancellationToken);
 
             // Act

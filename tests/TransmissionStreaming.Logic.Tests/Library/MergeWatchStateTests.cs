@@ -1,32 +1,34 @@
-namespace Jellyfin.Plugin.TransmissionStreaming.Tests.Library;
+namespace TransmissionStreaming.Logic.Tests.Library;
 
 using AutoFixture;
 using AutoFixture.AutoMoq;
 using AutoFixture.Xunit2;
 using FluentAssertions;
-using Jellyfin.Plugin.TransmissionStreaming.Library;
-using MediaBrowser.Controller.Entities;
+using TransmissionStreaming.Core.Projection;
+using TransmissionStreaming.Logic.Library;
 using Xunit;
 
-public sealed class WatchStateMergerTests
+public sealed class MergeWatchStateTests
 {
     private sealed class AutoMoqDataAttribute() : AutoDataAttribute(() =>
     {
         var fixture = new Fixture { RepeatCount = 1 };
         fixture.Customize(new AutoMoqCustomization { ConfigureMembers = true, GenerateDelegates = true });
-        // Jellyfin validates ratings, and assigning Likes would overwrite the generated rating.
-        fixture.Customize<UserItemData>(c => c.With(x => x.Rating, () => fixture.Create<int>() % 11d).Without(x => x.Likes));
+        // Ratings remain inside the host-supported personal-rating range.
+        fixture.Customize<LibraryWatchState>(c => c.With(x => x.Rating, () => fixture.Create<int>() % 11d));
         return fixture;
     });
 
     [Theory, AutoMoqData]
-    internal void Should_UseTheNewerSourcePlayback(UserItemData source, UserItemData target, WatchStateMerger sut)
+    internal async Task Should_UseTheNewerSourcePlayback(MergeWatchState.Query query, MergeWatchState.Handler sut)
     {
         // Arrange
+        var source = query.Source;
+        var target = query.Target!;
         source.LastPlayedDate = target.LastPlayedDate.GetValueOrDefault().AddMinutes(1);
 
         // Act
-        var result = sut.Merge(source, target);
+        var result = await sut.Handle(query, CancellationToken.None);
 
         // Assert
         result.PlaybackPositionTicks.Should().Be(source.PlaybackPositionTicks);
@@ -35,13 +37,15 @@ public sealed class WatchStateMergerTests
     }
 
     [Theory, AutoMoqData]
-    internal void Should_KeepTheNewerTargetPlayback(UserItemData source, UserItemData target, WatchStateMerger sut)
+    internal async Task Should_KeepTheNewerTargetPlayback(MergeWatchState.Query query, MergeWatchState.Handler sut)
     {
         // Arrange
+        var source = query.Source;
+        var target = query.Target!;
         source.LastPlayedDate = target.LastPlayedDate.GetValueOrDefault().AddMinutes(-1);
 
         // Act
-        var result = sut.Merge(source, target);
+        var result = await sut.Handle(query, CancellationToken.None);
 
         // Assert
         result.PlaybackPositionTicks.Should().Be(target.PlaybackPositionTicks);
@@ -50,9 +54,11 @@ public sealed class WatchStateMergerTests
     }
 
     [Theory, AutoMoqData]
-    internal void Should_PreserveManualWatchedStateAgainstAnUntouchedDuplicate(UserItemData source, UserItemData target, WatchStateMerger sut)
+    internal async Task Should_PreserveManualWatchedStateAgainstAnUntouchedDuplicate(MergeWatchState.Query query, MergeWatchState.Handler sut)
     {
         // Arrange
+        var source = query.Source;
+        var target = query.Target!;
         source.LastPlayedDate = null;
         source.PlayCount = 0;
         source.PlaybackPositionTicks = 0;
@@ -63,7 +69,7 @@ public sealed class WatchStateMergerTests
         target.PlaybackPositionTicks = 0;
 
         // Act
-        var result = sut.Merge(source, target);
+        var result = await sut.Handle(query, CancellationToken.None);
 
         // Assert
         result.Played.Should().Be(target.Played);
@@ -72,9 +78,11 @@ public sealed class WatchStateMergerTests
     }
 
     [Theory, AutoMoqData]
-    internal void Should_PreserveResumeAgainstAnUntouchedDuplicate(UserItemData source, UserItemData target, WatchStateMerger sut)
+    internal async Task Should_PreserveResumeAgainstAnUntouchedDuplicate(MergeWatchState.Query query, MergeWatchState.Handler sut)
     {
         // Arrange
+        var source = query.Source;
+        var target = query.Target!;
         source.LastPlayedDate = null;
         source.PlayCount = 0;
         source.PlaybackPositionTicks = 0;
@@ -83,7 +91,7 @@ public sealed class WatchStateMergerTests
         target.Played = false;
 
         // Act
-        var result = sut.Merge(source, target);
+        var result = await sut.Handle(query, CancellationToken.None);
 
         // Assert
         result.PlaybackPositionTicks.Should().Be(target.PlaybackPositionTicks);
@@ -91,16 +99,18 @@ public sealed class WatchStateMergerTests
     }
 
     [Theory, AutoMoqData]
-    internal void Should_PreserveConflictingUndatedManualState(UserItemData source, UserItemData target, WatchStateMerger sut)
+    internal async Task Should_PreserveConflictingUndatedManualState(MergeWatchState.Query query, MergeWatchState.Handler sut)
     {
         // Arrange
+        var source = query.Source;
+        var target = query.Target!;
         source.LastPlayedDate = null;
         source.Played = false;
         target.LastPlayedDate = null;
         target.Played = true;
 
         // Act
-        var result = sut.Merge(source, target);
+        var result = await sut.Handle(query, CancellationToken.None);
 
         // Assert
         result.Played.Should().Be(target.Played);
@@ -108,15 +118,17 @@ public sealed class WatchStateMergerTests
     }
 
     [Theory, AutoMoqData]
-    internal void Should_NotAssumeTimestampedPlaybackIsNewerThanAManualMark(UserItemData source, UserItemData target, WatchStateMerger sut)
+    internal async Task Should_NotAssumeTimestampedPlaybackIsNewerThanAManualMark(MergeWatchState.Query query, MergeWatchState.Handler sut)
     {
         // Arrange
+        var source = query.Source;
+        var target = query.Target!;
         target.LastPlayedDate = null;
         target.Played = true;
         source.Played = false;
 
         // Act
-        var result = sut.Merge(source, target);
+        var result = await sut.Handle(query, CancellationToken.None);
 
         // Assert
         result.Played.Should().Be(target.Played);
@@ -124,15 +136,17 @@ public sealed class WatchStateMergerTests
     }
 
     [Theory, AutoMoqData]
-    internal void Should_RetainFavoritesFromAnOlderDuplicate(UserItemData source, UserItemData target, WatchStateMerger sut)
+    internal async Task Should_RetainFavoritesFromAnOlderDuplicate(MergeWatchState.Query query, MergeWatchState.Handler sut)
     {
         // Arrange
+        var source = query.Source;
+        var target = query.Target!;
         source.LastPlayedDate = target.LastPlayedDate.GetValueOrDefault().AddMinutes(-1);
         source.IsFavorite = true;
         target.IsFavorite = false;
 
         // Act
-        var result = sut.Merge(source, target);
+        var result = await sut.Handle(query, CancellationToken.None);
 
         // Assert
         result.IsFavorite.Should().Be(source.IsFavorite);
@@ -140,13 +154,15 @@ public sealed class WatchStateMergerTests
     }
 
     [Theory, AutoMoqData]
-    internal void Should_KeepTargetRatingWhenSourcePlaybackIsNewer(UserItemData source, UserItemData target, WatchStateMerger sut)
+    internal async Task Should_KeepTargetRatingWhenSourcePlaybackIsNewer(MergeWatchState.Query query, MergeWatchState.Handler sut)
     {
         // Arrange
+        var source = query.Source;
+        var target = query.Target!;
         source.LastPlayedDate = target.LastPlayedDate.GetValueOrDefault().AddMinutes(1);
 
         // Act
-        var result = sut.Merge(source, target);
+        var result = await sut.Handle(query, CancellationToken.None);
 
         // Assert
         result.Rating.Should().Be(target.Rating);
@@ -155,13 +171,16 @@ public sealed class WatchStateMergerTests
     }
 
     [Theory, AutoMoqData]
-    internal void Should_UseSourceRatingWhenTargetHasNone(UserItemData source, UserItemData target, WatchStateMerger sut)
+    internal async Task Should_UseSourceRatingWhenTargetHasNone(MergeWatchState.Query query, MergeWatchState.Handler sut)
     {
         // Arrange
+        var source = query.Source;
+        var target = query.Target!;
         target.Rating = null;
+        target.Likes = null;
 
         // Act
-        var result = sut.Merge(source, target);
+        var result = await sut.Handle(query, CancellationToken.None);
 
         // Assert
         result.Rating.Should().Be(source.Rating);
@@ -169,26 +188,29 @@ public sealed class WatchStateMergerTests
     }
 
     [Theory, AutoMoqData]
-    internal void Should_AvoidCountingTheSamePlaybackTwice(UserItemData source, UserItemData target, WatchStateMerger sut)
+    internal async Task Should_AvoidCountingTheSamePlaybackTwice(MergeWatchState.Query query, MergeWatchState.Handler sut)
     {
         // Arrange
+        var source = query.Source;
+        var target = query.Target!;
         var expectedCount = Math.Max(source.PlayCount, target.PlayCount);
 
         // Act
-        var result = sut.Merge(source, target);
+        var result = await sut.Handle(query, CancellationToken.None);
 
         // Assert
         result.PlayCount.Should().Be(expectedCount);
     }
 
     [Theory, AutoMoqData]
-    internal void Should_UseSourceWhenNoTargetExists(UserItemData source, WatchStateMerger sut)
+    internal async Task Should_UseSourceWhenNoTargetExists(MergeWatchState.Query query, MergeWatchState.Handler sut)
     {
         // Arrange
-        UserItemData? target = null;
+        var source = query.Source;
+        query = query with { Target = null };
 
         // Act
-        var result = sut.Merge(source, target);
+        var result = await sut.Handle(query, CancellationToken.None);
 
         // Assert
         result.PlaybackPositionTicks.Should().Be(source.PlaybackPositionTicks);

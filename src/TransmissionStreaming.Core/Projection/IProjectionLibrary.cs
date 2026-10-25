@@ -1,16 +1,26 @@
 namespace TransmissionStreaming.Core.Projection;
 
-/// <summary>Host operations required to index and reconcile permanent stream entries.</summary>
+/// <summary>Host indexing, item metadata, and per-user state operations without application policy.</summary>
 public interface IProjectionLibrary
 {
-    /// <summary>Asks the host to index libraries containing the dedicated projection folder.</summary>
+    /// <summary>Indexes host libraries containing the dedicated projection folder.</summary>
     Task RefreshAsync(CancellationToken cancellationToken);
 
-    /// <summary>Updates the projected display state and merges a completed native duplicate's user history before removing its database entry.</summary>
-    /// <remarks>Media files are retained, and an active native playback session may defer duplicate removal.</remarks>
-    Task ReconcileAsync(Projection entry, CancellationToken cancellationToken);
+    /// <summary>Indexes configured host libraries containing an imported local path.</summary>
+    Task IndexImportedAsync(string path, CancellationToken cancellationToken);
 
-    /// <summary>Removes only the projected host entry, returning false while that item is playing.</summary>
-    /// <remarks>An already absent entry succeeds. Downloaded and imported media files are never deleted.</remarks>
-    Task<bool> TryRemoveAsync(Projection entry, CancellationToken cancellationToken);
+    /// <summary>Reads canonical item metadata and current playback activity for an exact local path.</summary>
+    LibraryItem? Find(string path);
+
+    /// <summary>Writes the item's display name and description without changing identity or user data.</summary>
+    Task UpdateMetadataAsync(string itemId, string name, string? overview, CancellationToken cancellationToken);
+
+    /// <summary>Loads hydrated source and destination watch data for every host user.</summary>
+    IReadOnlyList<LibraryUserState> GetUserStates(string sourceItemId, string targetItemId);
+
+    /// <summary>Saves one user's merged watch data to a host item.</summary>
+    void SaveUserState(string userId, string itemId, LibraryWatchState state);
+
+    /// <summary>Removes only the host database entry; media files are never deleted and missing entries are unchanged.</summary>
+    void Remove(string itemId);
 }

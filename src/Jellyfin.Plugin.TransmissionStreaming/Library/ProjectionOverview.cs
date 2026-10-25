@@ -2,11 +2,7 @@ namespace Jellyfin.Plugin.TransmissionStreaming.Library;
 
 using System.Net;
 
-internal interface IProjectionOverview
-{
-    /// <summary>Adds or refreshes the owned activity link while retaining the item's synopsis and other links.</summary>
-    string? Format(string? overview, string? publicUrl);
-}
+using global::TransmissionStreaming.Core.Projection;
 
 /// <summary>Formats the Jellyfin-specific activity link without replacing metadata-provider descriptions.</summary>
 internal sealed class ProjectionOverview : IProjectionOverview

@@ -13,9 +13,7 @@ internal sealed class JellyfinApi(Uri address) : IDisposable
     public async Task<JsonNode?> RequestAsync(string path, object? body = null, HttpMethod? method = null)
     {
         using var request = new HttpRequestMessage(method ?? (body is null ? HttpMethod.Get : HttpMethod.Post), path);
-        request.Headers.TryAddWithoutValidation("Authorization", token is null
-            ? "MediaBrowser Client=\"Application tests\", Device=\"Disposable container\", DeviceId=\"transmission-tests\", Version=\"1\""
-            : $"MediaBrowser Token=\"{token}\"");
+        Authorize(request);
         if (body is not null)
         {
             request.Content = JsonContent.Create(body, options: new JsonSerializerOptions { PropertyNamingPolicy = null });
@@ -25,6 +23,15 @@ internal sealed class JellyfinApi(Uri address) : IDisposable
         response.EnsureSuccessStatusCode();
         var content = await response.Content.ReadAsStringAsync();
         return string.IsNullOrWhiteSpace(content) ? null : JsonNode.Parse(content);
+    }
+
+    public async Task<byte[]> ReadVideoAsync(string itemId, CancellationToken cancellationToken)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"/Videos/{itemId}/stream?static=true");
+        Authorize(request);
+        using var response = await client.SendAsync(request, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadAsByteArrayAsync(cancellationToken);
     }
 
     public async Task<string> AuthenticateAsync()
@@ -47,9 +54,17 @@ internal sealed class JellyfinApi(Uri address) : IDisposable
             await RequestAsync("/Startup/Complete", new { });
         }
 
-        var authentication = await WaitForAsync(() => RequestAsync("/Users/AuthenticateByName", new { Username = username, Pw = password }), "Jellyfin authentication API availability");
+        var authentication = await WaitForAsync(() => RequestAsync("/Users/AuthenticateByName", new { Username = username, Pw = password }),
+            "Jellyfin authentication API availability");
         token = Value<string>(authentication, "AccessToken");
         return Value<string>(Field(authentication, "User"), "Id");
+    }
+
+    private void Authorize(HttpRequestMessage request)
+    {
+        request.Headers.TryAddWithoutValidation("Authorization", token is null
+            ? "MediaBrowser Client=\"Application tests\", Device=\"Disposable container\", DeviceId=\"transmission-tests\", Version=\"1\""
+            : $"MediaBrowser Token=\"{token}\"");
     }
 
     private static async Task<JsonNode?> WaitForAsync(Func<Task<JsonNode?>> request, string description)

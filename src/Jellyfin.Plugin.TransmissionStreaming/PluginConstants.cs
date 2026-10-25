@@ -16,6 +16,7 @@ internal static class PluginConstants
         public const string Configuration = SettingsPage + "-configuration.js";
         public const string Mappings = SettingsPage + "-mappings.js";
         public const string Activity = SettingsPage + "-activity.js";
+        public const string History = SettingsPage + "-history.js";
         public const string Tooltips = SettingsPage + "-tooltips.js";
         public const string TooltipDisplay = SettingsPage + "-tooltip-display.js";
         public const string Elements = SettingsPage + "-elements.js";

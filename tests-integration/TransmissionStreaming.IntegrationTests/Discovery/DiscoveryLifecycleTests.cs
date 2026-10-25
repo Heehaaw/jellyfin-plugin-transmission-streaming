@@ -60,7 +60,7 @@ public sealed class DiscoveryLifecycleTests(ITestOutputHelper output)
         await sut.Mediator.Send(source.Discover, cancellationToken);
         var original = sut.Store.All().Single();
         var unavailableStatus = "Download unavailable";
-        var completeStatus = "Complete";
+        var completeStatus = "Waiting for Jellyfin handoff";
         var completeProgress = 1d;
         await sut.Swarm.AllowAllPiecesAsync(cancellationToken);
 

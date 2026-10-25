@@ -28,6 +28,7 @@ public sealed class JellyfinTestServer(DownloadServices containers, JellyfinBase
     internal string Administrator => administrator;
     internal VideoDecoder Decoder => server!.Decoder;
     internal string ReferenceVideoPath => Swarm.RemotePath(Path.Combine(workspace, "reference.mkv"));
+
     internal string ProjectionFilePath => Swarm.RemotePath(Directory.EnumerateFiles(
         Path.Combine(workspace, "projection"), "*.strm", SearchOption.AllDirectories).Single());
 
@@ -98,6 +99,11 @@ public sealed class JellyfinTestServer(DownloadServices containers, JellyfinBase
     internal Task<string> WaitForItemAsync(bool projected = true)
     {
         return library.WaitForItemAsync(projected);
+    }
+
+    internal Task<JsonNode> WaitForCompletionAsync(string projectionId)
+    {
+        return downloads.WaitForCompletionAsync(projectionId);
     }
 
     internal Task StageImportedFileAsync()

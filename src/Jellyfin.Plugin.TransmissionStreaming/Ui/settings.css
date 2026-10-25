@@ -316,6 +316,25 @@
     padding-top: 1em;
 }
 
+#transmissionStreamingSettings #completedHistoryEntries {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+#transmissionStreamingSettings .ts-history .ts-entry {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: .4em 1em;
+    padding-bottom: .8em;
+}
+
+#transmissionStreamingSettings .ts-history time {
+    white-space: nowrap;
+}
+
 @media (max-width: 48em) {
     #transmissionStreamingSettings .ts-map-pair > .inputContainer,
     #transmissionStreamingSettings .ts-connection-row > .inputContainer {

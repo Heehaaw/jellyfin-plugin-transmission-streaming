@@ -1,37 +1,96 @@
 namespace Jellyfin.Plugin.TransmissionStreaming.Library;
 
-using global::TransmissionStreaming.Core.Arr;
-using global::TransmissionStreaming.Core.Configuration;
 using global::TransmissionStreaming.Core.Projection;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Library;
 using MediaBrowser.Controller.Session;
+using MediaBrowser.Model.Dto;
 using MediaBrowser.Model.Entities;
-using Microsoft.Extensions.Options;
 
-/// <summary>Adapts permanent application projections to Jellyfin indexing and per-user history.</summary>
+/// <summary>Maps Jellyfin indexing, metadata, sessions, and user-data APIs onto host-neutral contracts.</summary>
 internal sealed class LibraryProjection(
-    IOptionsMonitor<StreamingOptions> configuration,
     IProjectionFiles files,
     ILibraryManager library,
     IUserManager users,
     IUserDataManager userData,
-    ISessionManager sessions,
-    IWatchStateMerger watchStates,
-    IProjectionOverview overviews) : IProjectionIndex
+    ISessionManager sessions) : IProjectionLibrary
 {
-    public async Task RefreshAsync(CancellationToken cancellationToken)
+    public Task RefreshAsync(CancellationToken cancellationToken)
     {
-        // Only libraries explicitly configured to contain the projection are refreshed.
-        // Before such a library exists, projection files remain ready for the administrator.
-        var root = Path.GetFullPath(files.Root).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+        return RefreshContainingAsync(files.Root, true, cancellationToken);
+    }
+
+    public Task IndexImportedAsync(string path, CancellationToken cancellationToken)
+    {
+        return RefreshContainingAsync(path, false, cancellationToken);
+    }
+
+    public LibraryItem? Find(string path)
+    {
+        var item = FindNative(path);
+        return item is null ? null : new LibraryItem(item.Id.ToString("N"), item.Name, item.Overview,
+            sessions.Sessions.Any(session => session.NowPlayingItem?.Id == item.Id));
+    }
+
+    public async Task UpdateMetadataAsync(string itemId, string name, string? overview, CancellationToken cancellationToken)
+    {
+        var item = RequiredItem(itemId);
+        var parent = library.GetItemById(item.ParentId)
+            ?? throw new InvalidOperationException("The library item's parent is unavailable.");
+        item.Name = name;
+        item.Overview = overview;
+        await library.UpdateItemAsync(item, parent, ItemUpdateType.MetadataEdit, cancellationToken).ConfigureAwait(false);
+    }
+
+    public IReadOnlyList<LibraryUserState> GetUserStates(string sourceItemId, string targetItemId)
+    {
+        var source = RequiredItem(sourceItemId);
+        var target = RequiredItem(targetItemId);
+        var result = new List<LibraryUserState>();
+        foreach (var user in users.GetUsers())
+        {
+            // The batch API hydrates saved rows; single-item access can return an empty default.
+            var saved = userData.GetUserDataBatch([source, target], user);
+            saved.TryGetValue(source.Id, out var sourceState);
+            saved.TryGetValue(target.Id, out var targetState);
+            result.Add(new LibraryUserState(user.Id.ToString("N"), Snapshot(sourceState), Snapshot(targetState)));
+        }
+        return result;
+    }
+
+    public void SaveUserState(string userId, string itemId, LibraryWatchState state)
+    {
+        var targetUserId = Guid.Parse(userId);
+        var user = users.GetUsers().FirstOrDefault(candidate => candidate.Id == targetUserId)
+            ?? throw new InvalidOperationException("The user is unavailable for history transfer.");
+        userData.SaveUserData(user, RequiredItem(itemId), new UpdateUserItemDataDto
+        {
+            PlaybackPositionTicks = state.PlaybackPositionTicks,
+            Played = state.Played,
+            LastPlayedDate = state.LastPlayedDate,
+            PlayCount = state.PlayCount,
+            IsFavorite = state.IsFavorite,
+            Rating = state.Rating,
+            Likes = state.Likes
+        }, UserDataSaveReason.Import);
+    }
+
+    public void Remove(string itemId)
+    {
+        if (library.GetItemById(Guid.Parse(itemId)) is { } item)
+        {
+            library.DeleteItem(item, new DeleteOptions { DeleteFileLocation = false });
+        }
+    }
+
+    private async Task RefreshContainingAsync(string path, bool includeDescendants, CancellationToken cancellationToken)
+    {
         foreach (var folder in library.GetVirtualFolders(false))
         {
-            if (!folder.Locations.Any(location => IsWithin(root, location) || IsWithin(location, root)))
+            if (!folder.Locations.Any(location => IsWithin(location, path) || includeDescendants && IsWithin(path, location)))
             {
                 continue;
             }
-
             if (Guid.TryParse(folder.ItemId, out var id) && library.GetItemById(id) is Folder item)
             {
                 await item.ValidateChildren(new Progress<double>(), cancellationToken).ConfigureAwait(false);
@@ -39,99 +98,30 @@ internal sealed class LibraryProjection(
         }
     }
 
-    public async Task ReconcileAsync(Projection entry, CancellationToken cancellationToken)
+    private BaseItem RequiredItem(string id)
     {
-        var projected = Find(entry.StreamPath);
-        if (projected is null)
-        {
-            return;
-        }
-
-        var identity = entry.Identity;
-        var title = identity.Kind == MediaKind.Episode && !string.IsNullOrWhiteSpace(identity.EpisodeTitle)
-            ? identity.EpisodeTitle
-            : identity.Title;
-        var config = configuration.CurrentValue;
-        var display = config.ShowDownloadStatus && entry.CompletedPath is null
-            ? $"{title} [{entry.Status}]"
-            : title;
-        var overview = overviews.Format(projected.Overview, config.JellyfinPublicUrl);
-        if ((projected.Name != display || projected.Overview != overview) && projected.ParentId != Guid.Empty && library.GetItemById(projected.ParentId) is { } parent)
-        {
-            projected.Name = display;
-            projected.Overview = overview;
-            await library.UpdateItemAsync(projected, parent, ItemUpdateType.MetadataEdit, cancellationToken).ConfigureAwait(false);
-        }
-
-        if (entry.CompletedPath is null)
-        {
-            return;
-        }
-
-        var native = Find(entry.CompletedPath);
-        if (native is null || native.Id == projected.Id || IsPlaying(native.Id))
-        {
-            return;
-        }
-
-        // An arr import can be indexed before the next poll. Merge every user's state
-        // before removing that duplicate database entry; never delete the media itself.
-        foreach (var user in users.GetUsers())
-        {
-            // Path queries do not necessarily hydrate user data. The batch API loads saved
-            // rows; the single-item accessor can otherwise return an empty default here.
-            var saved = userData.GetUserDataBatch([native, projected], user);
-            if (!saved.TryGetValue(native.Id, out var source))
-            {
-                continue;
-            }
-
-            saved.TryGetValue(projected.Id, out var target);
-            userData.SaveUserData(user, projected, watchStates.Merge(source, target), UserDataSaveReason.Import);
-        }
-
-        library.DeleteItem(native, new DeleteOptions { DeleteFileLocation = false });
+        return library.GetItemById(Guid.Parse(id)) ?? throw new InvalidOperationException("The library item is unavailable.");
     }
 
-    public Task<bool> TryRemoveAsync(Projection entry, CancellationToken cancellationToken)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        var projected = Find(entry.StreamPath);
-        if (projected is not null)
-        {
-            if (IsPlaying(projected.Id))
-            {
-                return Task.FromResult(false);
-            }
-
-            // Files are removed separately through the confined projection adapter.
-            library.DeleteItem(projected, new DeleteOptions { DeleteFileLocation = false });
-        }
-
-        return Task.FromResult(true);
-    }
-
-    public bool IsPathIndexed(string path)
-    {
-        return Find(path) is not null;
-    }
-
-    public bool IsIndexed(Projection entry)
-    {
-        return IsPathIndexed(entry.StreamPath);
-    }
-
-    private bool IsPlaying(Guid id)
-    {
-        return sessions.Sessions.Any(session => session.NowPlayingItem?.Id == id);
-    }
-
-    private BaseItem? Find(string path)
+    private BaseItem? FindNative(string path)
     {
         var match = library.GetItemList(new InternalItemsQuery { Path = path, Recursive = true })
             .FirstOrDefault(item => string.Equals(item.Path, path, StringComparison.Ordinal));
-        // Update the canonical cached item so API reads see the imported user data immediately.
         return match is null ? null : library.GetItemById(match.Id) ?? match;
+    }
+
+    private static LibraryWatchState? Snapshot(UserItemData? state)
+    {
+        return state is null ? null : new LibraryWatchState
+        {
+            PlaybackPositionTicks = state.PlaybackPositionTicks,
+            Played = state.Played,
+            LastPlayedDate = state.LastPlayedDate,
+            PlayCount = state.PlayCount,
+            IsFavorite = state.IsFavorite,
+            Rating = state.Rating,
+            Likes = state.Likes
+        };
     }
 
     private static bool IsWithin(string root, string path)

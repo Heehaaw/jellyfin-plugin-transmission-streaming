@@ -1,7 +1,8 @@
 # Transmission Streaming for Jellyfin
 
 A prototype Jellyfin plugin that makes Radarr- and Sonarr-managed Transmission downloads playable before they finish. Playback stays in Jellyfin, including watched status and
-resume positions. Once arr imports the completed download, the same library entry reads the imported file.
+resume positions. After import, the stream reads the completed file while Transmission keeps seeding. Once the torrent is removed, the plugin transfers each viewer's history to the
+native Jellyfin item and retires its proxy.
 
 Targets Jellyfin 12.3, .NET 10, and Transmission 4.1.3. Forward playback is the priority; seeking is best effort. Native clients, transcoding, and public-swarm performance still
 need a trial with the intended player.
@@ -72,6 +73,11 @@ for separate test commands and coverage boundaries, and [installation and releas
 - [Configuration and buffering](doc/configuration.md)
 - [Completion, watch history, and rollback](doc/operations.md)
 - [Testing and isolation](doc/testing.md)
+- [Architecture rules](doc/architecture.md)
+- [Architecture audit](doc/architecture-audit.md)
+- [Testing guidelines](doc/testing-guidelines.md)
+- [UI guidelines](doc/ui-guidelines.md)
+- [Release guidelines](doc/release-guidelines.md)
 - [TODO list](TODO.md)
 
 ## License

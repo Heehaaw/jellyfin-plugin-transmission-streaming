@@ -10,10 +10,8 @@ internal static class Bootstrapper
     public static IServiceCollection AddJellyfinLibrary(this IServiceCollection services)
     {
         return services
-            .AddSingleton<IWatchStateMerger, WatchStateMerger>()
             .AddSingleton<IProjectionOverview, ProjectionOverview>()
-            .AddSingleton<IProjectionIndex, LibraryProjection>()
-            .AddSingleton<IProjectionLibrary>(provider => provider.GetRequiredService<IProjectionIndex>())
+            .AddSingleton<IProjectionLibrary, LibraryProjection>()
             .AddSingleton<IResolverIgnoreRule, ImportedFileIgnoreRule>();
     }
 }

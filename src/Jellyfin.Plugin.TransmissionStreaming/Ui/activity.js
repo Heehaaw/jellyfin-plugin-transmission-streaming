@@ -1,4 +1,5 @@
 import {buttonText, read, textElement} from './ConfigurationPage?name=transmission-streaming-elements.js';
+import CompletionHistory from './ConfigurationPage?name=transmission-streaming-history.js';
 import {explanations} from './ConfigurationPage?name=transmission-streaming-tooltips.js';
 
 function displayDate(value) {
@@ -27,6 +28,7 @@ export default class Activity {
         this.page = page;
         this.lifecycle = lifecycle;
         this.busy = false;
+        this.history = new CompletionHistory(page);
         this.refreshButton = this.field('refreshStreamingStatus');
         buttonText(this.refreshButton, 'Refresh', explanations.refresh);
         this.refreshButton.addEventListener('click', () => this.refresh());
@@ -36,6 +38,7 @@ export default class Activity {
 
     render(result) {
         const entries = read(result, 'entries') ?? [];
+        this.history.render(read(result, 'completed') ?? []);
         const enabled = Boolean(read(result, 'enabled'));
         this.field('streamingStatus').textContent = enabled ? 'Scanning enabled' : 'Scanning disabled';
         this.field('lastSuccessfulPoll').textContent = displayDate(read(result, 'lastSuccessfulPoll'));

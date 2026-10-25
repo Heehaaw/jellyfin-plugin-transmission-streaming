@@ -39,6 +39,12 @@
                 <ul id="streamingEntries" aria-label="Streaming library items"></ul>
                 <p id="streamingEmpty" class="ts-empty ts-muted" hidden>No streaming items yet. Enable scanning and start an arr-managed download to see it here.</p>
             </section>
+            <details id="completedHistory" class="ts-panel ts-history">
+                <summary><span id="completedHistoryHeading">Completed</span> <span id="completedHistoryCount" class="ts-count">0 handoffs</span></summary>
+                <p class="ts-muted ts-map-intro">The last 20 successful native handoffs. Open a title to continue in its Jellyfin library entry.</p>
+                <ul id="completedHistoryEntries" aria-label="Completed native handoffs"></ul>
+                <p id="completedHistoryEmpty" class="ts-muted">No completed handoffs yet.</p>
+            </details>
             <form id="transmissionStreamingForm">
                 <section class="ts-panel" aria-labelledby="discoveryHeading">
                     <div class="ts-heading">

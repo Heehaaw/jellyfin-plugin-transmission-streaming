@@ -71,4 +71,15 @@
 - [x] Add an idempotent description link to the administrator activity page, preserving the synopsis and reverse-proxy base path.
 - [x] Verify the description link through download, import, and restart in the real Jellyfin playback test.
 - [x] Pass all 295 tests on main, publish v0.1.4 by reusing the exact CI ZIP without release-time builds/tests, and install through the Jellyfin repository.
-- [x] Verify The Cycle is absent from tracking, Jellyfin, and generated files; preserve settings/library/movie identities; click Moana’s description link into the activity listing with its synopsis intact.
+- [x] Verify The Cycle is absent from tracking, Jellyfin, and generated files; preserve settings/library/movie identities; click Moana's description link into the activity listing with its synopsis intact.
+
+## Native handoff and architecture boundaries
+
+- [x] Keep the proxy during Transmission seeding, then transfer every user's state to the indexed native item before retirement.
+- [x] Retain pending handoff state on indexing, playback, history-save, or cleanup delays; remove only owned generated files and host metadata.
+- [x] Archive a small bounded history and show completed handoffs in a collapsed settings list.
+- [x] Move reconciliation, resolver decisions, and history merging into Logic Mediator handlers; keep Jellyfin access in thin adapters.
+- [x] Audit remaining layer leaks and add concise on-demand architecture, testing, UI, and release guidance linked from root AGENTS.md.
+- [x] Pass the assembled unit, integration, and real-Jellyfin suites for native handoff and playback independence; verify the final playback-race guards with focused unit tests.
+- [x] Install v0.1.5 locally after a verified full backup; preserve configuration, all five library IDs, all 25 movie IDs, and every user's saved Moana data. Verify the collapsed completion panel at desktop width.
+- [ ] Publish through successful main CI and the tag-only release, then reinstall and verify the existing LXC without interrupting playback.

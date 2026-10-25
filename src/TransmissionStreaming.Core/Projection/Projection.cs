@@ -2,7 +2,7 @@ namespace TransmissionStreaming.Core.Projection;
 
 using global::TransmissionStreaming.Core.Arr;
 
-/// <summary>A permanent Jellyfin stream entry whose backing file may move.</summary>
+/// <summary>A managed Jellyfin stream entry retained until cancellation or successful native handoff.</summary>
 public sealed record Projection
 {
     public string Id { get; set; } = "";
@@ -13,6 +13,7 @@ public sealed record Projection
     public long Length { get; set; }
     public string StreamPath { get; set; } = "";
     public string? CompletedPath { get; set; }
+    public bool HandoffPending { get; set; }
     public MediaIdentity Identity { get; set; } = new();
     public string Status { get; set; } = "Preparing stream";
     public double Progress { get; set; }

@@ -47,11 +47,14 @@ public static class PruneOrphanedProjection
 
             // A missing torrent alone can mean a late import. Require an authoritative
             // arr library response; connection failures propagate without deleting anything.
-            if (await arr.IsMediaTrackedAsync(connection, entry.Identity, cancellationToken).ConfigureAwait(false) ||
-                !await library.TryRemoveAsync(entry, cancellationToken).ConfigureAwait(false))
+            if (await arr.IsMediaTrackedAsync(connection, entry.Identity, cancellationToken).ConfigureAwait(false))
             {
                 return false;
             }
+
+            var projected = library.Find(entry.StreamPath);
+            if (projected?.IsPlaying == true) return false;
+            if (projected is not null) library.Remove(projected.Id);
 
             // Keep the durable record until host and file cleanup succeed, so a partial failure retries.
             files.RemoveFiles(entry);

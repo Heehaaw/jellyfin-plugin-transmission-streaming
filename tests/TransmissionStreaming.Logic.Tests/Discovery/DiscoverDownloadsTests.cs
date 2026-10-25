@@ -13,6 +13,7 @@ using TransmissionStreaming.Core.Projection;
 using TransmissionStreaming.Core.Transmission;
 using TransmissionStreaming.Logic.Discovery;
 using TransmissionStreaming.Logic.Imports;
+using TransmissionStreaming.Logic.Library;
 using Xunit;
 
 public sealed class DiscoverDownloadsTests
@@ -40,7 +41,6 @@ public sealed class DiscoverDownloadsTests
         paths.Setup(value => value.StreamPath(It.IsAny<string>(), source.Identity)).Returns(source.Existing.StreamPath);
         mediator.Setup(value => value.Send(It.IsAny<IQuery<string?>>(), It.IsAny<CancellationToken>())).Returns(ValueTask.FromResult<string?>(null));
         library.Setup(value => value.RefreshAsync(It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
-        library.Setup(value => value.ReconcileAsync(It.IsAny<Projection>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
         var selected = selection with { PlayableIndexes = Enumerable.Range(0, source.Torrent.Files.Count).ToArray(), PrimaryMovieIndex = source.Torrent.Files.IndexOf(feature) };
         mediator.Setup(value => value.Send(It.Is<SelectVideoFiles.Query>(query => query.Files == source.Torrent.Files), It.IsAny<CancellationToken>()))
             .Returns(ValueTask.FromResult(selected));
@@ -71,7 +71,6 @@ public sealed class DiscoverDownloadsTests
         store.Setup(value => value.All()).Returns([source.Existing]);
         mediator.Setup(value => value.Send(It.Is<IQuery<string?>>(query => query is ResolveImportedFile.Query),
             It.IsAny<CancellationToken>())).Returns(ValueTask.FromResult<string?>(source.ImportedPath));
-        library.Setup(value => value.ReconcileAsync(source.Existing, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
 
         // Act
         await sut.Handle(source.Command, CancellationToken.None);
@@ -82,7 +81,7 @@ public sealed class DiscoverDownloadsTests
         source.Existing.Id.Should().Be(id);
         source.Existing.Secret.Should().Be(secret);
         source.Existing.StreamPath.Should().Be(streamPath);
-        library.Verify(value => value.ReconcileAsync(source.Existing, It.IsAny<CancellationToken>()), Times.Once);
+        mediator.Verify(value => value.Send(It.Is<ReconcileProjection.Command>(request => request.Entry == source.Existing), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Theory, AutoMoqData]
@@ -198,7 +197,7 @@ public sealed class DiscoverDownloadsTests
         // Assert
         store.Verify(value => value.Save(It.IsAny<Projection>()), Times.Never);
         files.Verify(value => value.WriteFiles(It.IsAny<Projection>()), Times.Never);
-        library.Verify(value => value.ReconcileAsync(It.IsAny<Projection>(), It.IsAny<CancellationToken>()), Times.Never);
+        mediator.Verify(value => value.Send(It.IsAny<ReconcileProjection.Command>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     private sealed class AutoMoqDataAttribute() : AutoDataAttribute(() =>

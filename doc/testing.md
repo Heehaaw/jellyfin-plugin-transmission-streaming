@@ -69,7 +69,7 @@ The suites divide responsibilities so failures point to a specific behavior:
 
 Integration scenarios cover competing releases for one title, a removed torrent followed by a late import, completed bytes awaiting import, recovery after an arr outage, and
 rejection of samples and ambiguous episode payloads. Orphan scenarios remove the arr title and torrent, then verify that the tracking row and generated files stay absent across
-restart. An arr outage must retain them until an authoritative library response becomes available. A completed import reports full progress even when its torrent has already disappeared.
+restart. Native handoff waits for host indexing, then retires active state and generated files while retaining media and completion history across restart. An arr outage must retain them until an authoritative library response becomes available. A completed import reports full progress even when its torrent has already disappeared.
 
 Tests use generated inputs and inject concrete subjects with frozen collaborator mocks. Each test states one behavior, with scenario-specific setup kept in its Arrange block.
 Small helpers own external setup or protocol details when that makes the flow easier to read; short arrangements remain inline. Records and interfaces are exercised through
@@ -108,7 +108,10 @@ so current totals are separate from the like-for-like reuse comparison above.
 
 ## Virtual time
 
-Application policy unit tests use generated in-memory bytes and mocked offset reads. Physical offset reads, missing paths, and cancellation are tested separately against temporary\nfiles in the infrastructure suite. Tests follow the owning feature and layer when a policy moves.\n\nUnit tests inject `TimeProvider` and advance `FakeTimeProvider` rather than sleeping. They check exact discovery intervals, failure and retry timestamps, continuous-stall deadlines,
+Application policy unit tests use generated in-memory bytes and mocked offset reads. Physical offset reads, missing paths, and cancellation are tested separately against temporary
+files in the infrastructure suite. Tests follow the owning feature and layer when a policy moves.
+
+Unit tests inject `TimeProvider` and advance `FakeTimeProvider` rather than sleeping. They check exact discovery intervals, failure and retry timestamps, continuous-stall deadlines,
 deadline reset after progress, cancellation, and availability-cache expiry. Duration calculations use monotonic timestamps, so changing wall time cannot extend a stalled request
 or keep an expired cache alive.
 
@@ -132,8 +135,9 @@ The peer first releases only the first piece, then releases the remaining pieces
 This makes missing-piece assertions independent of Internet traffic and public-swarm timing.
 
 The scenarios exercise discovery before completion, HEAD and range responses, waiting for missing bytes without returning sparse zeros, cancellation, and a bounded stall. They
-complete the torrent, move the file into the simulated arr library, remove the torrent, and restart Jellyfin. They then check the permanent playback URL, item identity, and two
-viewers' watched status, resume positions, play counts, and favorites. A separate scan-race scenario checks native duplicate reconciliation without deleting imported media.
+complete the torrent and move the file into the simulated arr library. While it remains in Transmission, the same proxy and Jellyfin item retain each viewer's state. After torrent
+removal, the flow waits for native handoff and checks all seven transferred user-data fields, retired capabilities and generated files, bounded history, and retained media. Native
+Jellyfin streaming is then checked after disabling the plugin and restarting the server. A separate scan-race scenario checks duplicate reconciliation during seeding.
 
 Container readiness checks and bounded condition polling replace fixed startup sleeps. A restarted container can receive a new host port; the test client rebinds while the
 permanent URL inside the test network stays unchanged. Failure diagnostics include sanitized container logs without capability secrets.

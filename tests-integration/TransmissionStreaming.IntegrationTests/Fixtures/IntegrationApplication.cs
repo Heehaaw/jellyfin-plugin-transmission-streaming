@@ -86,6 +86,13 @@ internal sealed class IntegrationApplication(DownloadServices containers) : IAsy
         };
     }
 
+    public void SetNativeHandoffReady(string path, LibraryItem result)
+    {
+        var host = (NoopLibrary)_provider!.GetRequiredService<IProjectionLibrary>();
+        host.NativePath = path;
+        host.NativeItem = result;
+    }
+
     public void SetEnabled(bool enabled)
     {
         _settings!.CurrentValue = _settings.CurrentValue with { Enabled = enabled };
@@ -142,6 +149,7 @@ internal sealed class IntegrationApplication(DownloadServices containers) : IAsy
         var services = new ServiceCollection();
         services.AddSingleton<IOptionsMonitor<StreamingOptions>>(_settings!);
         services.AddSingleton<IProjectionLibrary, NoopLibrary>();
+        services.AddSingleton<IProjectionOverview, NoopOverview>();
         services.AddSingleton<IMediaLibraryLocations, NoopLibrary>();
         services.AddTransmissionStreamingInfrastructure();
         services.AddMediator((MediatorOptions options) =>
@@ -164,8 +172,23 @@ internal sealed class IntegrationApplication(DownloadServices containers) : IAsy
         public IDisposable? OnChange(Action<StreamingOptions, string?> listener) => null;
     }
 
+    private sealed class NoopOverview : IProjectionOverview
+    {
+        public string? Format(string? overview, string? publicUrl) => overview;
+    }
+
     private sealed class NoopLibrary : IProjectionLibrary, IMediaLibraryLocations
     {
+        public string? NativePath { get; set; }
+        public LibraryItem? NativeItem { get; set; }
+
+        public LibraryItem? Find(string path) => path == NativePath ? NativeItem : null;
+        public Task IndexImportedAsync(string path, CancellationToken cancellationToken) => Task.CompletedTask;
+        public Task UpdateMetadataAsync(string itemId, string name, string? overview, CancellationToken cancellationToken) => Task.CompletedTask;
+        public IReadOnlyList<LibraryUserState> GetUserStates(string sourceItemId, string targetItemId) => [];
+        public void SaveUserState(string userId, string itemId, LibraryWatchState state) { }
+        public void Remove(string itemId) { }
+
         public IReadOnlyList<string> GetServicePaths(MediaService service) => [];
 
         public IReadOnlyList<string> GetAllPaths() => [];
@@ -175,16 +198,10 @@ internal sealed class IntegrationApplication(DownloadServices containers) : IAsy
             return [];
         }
 
-        public Task<bool> TryRemoveAsync(Projection entry, CancellationToken cancellationToken) => Task.FromResult(true);
-
         public Task RefreshAsync(CancellationToken cancellationToken)
         {
             return Task.CompletedTask;
         }
 
-        public Task ReconcileAsync(Projection entry, CancellationToken cancellationToken)
-        {
-            return Task.CompletedTask;
-        }
     }
 }
