@@ -31,7 +31,8 @@ function environment(eligible = true) {
         options: [option('0', '1080p H264')], value: '0', disabled: true,
         classList: { contains: name => name === 'selectVideo' },
         add(value) { this.options.push(value); },
-        removeAttribute(name) { if (name === 'disabled') this.disabled = false; },
+        hasAttribute(name) { return name === 'disabled' && this.disabled; },
+        removeAttribute(name) { if (name === 'disabled') { this.disabled = false; observed?.(); } },
         closest() { return form; }
     };
     const audio = { options: [option('1'), option('2')], value: '2' };
@@ -40,7 +41,7 @@ function environment(eligible = true) {
     const sources = {
         options: [option(originalId, 'Original'), ...(eligible ? [option(convertedId, 'HDR (converted)')] : [])], value: originalId,
         dispatchEvent() {
-            video.options = [option('0', '1080p H264')]; video.value = '0'; video.disabled = true;
+            video.options = [option('0', '1080p H264')]; video.value = '0'; video.disabled = true; observed?.();
             audio.value = '1'; subtitles.value = '-1';
         }
     };

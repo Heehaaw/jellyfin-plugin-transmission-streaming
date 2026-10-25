@@ -24,7 +24,7 @@
         }
         converted.value = convertedId;
         if (converted.textContent !== 'HDR (converted)') converted.textContent = 'HDR (converted)';
-        video.removeAttribute('disabled');
+        if (video.hasAttribute('disabled')) video.removeAttribute('disabled');
         video.value = sources.value.startsWith(prefix) ? convertedId : originalTracks[0].value;
 
         // Conversion is chosen under Video. Keep the native source option available for playback routing.
@@ -64,6 +64,6 @@
         });
     }
     // Jellyfin replaces detail views and their options during navigation and version changes.
-    new MutationObserver(scheduleRefresh).observe(document.documentElement, { childList: true, subtree: true });
+    new MutationObserver(scheduleRefresh).observe(document.documentElement, { childList: true, attributes: true, attributeFilter: ['disabled'], subtree: true });
     scheduleRefresh();
 })();
