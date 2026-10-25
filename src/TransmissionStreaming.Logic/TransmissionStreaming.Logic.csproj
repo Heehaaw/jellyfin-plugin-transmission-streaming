@@ -3,11 +3,11 @@
         <PackageReference Include="Microsoft.Extensions.Options" />
         <ProjectReference Include="../TransmissionStreaming.Core/TransmissionStreaming.Core.csproj" />
         <PackageReference Include="Mediator.Abstractions" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+        <PackageReference Include="Mediator.SourceGenerator" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
     </ItemGroup>
     <ItemGroup>
-        <InternalsVisibleTo Include="Jellyfin.Plugin.TransmissionStreaming" />
         <InternalsVisibleTo Include="TransmissionStreaming.Logic.Tests" />
-        <InternalsVisibleTo Include="TransmissionStreaming.IntegrationTests" />
         <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
     </ItemGroup>
 </Project>

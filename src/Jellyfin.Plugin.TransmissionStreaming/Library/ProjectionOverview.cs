@@ -1,7 +1,6 @@
 namespace Jellyfin.Plugin.TransmissionStreaming.Library;
 
 using System.Net;
-
 using global::TransmissionStreaming.Core.Projection;
 
 /// <summary>Formats the Jellyfin-specific activity link without replacing metadata-provider descriptions.</summary>

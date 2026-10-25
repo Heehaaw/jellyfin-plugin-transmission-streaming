@@ -19,13 +19,13 @@ public static class Bootstrapper
     {
         services.TryAddSingleton<TimeProvider>(TimeProvider.System);
         return services
-        .AddTransmissionTransport()
-        .AddArrIntegration()
-        .AddConfigurationDiscovery()
-        .AddMediaFilesystem()
-        .AddProgressiveStreaming()
-        .AddProjectionFiles()
-        .AddProjectionPersistence()
-        .AddDiscoveryStatus();
+            .AddTransmissionTransport()
+            .AddArrIntegration()
+            .AddConfigurationDiscovery()
+            .AddMediaFilesystem()
+            .AddProgressiveStreaming()
+            .AddProjectionFiles()
+            .AddProjectionPersistence()
+            .AddDiscoveryStatus();
     }
 }

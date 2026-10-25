@@ -18,7 +18,10 @@ internal sealed class ProjectionStore : IProjectionStore
         var stateDirectory = options.CurrentValue.StateDirectory;
         Directory.CreateDirectory(stateDirectory);
         var path = Path.Combine(stateDirectory, "projections.db");
-        connectionString = new SqliteConnectionStringBuilder { DataSource = path }.ToString();
+        connectionString = new SqliteConnectionStringBuilder
+        {
+            DataSource = path
+        }.ToString();
         using var connection = Open();
         using var command = connection.CreateCommand();
         command.CommandText = """

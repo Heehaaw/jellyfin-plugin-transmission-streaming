@@ -18,7 +18,8 @@ public sealed class StreamController(IMediator mediator, ILogger<StreamControlle
     [Authorize(Policy = StreamingConstants.RequiresAdministrator)]
     public async Task<ActionResult<StreamingStatus>> Status(CancellationToken cancellationToken)
     {
-        return await mediator.Send(new GetStatus.Query(), cancellationToken).ConfigureAwait(false);
+        var query = new GetStatus.Query();
+        return await mediator.Send(query, cancellationToken).ConfigureAwait(false);
     }
 
     [HttpGet("streams/{id}")]
@@ -26,7 +27,8 @@ public sealed class StreamController(IMediator mediator, ILogger<StreamControlle
     [AllowAnonymous]
     public async Task<IActionResult> Stream(string id, [FromQuery] string? key, CancellationToken cancellationToken)
     {
-        var entry = await mediator.Send(new GetStream.Query(id, key), cancellationToken).ConfigureAwait(false);
+        var query = new GetStream.Query(id, key);
+        var entry = await mediator.Send(query, cancellationToken).ConfigureAwait(false);
         if (entry is null)
         {
             return NotFound();
@@ -47,6 +49,7 @@ public sealed class StreamController(IMediator mediator, ILogger<StreamControlle
         {
             Response.Headers.ContentRange = $"bytes {range.Start}-{range.Start + range.Count - 1}/{entry.Length}";
         }
+
         // Scanners can read length without waking a torrent or waiting for its missing pieces.
         if (HttpMethods.IsHead(Request.Method) || range.Count == 0)
         {
@@ -55,7 +58,8 @@ public sealed class StreamController(IMediator mediator, ILogger<StreamControlle
 
         try
         {
-            await mediator.Send(new StreamMedia.Command(entry, Response.Body, range.Start, range.Count), cancellationToken).ConfigureAwait(false);
+            var command = new StreamMedia.Command(entry, Response.Body, range.Start, range.Count);
+            await mediator.Send(command, cancellationToken).ConfigureAwait(false);
             return new EmptyResult();
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -71,6 +75,7 @@ public sealed class StreamController(IMediator mediator, ILogger<StreamControlle
                 HttpContext.Abort();
                 return new EmptyResult();
             }
+
             Response.ContentLength = null;
             Response.Headers.Remove("Content-Range");
             return StatusCode(StatusCodes.Status503ServiceUnavailable);

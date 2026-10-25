@@ -26,8 +26,18 @@ internal sealed class ServicePathDiscovery(ITransmissionClient transmission, IAr
                 };
             case MediaService.Radarr:
             case MediaService.Sonarr:
-                var roots = await arr.GetRootFoldersAsync(new ArrConnection { Url = connection.Url, ApiKey = connection.ApiKey }, cancellationToken).ConfigureAwait(false);
-                return new DiscoveredServicePaths { LibraryRoots = roots };
+                var roots = await arr.GetRootFoldersAsync(
+                    connection: new ArrConnection
+                    {
+                        Url = connection.Url,
+                        ApiKey = connection.ApiKey
+                    },
+                    cancellationToken: cancellationToken
+                ).ConfigureAwait(false);
+                return new DiscoveredServicePaths
+                {
+                    LibraryRoots = roots
+                };
             default:
                 throw new ArgumentOutOfRangeException(nameof(service), service, "Unsupported media service.");
         }

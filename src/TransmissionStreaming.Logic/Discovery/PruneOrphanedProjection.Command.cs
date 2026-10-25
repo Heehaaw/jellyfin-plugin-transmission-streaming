@@ -21,7 +21,8 @@ public static class PruneOrphanedProjection
         IStreamActivity activity,
         IProjectionLibrary library,
         IProjectionFiles files,
-        IProjectionStore store) : ICommandHandler<Command, bool>
+        IProjectionStore store
+    ) : ICommandHandler<Command, bool>
     {
         public async ValueTask<bool> Handle(Command command, CancellationToken cancellationToken)
         {
@@ -36,8 +37,16 @@ public static class PruneOrphanedProjection
             var config = options.CurrentValue;
             var connection = entry.Identity.Kind switch
             {
-                MediaKind.Movie => new ArrConnection { Url = config.RadarrUrl, ApiKey = config.RadarrApiKey },
-                MediaKind.Episode => new ArrConnection { Url = config.SonarrUrl, ApiKey = config.SonarrApiKey },
+                MediaKind.Movie => new ArrConnection
+                {
+                    Url = config.RadarrUrl,
+                    ApiKey = config.RadarrApiKey
+                },
+                MediaKind.Episode => new ArrConnection
+                {
+                    Url = config.SonarrUrl,
+                    ApiKey = config.SonarrApiKey
+                },
                 _ => null
             };
             if (connection is null || string.IsNullOrWhiteSpace(connection.Url) || string.IsNullOrWhiteSpace(connection.ApiKey))
@@ -53,8 +62,15 @@ public static class PruneOrphanedProjection
             }
 
             var projected = library.Find(entry.StreamPath);
-            if (projected?.IsPlaying == true) return false;
-            if (projected is not null) library.Remove(projected.Id);
+            if (projected?.IsPlaying == true)
+            {
+                return false;
+            }
+
+            if (projected is not null)
+            {
+                library.Remove(projected.Id);
+            }
 
             // Keep the durable record until host and file cleanup succeed, so a partial failure retries.
             files.RemoveFiles(entry);

@@ -1,7 +1,6 @@
 namespace TransmissionStreaming.Infrastructure.Filesystem;
 
 using Core.Projection;
-
 using global::TransmissionStreaming.Core.Arr;
 using System.Security.Cryptography;
 using System.Text;
@@ -24,6 +23,7 @@ internal sealed class MediaPaths : IProjectionPaths
         {
             throw new InvalidOperationException("Media path escapes the configured local root.");
         }
+
         // A local filesystem alias must not turn an allowed download into an arbitrary file read.
         var relative = Path.GetRelativePath(targetRoot, target);
         var cursor = targetRoot.TrimEnd(Path.DirectorySeparatorChar);
@@ -35,14 +35,15 @@ internal sealed class MediaPaths : IProjectionPaths
                 throw new InvalidOperationException("Symbolic links are not supported in media paths.");
             }
         }
+
         return target;
     }
 
     public string IdentityKey(MediaIdentity identity)
     {
         return identity.Kind == MediaKind.Movie
-        ? $"movie:{identity.MovieId}"
-        : $"episode:{identity.SeriesId}:{identity.SeasonNumber}:{identity.EpisodeNumber}";
+            ? $"movie:{identity.MovieId}"
+            : $"episode:{identity.SeriesId}:{identity.SeasonNumber}:{identity.EpisodeNumber}";
     }
 
     public string Id(MediaIdentity identity)

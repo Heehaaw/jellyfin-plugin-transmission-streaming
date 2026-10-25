@@ -14,7 +14,8 @@ public static class MapServicePath
     {
         public async ValueTask<string?> Handle(Query query, CancellationToken cancellationToken)
         {
-            var mappings = await mediator.Send(new GetServicePathMappings.Query(query.Service), cancellationToken).ConfigureAwait(false);
+            var mappingsQuery = new GetServicePathMappings.Query(query.Service);
+            var mappings = await mediator.Send(mappingsQuery, cancellationToken).ConfigureAwait(false);
             var candidates = mappings.Where(mapping => Contains(mapping.RemoteRoot, query.Path))
                 .OrderByDescending(mapping => mapping.RemoteRoot.TrimEnd('/').Length).ToArray();
             if (candidates.Length == 0)
@@ -28,6 +29,7 @@ public static class MapServicePath
             {
                 return null;
             }
+
             return mapper.Map(query.Path, closest[0].RemoteRoot, closest[0].LocalRoot);
         }
 

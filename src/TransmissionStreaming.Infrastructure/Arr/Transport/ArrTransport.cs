@@ -54,7 +54,6 @@ internal sealed class ArrTransport(HttpClient http) : IArrTransport
         using var document = await JsonDocument.ParseAsync(body, cancellationToken: cancellationToken).ConfigureAwait(false);
         return document.RootElement.Clone();
     }
-
 }
 
 internal sealed class ArrNotFoundException : Exception

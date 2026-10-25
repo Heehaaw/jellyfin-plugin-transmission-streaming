@@ -17,24 +17,36 @@ public static class MergeWatchState
             var source = query.Source;
             var target = query.Target;
             var playback = SelectPlayback(source, target);
-            return ValueTask.FromResult(playback with
+            var merged = playback with
             {
                 PlayCount = Math.Max(source.PlayCount, target?.PlayCount ?? 0),
                 IsFavorite = source.IsFavorite || (target?.IsFavorite ?? false),
                 Rating = target?.Rating ?? source.Rating,
                 Likes = target?.Likes ?? source.Likes
-            });
+            };
+            return ValueTask.FromResult(merged);
         }
 
         private static LibraryWatchState SelectPlayback(LibraryWatchState source, LibraryWatchState? target)
         {
-            if (target is null || !HasActivity(target)) return source;
-            if (!HasActivity(source)) return target;
+            if (target is null || !HasActivity(target))
+            {
+                return source;
+            }
+
+            if (!HasActivity(source))
+            {
+                return target;
+            }
+
             // A timestamp cannot establish precedence over a date-less manual change on the target.
             return source.LastPlayedDate is { } sourceAt && target.LastPlayedDate is { } targetAt && sourceAt > targetAt ? source : target;
         }
 
-        private static bool HasActivity(LibraryWatchState state) => state.LastPlayedDate.HasValue
-            || state.Played || state.PlayCount > 0 || state.PlaybackPositionTicks > 0;
+        private static bool HasActivity(LibraryWatchState state)
+        {
+            return state.LastPlayedDate.HasValue
+                   || state.Played || state.PlayCount > 0 || state.PlaybackPositionTicks > 0;
+        }
     }
 }

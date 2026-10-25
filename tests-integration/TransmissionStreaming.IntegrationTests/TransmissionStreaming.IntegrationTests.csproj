@@ -14,7 +14,6 @@
         <PackageReference Include="FluentAssertions" />
         <PackageReference Include="Microsoft.Data.Sqlite" />
         <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
-        <PackageReference Include="Mediator.SourceGenerator" PrivateAssets="all" />
         <ProjectReference Include="../../src/TransmissionStreaming.Logic/TransmissionStreaming.Logic.csproj" />
         <ProjectReference Include="../../src/TransmissionStreaming.Infrastructure/TransmissionStreaming.Infrastructure.csproj" />
         <ProjectReference Include="../../tests/TransmissionStreaming.TestSupport/TransmissionStreaming.TestSupport.csproj" />

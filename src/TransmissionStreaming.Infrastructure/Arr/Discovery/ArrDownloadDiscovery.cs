@@ -14,7 +14,8 @@ internal sealed class ArrDownloadDiscovery(IArrTransport transport) : IArrDownlo
         MediaKind kind,
         string hash,
         string filename,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         if (!MediaFileName.IsPlayable(filename) || string.IsNullOrWhiteSpace(hash))
         {
@@ -24,8 +25,16 @@ internal sealed class ArrDownloadDiscovery(IArrTransport transport) : IArrDownlo
         var suffix = kind == MediaKind.Movie
             ? "includeMovie=true&includeUnknownMovieItems=false"
             : "includeSeries=true&includeEpisode=true&includeUnknownSeriesItems=false";
-        var records = await transport.GetPagesAsync(connection, "queue", suffix, cancellationToken).ConfigureAwait(false);
-        var matches = records.Where(row => string.Equals(Text(row, "downloadId"), hash, StringComparison.OrdinalIgnoreCase)).ToList();
+        var records = await transport.GetPagesAsync(
+            connection: connection,
+            endpoint: "queue",
+            query: suffix,
+            cancellationToken: cancellationToken
+        ).ConfigureAwait(false);
+        var matches = MatchingDownloads(
+            records: records,
+            hash: hash
+        );
         if (matches.Count == 0)
         {
             return null;
@@ -33,60 +42,114 @@ internal sealed class ArrDownloadDiscovery(IArrTransport transport) : IArrDownlo
 
         if (kind == MediaKind.Movie)
         {
-            var ids = matches.Select(row => Number(row, "movieId")).Where(id => id > 0).Distinct().ToArray();
-            if (ids.Length != 1)
+            return await FindMovieAsync(
+                connection: connection,
+                matches: matches,
+                filename: filename,
+                cancellationToken: cancellationToken
+            ).ConfigureAwait(false);
+        }
+
+        return await FindEpisodeAsync(
+            connection: connection,
+            kind: kind,
+            matches: matches,
+            filename: filename,
+            cancellationToken: cancellationToken
+        ).ConfigureAwait(false);
+    }
+
+    private static List<JsonElement> MatchingDownloads(IReadOnlyList<JsonElement> records, string hash)
+    {
+        var matches = new List<JsonElement>();
+        foreach (var row in records)
+        {
+            var downloadId = Text(
+                element: row,
+                name: "downloadId"
+            );
+            var matchesHash = string.Equals(
+                a: downloadId,
+                b: hash,
+                comparisonType: StringComparison.OrdinalIgnoreCase
+            );
+            if (matchesHash)
             {
-                return null;
+                matches.Add(row);
             }
+        }
 
-            var row = matches.First(row => Number(row, "movieId") == ids[0]);
-            var movie = Object(row, "movie");
-            if (movie.ValueKind != JsonValueKind.Object)
+        return matches;
+    }
+
+    private async Task<MediaIdentity?> FindMovieAsync(
+        ArrConnection connection,
+        IReadOnlyList<JsonElement> matches,
+        string filename,
+        CancellationToken cancellationToken
+    )
+    {
+        var movieId = UniquePositiveId(
+            rows: matches,
+            name: "movieId"
+        );
+        if (movieId is null)
+        {
+            return null;
+        }
+
+        var row = matches.First(candidate =>
             {
-                movie = await transport.GetAsync(connection, $"movie/{ids[0]}", cancellationToken).ConfigureAwait(false);
+                var candidateId = Number(
+                    element: candidate,
+                    name: "movieId"
+                );
+                return candidateId == movieId.Value;
             }
-
-            var movieIdentity = Identity(kind, movie, Text(row, "downloadId"), filename);
-            movieIdentity.MovieId = ids[0];
-            return movieIdentity;
-        }
-
-        var episodeNumber = MediaFileName.ParseEpisode(filename);
-        if (episodeNumber is null)
+        );
+        var movie = Object(
+            element: row,
+            name: "movie"
+        );
+        if (movie.ValueKind != JsonValueKind.Object)
         {
-            return null;
+            movie = await transport.GetAsync(
+                connection: connection,
+                path: $"movie/{movieId.Value}",
+                cancellationToken: cancellationToken
+            ).ConfigureAwait(false);
         }
 
-        var seriesIds = matches.Select(row => Number(row, "seriesId")).Where(id => id > 0).Distinct().ToArray();
-        if (seriesIds.Length != 1)
-        {
-            return null;
-        }
-
-        var seriesId = seriesIds[0];
-        var episodes = await transport.GetAsync(connection, $"episode?seriesId={seriesId}&seasonNumber={episodeNumber.Value.Season}", cancellationToken).ConfigureAwait(false);
-        var candidates = Array(episodes).Where(episode =>
-            Number(episode, "seasonNumber") == episodeNumber.Value.Season &&
-            Number(episode, "episodeNumber") == episodeNumber.Value.Episode).ToList();
-        if (candidates.Count != 1)
-        {
-            return null;
-        }
-
-        var first = matches[0];
-        var series = Object(first, "series");
-        if (series.ValueKind != JsonValueKind.Object)
-        {
-            series = await transport.GetAsync(connection, $"series/{seriesId}", cancellationToken).ConfigureAwait(false);
-        }
-
-        var identity = Identity(kind, series, Text(first, "downloadId"), filename);
-        identity.SeriesId = seriesId;
-        identity.EpisodeId = Number(candidates[0], "id");
-        identity.SeasonNumber = episodeNumber.Value.Season;
-        identity.EpisodeNumber = episodeNumber.Value.Episode;
-        identity.EpisodeTitle = Text(candidates[0], "title");
+        var hash = Text(
+            element: row,
+            name: "downloadId"
+        );
+        var identity = Identity(
+            kind: MediaKind.Movie,
+            media: movie,
+            hash: hash,
+            filename: filename
+        );
+        identity.MovieId = movieId.Value;
         return identity;
+    }
+
+    private static int? UniquePositiveId(IReadOnlyList<JsonElement> rows, string name)
+    {
+        var ids = new HashSet<int>();
+        foreach (var row in rows)
+        {
+            var id = Number(
+                element: row,
+                name: name
+            );
+            if (id > 0)
+            {
+                ids.Add(id);
+            }
+        }
+
+        return ids.Count == 1 ? ids.Single() : null;
     }
 
     private static MediaIdentity Identity(MediaKind kind, JsonElement media, string hash, string filename)
@@ -94,13 +157,153 @@ internal sealed class ArrDownloadDiscovery(IArrTransport transport) : IArrDownlo
         return new()
         {
             Kind = kind,
-            Title = Text(media, "title"),
-            Year = Number(media, "year"),
-            TmdbId = Number(media, "tmdbId"),
-            TvdbId = Number(media, "tvdbId"),
-            ImdbId = Text(media, "imdbId"),
+            Title = Text(
+                element: media,
+                name: "title"
+            ),
+            Year = Number(
+                element: media,
+                name: "year"
+            ),
+            TmdbId = Number(
+                element: media,
+                name: "tmdbId"
+            ),
+            TvdbId = Number(
+                element: media,
+                name: "tvdbId"
+            ),
+            ImdbId = Text(
+                element: media,
+                name: "imdbId"
+            ),
             OriginalFileName = filename,
             DownloadHash = hash
         };
+    }
+
+    private async Task<MediaIdentity?> FindEpisodeAsync(
+        ArrConnection connection,
+        MediaKind kind,
+        IReadOnlyList<JsonElement> matches,
+        string filename,
+        CancellationToken cancellationToken
+    )
+    {
+        var episodeNumber = MediaFileName.ParseEpisode(filename);
+        if (episodeNumber is null)
+        {
+            return null;
+        }
+
+        var seriesId = UniquePositiveId(
+            rows: matches,
+            name: "seriesId"
+        );
+        if (seriesId is null)
+        {
+            return null;
+        }
+
+        var episode = await FindEpisodeRowAsync(
+            connection: connection,
+            seriesId: seriesId.Value,
+            number: episodeNumber.Value,
+            cancellationToken: cancellationToken
+        ).ConfigureAwait(false);
+        if (episode is null)
+        {
+            return null;
+        }
+
+        var first = matches[0];
+        var series = await ReadSeriesAsync(
+            connection: connection,
+            row: first,
+            seriesId: seriesId.Value,
+            cancellationToken: cancellationToken
+        ).ConfigureAwait(false);
+        var hash = Text(
+            element: first,
+            name: "downloadId"
+        );
+        var identity = Identity(
+            kind: kind,
+            media: series,
+            hash: hash,
+            filename: filename
+        );
+        identity.SeriesId = seriesId.Value;
+        identity.EpisodeId = Number(
+            element: episode.Value,
+            name: "id"
+        );
+        identity.SeasonNumber = episodeNumber.Value.Season;
+        identity.EpisodeNumber = episodeNumber.Value.Episode;
+        identity.EpisodeTitle = Text(
+            element: episode.Value,
+            name: "title"
+        );
+        return identity;
+    }
+
+    private async Task<JsonElement?> FindEpisodeRowAsync(
+        ArrConnection connection,
+        int seriesId,
+        EpisodeNumber number,
+        CancellationToken cancellationToken
+    )
+    {
+        var episodes = await transport.GetAsync(
+            connection: connection,
+            path: $"episode?seriesId={seriesId}&seasonNumber={number.Season}",
+            cancellationToken: cancellationToken
+        ).ConfigureAwait(false);
+        var candidates = new List<JsonElement>();
+        foreach (var episode in Array(episodes))
+        {
+            var season = Number(
+                element: episode,
+                name: "seasonNumber"
+            );
+            if (season != number.Season)
+            {
+                continue;
+            }
+
+            var episodeNumber = Number(
+                element: episode,
+                name: "episodeNumber"
+            );
+            if (episodeNumber == number.Episode)
+            {
+                candidates.Add(episode);
+            }
+        }
+
+        return candidates.Count == 1 ? candidates[0] : null;
+    }
+
+    private async Task<JsonElement> ReadSeriesAsync(
+        ArrConnection connection,
+        JsonElement row,
+        int seriesId,
+        CancellationToken cancellationToken
+    )
+    {
+        var series = Object(
+            element: row,
+            name: "series"
+        );
+        if (series.ValueKind == JsonValueKind.Object)
+        {
+            return series;
+        }
+
+        return await transport.GetAsync(
+            connection: connection,
+            path: $"series/{seriesId}",
+            cancellationToken: cancellationToken
+        ).ConfigureAwait(false);
     }
 }

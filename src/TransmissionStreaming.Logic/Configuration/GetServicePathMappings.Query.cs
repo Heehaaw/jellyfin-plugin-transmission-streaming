@@ -20,7 +20,15 @@ public static class GetServicePathMappings
             // Incomplete explicit rows still replace the fallback; a typo must not select an unrelated old file.
             IReadOnlyList<ServicePathMapping> result = mappings.Length > 0
                 ? mappings
-                : [new ServicePathMapping { Service = query.Service, RemoteRoot = config.RemoteMediaRoot, LocalRoot = config.LocalMediaRoot }];
+                :
+                [
+                    new ServicePathMapping
+                    {
+                        Service = query.Service,
+                        RemoteRoot = config.RemoteMediaRoot,
+                        LocalRoot = config.LocalMediaRoot
+                    }
+                ];
             return ValueTask.FromResult(result);
         }
     }

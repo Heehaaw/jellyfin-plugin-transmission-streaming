@@ -16,10 +16,16 @@ public static class TransferUserHistory
             cancellationToken.ThrowIfCancellationRequested();
             foreach (var user in library.GetUserStates(command.SourceItemId, command.TargetItemId))
             {
-                if (user.Source is null) continue;
-                var merged = await mediator.Send(new MergeWatchState.Query(user.Source, user.Target), cancellationToken).ConfigureAwait(false);
+                if (user.Source is null)
+                {
+                    continue;
+                }
+
+                var merge = new MergeWatchState.Query(user.Source, user.Target);
+                var merged = await mediator.Send(merge, cancellationToken).ConfigureAwait(false);
                 library.SaveUserState(user.UserId, command.TargetItemId, merged);
             }
+
             return Unit.Value;
         }
     }

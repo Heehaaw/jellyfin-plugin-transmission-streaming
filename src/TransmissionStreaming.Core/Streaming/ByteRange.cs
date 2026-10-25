@@ -35,6 +35,7 @@ public readonly record struct ByteRange(long Start, long Count, bool Partial)
             range = new(length - count, count, true);
             return true;
         }
+
         if (!Number(parts[0], out var start) || start >= length)
         {
             return false;

@@ -16,7 +16,13 @@ public static class SelectVideoFiles
     {
         private static readonly HashSet<string> VideoExtensions = new(StringComparer.OrdinalIgnoreCase)
         {
-            ".mkv", ".mp4", ".m4v", ".avi", ".ts", ".webm", ".mov"
+            ".mkv",
+            ".mp4",
+            ".m4v",
+            ".avi",
+            ".ts",
+            ".webm",
+            ".mov"
         };
 
         public ValueTask<Result> Handle(Query query, CancellationToken cancellationToken)
@@ -33,6 +39,7 @@ public static class SelectVideoFiles
                 {
                     continue;
                 }
+
                 playable.Add(index);
                 // Equal-sized candidates retain the torrent's original ordering.
                 if (file.Length > largest)
@@ -41,6 +48,7 @@ public static class SelectVideoFiles
                     primary = index;
                 }
             }
+
             return ValueTask.FromResult(new Result(playable, primary));
         }
 
@@ -51,6 +59,7 @@ public static class SelectVideoFiles
             {
                 return false;
             }
+
             var stem = Path.GetFileNameWithoutExtension(segments[^1]);
             var tokens = stem.Split(['.', ' ', '_', '-', '[', ']', '(', ')'], StringSplitOptions.RemoveEmptyEntries);
             return !tokens.Any(token => token.Equals("sample", StringComparison.OrdinalIgnoreCase) || token.Equals("trailer", StringComparison.OrdinalIgnoreCase));
@@ -59,7 +68,8 @@ public static class SelectVideoFiles
         private static bool IsSupplementFolder(string name)
         {
             return name.Equals("sample", StringComparison.OrdinalIgnoreCase) || name.Equals("samples", StringComparison.OrdinalIgnoreCase)
-                || name.Equals("trailer", StringComparison.OrdinalIgnoreCase) || name.Equals("trailers", StringComparison.OrdinalIgnoreCase);
+                                                                             || name.Equals("trailer", StringComparison.OrdinalIgnoreCase) ||
+                                                                             name.Equals("trailers", StringComparison.OrdinalIgnoreCase);
         }
     }
 }

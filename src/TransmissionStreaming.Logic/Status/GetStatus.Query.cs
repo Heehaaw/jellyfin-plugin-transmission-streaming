@@ -18,21 +18,35 @@ public static class GetStatus
         IOptionsMonitor<StreamingOptions> options,
         IDiscoveryStatus discovery,
         IProjectionStore store,
-        IStreamActivity activity) : IQueryHandler<Query, StreamingStatus>
+        IStreamActivity activity
+    ) : IQueryHandler<Query, StreamingStatus>
     {
         public ValueTask<StreamingStatus> Handle(Query query, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
             var status = discovery.Get();
-            var entries = store.All().Select(entry => new StreamStatus(entry.Id, entry.Identity.Title,
-                entry.Status, entry.Progress, activity.Count(entry.Id))).ToArray();
-            return ValueTask.FromResult(new StreamingStatus(options.CurrentValue.Enabled, status.LastSuccessfulPoll, status.LastFailure, entries, store.Completed()));
+            var entries = store.All().Select(ToStatus).ToArray();
+            var completed = store.Completed();
+            var result = new StreamingStatus(options.CurrentValue.Enabled, status.LastSuccessfulPoll, status.LastFailure, entries, completed);
+            return ValueTask.FromResult(result);
+        }
+
+        private StreamStatus ToStatus(Projection entry)
+        {
+            var readers = activity.Count(entry.Id);
+            return new StreamStatus(entry.Id, entry.Identity.Title, entry.Status, entry.Progress, readers);
         }
     }
 }
 
 /// <summary>Discovery diagnostics safe to expose to an administrator.</summary>
-public sealed record StreamingStatus(bool Enabled, DateTimeOffset? LastSuccessfulPoll, string? LastFailure, IReadOnlyList<StreamStatus> Entries, IReadOnlyList<CompletedProjection> Completed);
+public sealed record StreamingStatus(
+    bool Enabled,
+    DateTimeOffset? LastSuccessfulPoll,
+    string? LastFailure,
+    IReadOnlyList<StreamStatus> Entries,
+    IReadOnlyList<CompletedProjection> Completed
+);
 
 /// <summary>Progress and reader counts for a single projected title.</summary>
 public sealed record StreamStatus(string Id, string Title, string Status, double Progress, int Readers);

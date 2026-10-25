@@ -23,6 +23,7 @@ public static class PieceMap
 
             available += (int)Math.Min(requested - available, pieceSize - position % pieceSize);
         }
+
         return available;
     }
 }

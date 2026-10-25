@@ -35,6 +35,7 @@ internal sealed record PathMapping(string RemoteRoot, string LocalRoot)
         {
             return null;
         }
+
         // The configured root itself may be a mount; symlinks beneath it must not escape that mount.
         var walk = root;
         foreach (var part in parts)
@@ -45,6 +46,7 @@ internal sealed record PathMapping(string RemoteRoot, string LocalRoot)
                 return null;
             }
         }
+
         return local;
     }
 }

@@ -1,13 +1,13 @@
 namespace TransmissionStreaming.Infrastructure.Streaming;
 
 using Core.Streaming;
-
 using System.Collections.Concurrent;
 
 /// <summary>Tracks outstanding reads for diagnostics without retaining video data.</summary>
 internal sealed class StreamActivity : IStreamActivity
 {
     private readonly ConcurrentDictionary<string, int> readers = new(StringComparer.Ordinal);
+
     public int Count(string id)
     {
         return readers.GetValueOrDefault(id);
@@ -22,6 +22,7 @@ internal sealed class StreamActivity : IStreamActivity
     private sealed class Lease(Action close) : IDisposable
     {
         private Action? release = close;
+
         public void Dispose()
         {
             Interlocked.Exchange(ref release, null)?.Invoke();

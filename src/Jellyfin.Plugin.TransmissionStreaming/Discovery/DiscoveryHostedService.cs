@@ -4,44 +4,74 @@ using global::TransmissionStreaming.Core.Configuration;
 using global::TransmissionStreaming.Core.Discovery;
 using global::TransmissionStreaming.Logic.Discovery;
 using Mediator;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 /// <summary>Drives the discovery use case from Jellyfin's hosted-service lifecycle.</summary>
 internal sealed class DiscoveryHostedService(
-    IMediator mediator,
+    IServiceScopeFactory scopeFactory,
     IOptionsMonitor<StreamingOptions> configuration,
     IDiscoveryStatus status,
     ILogger<DiscoveryHostedService> logger,
-    TimeProvider timeProvider) : BackgroundService
+    TimeProvider timeProvider
+) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        while (!stoppingToken.IsCancellationRequested)
+        try
         {
-            if (configuration.CurrentValue.Enabled)
+            while (!stoppingToken.IsCancellationRequested)
             {
-                try
-                {
-                    await mediator.Send(new DiscoverDownloads.Command(), stoppingToken).ConfigureAwait(false);
-                    status.Set(new DiscoveryStatus { LastSuccessfulPoll = timeProvider.GetUtcNow() });
-                }
-                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
-                {
-                    break;
-                }
-                catch (Exception exception)
-                {
-                    // HTTP exception messages may include upstream URLs. Keep them out of logs and status.
-                    var failure = exception.GetType().Name;
-                    status.Set(status.Get() with { LastFailure = failure });
-                    logger.LogWarning("Transmission discovery failed ({FailureType}). Check connections and paths.", failure);
-                }
-            }
+                await PollAsync(stoppingToken).ConfigureAwait(false);
 
-            var delay = Math.Clamp(configuration.CurrentValue.PollSeconds, DiscoveryConstants.MinimumPollSeconds, DiscoveryConstants.MaximumPollSeconds);
-            await Task.Delay(TimeSpan.FromSeconds(delay), timeProvider, stoppingToken).ConfigureAwait(false);
+                var intervalSeconds = Math.Clamp(configuration.CurrentValue.PollSeconds, DiscoveryConstants.MinimumPollSeconds, DiscoveryConstants.MaximumPollSeconds);
+                var interval = TimeSpan.FromSeconds(intervalSeconds);
+                await Task.Delay(interval, timeProvider, stoppingToken).ConfigureAwait(false);
+            }
+        }
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        {
+            // Host shutdown cancels both an in-flight poll and its next scheduled delay.
+        }
+    }
+
+    private async Task PollAsync(CancellationToken cancellationToken)
+    {
+        if (!configuration.CurrentValue.Enabled)
+        {
+            return;
+        }
+
+        try
+        {
+            // A hosted worker outlives requests; each poll owns and disposes its application scope.
+            await using var scope = scopeFactory.CreateAsyncScope();
+            var mediator = scope.ServiceProvider.GetRequiredService<IMediator>();
+            var command = new DiscoverDownloads.Command();
+            await mediator.Send(command, cancellationToken).ConfigureAwait(false);
+
+            var successfulPoll = new DiscoveryStatus
+            {
+                LastSuccessfulPoll = timeProvider.GetUtcNow()
+            };
+            status.Set(successfulPoll);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            // HTTP exception messages may include upstream URLs. Keep them out of logs and status.
+            var failureType = exception.GetType().Name;
+            var failedPoll = status.Get() with
+            {
+                LastFailure = failureType
+            };
+            status.Set(failedPoll);
+            logger.LogWarning("Transmission discovery failed ({FailureType}). Check connections and paths.", failureType);
         }
     }
 }

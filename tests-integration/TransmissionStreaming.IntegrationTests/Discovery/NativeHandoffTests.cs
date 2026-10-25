@@ -16,7 +16,7 @@ public sealed class NativeHandoffTests(ITestOutputHelper output)
         deadline.CancelAfter(TimeSpan.FromMinutes(2));
         var cancellationToken = deadline.Token;
         await sut.StartAsync(source, cancellationToken);
-        await sut.Mediator.Send(source.Discover, cancellationToken);
+        await sut.DiscoverAsync(source.Discover, cancellationToken);
         var original = sut.Store.All().Single();
         var sidecar = Path.ChangeExtension(original.StreamPath, ".nfo");
         await sut.Swarm.AllowAllPiecesAsync(cancellationToken);
@@ -25,17 +25,23 @@ public sealed class NativeHandoffTests(ITestOutputHelper output)
         {
             // Act
             var importedPath = await sut.ImportAsync(cancellationToken);
-            await sut.Mediator.Send(source.Discover, cancellationToken);
+            await sut.DiscoverAsync(source.Discover, cancellationToken);
             var seeding = sut.Store.All().Single();
             await sut.Swarm.RemoveAsync(cancellationToken);
-            await sut.Mediator.Send(source.Discover, cancellationToken);
+            await sut.DiscoverAsync(source.Discover, cancellationToken);
             var pending = sut.Store.All().Single();
             var pendingFilesExist = File.Exists(original.StreamPath) && File.Exists(sidecar);
-            sut.SetNativeHandoffReady(importedPath, native with { IsPlaying = false });
-            await sut.Mediator.Send(source.Discover, cancellationToken);
+            sut.SetNativeHandoffReady(
+                path: importedPath,
+                result: native with
+                {
+                    IsPlaying = false
+                }
+            );
+            await sut.DiscoverAsync(source.Discover, cancellationToken);
             var completed = sut.Store.Completed().Single();
             await sut.RestartAsync();
-            await sut.Mediator.Send(source.Discover, cancellationToken);
+            await sut.DiscoverAsync(source.Discover, cancellationToken);
             var received = await File.ReadAllBytesAsync(importedPath, cancellationToken);
 
             // Assert

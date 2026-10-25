@@ -26,9 +26,17 @@ using HostBootstrapper = Jellyfin.Plugin.TransmissionStreaming.Bootstrapper;
 public sealed class BootstrapperTests
 {
     [Theory, AutoMoqData]
-    internal void Should_ComposeThePluginEndpointsAndHostedWorker(Mock<IServerApplicationHost> host,
-        Mock<ILibraryManager> library, Mock<IUserManager> users, Mock<IUserDataManager> userData, Mock<ISessionManager> sessions,
-        Mock<IOptionsMonitor<StreamingOptions>> options, Mock<IProjectionStore> store, Mock<IPluginSettings> settings, HostBootstrapper sut)
+    internal void Should_ComposeThePluginEndpointsAndHostedWorker(
+        Mock<IServerApplicationHost> host,
+        Mock<ILibraryManager> library,
+        Mock<IUserManager> users,
+        Mock<IUserDataManager> userData,
+        Mock<ISessionManager> sessions,
+        Mock<IOptionsMonitor<StreamingOptions>> options,
+        Mock<IProjectionStore> store,
+        Mock<IPluginSettings> settings,
+        HostBootstrapper sut
+    )
     {
         // Arrange
         var services = new ServiceCollection();
@@ -38,9 +46,17 @@ public sealed class BootstrapperTests
             .AddSingleton(sessions.Object).AddSingleton(options.Object).AddSingleton(store.Object).AddSingleton(settings.Object);
 
         // Act
-        using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });
-        var mediator = provider.GetRequiredService<IMediator>();
-        var endpoint = ActivatorUtilities.CreateInstance<StreamController>(provider);
+        using var provider = services.BuildServiceProvider(
+            new ServiceProviderOptions
+            {
+                ValidateOnBuild = true,
+                ValidateScopes = true
+            }
+        );
+        using var scope = provider.CreateScope();
+        var scopedServices = scope.ServiceProvider;
+        var mediator = scopedServices.GetRequiredService<IMediator>();
+        var endpoint = ActivatorUtilities.CreateInstance<StreamController>(scopedServices);
         var workers = provider.GetServices<IHostedService>().ToArray();
 
         // Assert
@@ -53,9 +69,19 @@ public sealed class BootstrapperTests
     }
 
     private sealed class AutoMoqDataAttribute() : AutoDataAttribute(() =>
-    {
-        var fixture = new Fixture { RepeatCount = 1 };
-        fixture.Customize(new AutoMoqCustomization { ConfigureMembers = true, GenerateDelegates = true });
-        return fixture;
-    });
+        {
+            var fixture = new Fixture
+            {
+                RepeatCount = 1
+            };
+            fixture.Customize(
+                new AutoMoqCustomization
+                {
+                    ConfigureMembers = true,
+                    GenerateDelegates = true
+                }
+            );
+            return fixture;
+        }
+    );
 }

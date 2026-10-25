@@ -16,10 +16,13 @@ public sealed class DiscoveryLifecycleTests(ITestOutputHelper output)
         deadline.CancelAfter(TimeSpan.FromMinutes(2));
         var cancellationToken = deadline.Token;
         await sut.StartAsync(source, cancellationToken);
-        await sut.Mediator.Send(source.Discover, cancellationToken);
+        await sut.DiscoverAsync(source.Discover, cancellationToken);
         var original = sut.Store.All().Single();
         var originalLink = await File.ReadAllTextAsync(original.StreamPath, cancellationToken);
-        var upgrade = replacement with { FileName = Path.GetFileNameWithoutExtension(replacement.FileName) + ".2160p.mkv" };
+        var upgrade = replacement with
+        {
+            FileName = Path.GetFileNameWithoutExtension(replacement.FileName) + ".2160p.mkv"
+        };
 
         try
         {
@@ -27,9 +30,9 @@ public sealed class DiscoveryLifecycleTests(ITestOutputHelper output)
             // Both torrents stay in the actual daemon, while arr now owns the newer release for the same movie ID.
             await sut.Swarm.AddAsync(upgrade.Media, upgrade.FileName, cancellationToken);
             var replacementHash = sut.Swarm.Hash;
-            await sut.Mediator.Send(source.Discover, cancellationToken);
+            await sut.DiscoverAsync(source.Discover, cancellationToken);
             await sut.RestartAsync();
-            await sut.Mediator.Send(source.Discover, cancellationToken);
+            await sut.DiscoverAsync(source.Discover, cancellationToken);
             var retained = sut.Store.All();
             var torrents = await sut.TorrentsAsync(cancellationToken);
             var currentLink = await File.ReadAllTextAsync(original.StreamPath, cancellationToken);
@@ -57,7 +60,7 @@ public sealed class DiscoveryLifecycleTests(ITestOutputHelper output)
         deadline.CancelAfter(TimeSpan.FromMinutes(2));
         var cancellationToken = deadline.Token;
         await sut.StartAsync(source, cancellationToken);
-        await sut.Mediator.Send(source.Discover, cancellationToken);
+        await sut.DiscoverAsync(source.Discover, cancellationToken);
         var original = sut.Store.All().Single();
         var unavailableStatus = "Download unavailable";
         var completeStatus = "Waiting for Jellyfin handoff";
@@ -68,11 +71,11 @@ public sealed class DiscoveryLifecycleTests(ITestOutputHelper output)
         {
             // Act
             await sut.Swarm.RemoveAsync(cancellationToken);
-            await sut.Mediator.Send(source.Discover, cancellationToken);
+            await sut.DiscoverAsync(source.Discover, cancellationToken);
             var unavailable = sut.Store.All().Single();
             var importedPath = await sut.ImportAsync(cancellationToken);
             await sut.RestartAsync();
-            await sut.Mediator.Send(source.Discover, cancellationToken);
+            await sut.DiscoverAsync(source.Discover, cancellationToken);
             var recovered = sut.Store.All().Single();
             var bytes = await sut.ReadAsync(recovered, 0, source.Media.Length, cancellationToken);
             var torrents = await sut.TorrentsAsync(cancellationToken);
@@ -106,7 +109,7 @@ public sealed class DiscoveryLifecycleTests(ITestOutputHelper output)
         deadline.CancelAfter(TimeSpan.FromMinutes(2));
         var cancellationToken = deadline.Token;
         await sut.StartAsync(source, cancellationToken);
-        await sut.Mediator.Send(source.Discover, cancellationToken);
+        await sut.DiscoverAsync(source.Discover, cancellationToken);
         var original = sut.Store.All().Single();
         var waitingStatus = "Waiting for import";
         var completedProgress = 1d;
@@ -115,10 +118,10 @@ public sealed class DiscoveryLifecycleTests(ITestOutputHelper output)
         try
         {
             // Act
-            await sut.Mediator.Send(source.Discover, cancellationToken);
-            await sut.Mediator.Send(source.Discover, cancellationToken);
+            await sut.DiscoverAsync(source.Discover, cancellationToken);
+            await sut.DiscoverAsync(source.Discover, cancellationToken);
             await sut.RestartAsync();
-            await sut.Mediator.Send(source.Discover, cancellationToken);
+            await sut.DiscoverAsync(source.Discover, cancellationToken);
             var entries = sut.Store.All();
             var waiting = entries.Single();
             var bytes = await sut.ReadAsync(waiting, 0, source.Media.Length, cancellationToken);

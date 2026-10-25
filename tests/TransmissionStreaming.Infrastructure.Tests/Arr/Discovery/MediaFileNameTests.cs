@@ -20,7 +20,9 @@ public sealed class MediaFileNameTests
         var second = MediaFileName.ParseEpisode(alternate);
 
         // Assert
-        first.Should().Be((season, episode));
+        first.Should().NotBeNull();
+        first!.Value.Season.Should().Be(season);
+        first.Value.Episode.Should().Be(episode);
         second.Should().Be(first);
     }
 

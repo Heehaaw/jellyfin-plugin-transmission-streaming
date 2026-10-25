@@ -4,7 +4,10 @@ namespace TransmissionStreaming.Core.Projection;
 public interface IProjectionFiles
 {
     /// <summary>Gets the configured dedicated projection root, or the plugin-owned default when no explicit root is set.</summary>
-    string Root { get; }
+    string Root
+    {
+        get;
+    }
 
     /// <summary>Claims an empty dedicated root and creates the movie and show folders, or reopens a previously owned root.</summary>
     /// <exception cref="InvalidOperationException">The root is the filesystem root or contains unrelated files on first use.</exception>

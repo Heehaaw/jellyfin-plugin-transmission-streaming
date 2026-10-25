@@ -23,7 +23,7 @@ public sealed class DownloadFlowTests(ITestOutputHelper output)
             await sut.Swarm.AllowFirstPieceAsync(cancellationToken);
 
             // Act
-            await sut.Mediator.Send(source.Discover, cancellationToken);
+            await sut.DiscoverAsync(source.Discover, cancellationToken);
             var projection = sut.Store.All().Single();
             var received = await sut.ReadAsync(projection, 0, sut.Swarm.PieceSize, cancellationToken);
             var download = await sut.Swarm.ProgressAsync(cancellationToken);
@@ -56,17 +56,17 @@ public sealed class DownloadFlowTests(ITestOutputHelper output)
             var cancellationToken = deadline.Token;
             await sut.StartAsync(source, cancellationToken);
             sut.UseIndependentArrMounts();
-            await sut.Mediator.Send(source.Discover, cancellationToken);
+            await sut.DiscoverAsync(source.Discover, cancellationToken);
             var original = sut.Store.All().Single();
             var expectedStatus = "Waiting for Jellyfin handoff";
             await sut.Swarm.AllowAllPiecesAsync(cancellationToken);
 
             // Act
             var importedPath = await sut.ImportAsync(cancellationToken);
-            await sut.Mediator.Send(source.Discover, cancellationToken);
+            await sut.DiscoverAsync(source.Discover, cancellationToken);
             await sut.Swarm.RemoveAsync(cancellationToken);
             await sut.RestartAsync();
-            await sut.Mediator.Send(source.Discover, cancellationToken);
+            await sut.DiscoverAsync(source.Discover, cancellationToken);
             var restored = sut.Store.All().Single();
             var received = await sut.ReadAsync(restored, 0, source.Media.Length, cancellationToken);
 
@@ -97,17 +97,17 @@ public sealed class DownloadFlowTests(ITestOutputHelper output)
             using var deadline = new CancellationTokenSource(TimeSpan.FromMinutes(2));
             var cancellationToken = deadline.Token;
             await sut.StartAsync(source, cancellationToken);
-            await sut.Mediator.Send(source.Discover, cancellationToken);
+            await sut.DiscoverAsync(source.Discover, cancellationToken);
             var original = sut.Store.All().Single();
             await sut.Swarm.AllowAllPiecesAsync(cancellationToken);
             var importedPath = await sut.ImportAsync(cancellationToken);
             await sut.Arr.PublishUnrelatedImportAsync(sut.Swarm.RemotePath(importedPath), unrelatedTorrent.ToString("N"), cancellationToken);
 
             // Act
-            await sut.Mediator.Send(source.Discover, cancellationToken);
+            await sut.DiscoverAsync(source.Discover, cancellationToken);
             var afterUnrelatedImport = sut.Store.All().Single();
             await sut.Arr.PublishImportAsync(sut.Swarm.RemotePath(importedPath), cancellationToken);
-            await sut.Mediator.Send(source.Discover, cancellationToken);
+            await sut.DiscoverAsync(source.Discover, cancellationToken);
             var afterExactImport = sut.Store.All().Single();
 
             // Assert
@@ -133,17 +133,17 @@ public sealed class DownloadFlowTests(ITestOutputHelper output)
             using var deadline = new CancellationTokenSource(TimeSpan.FromMinutes(2));
             var cancellationToken = deadline.Token;
             await sut.StartAsync(source, cancellationToken);
-            await sut.Mediator.Send(source.Discover, cancellationToken);
+            await sut.DiscoverAsync(source.Discover, cancellationToken);
             var original = sut.Store.All().Single();
             await sut.Arr.SetFailureAsync(true, cancellationToken);
 
             // Act
-            var failedDiscovery = async () => await sut.Mediator.Send(source.Discover, cancellationToken);
+            var failedDiscovery = async () => await sut.DiscoverAsync(source.Discover, cancellationToken);
             var failure = await Record.ExceptionAsync(failedDiscovery);
             await sut.RestartAsync();
             var restored = sut.Store.All().Single();
             await sut.Arr.SetFailureAsync(false, cancellationToken);
-            await sut.Mediator.Send(source.Discover, cancellationToken);
+            await sut.DiscoverAsync(source.Discover, cancellationToken);
             var recovered = sut.Store.All().Single();
 
             // Assert
@@ -174,7 +174,7 @@ public sealed class DownloadFlowTests(ITestOutputHelper output)
             sut.SetEnabled(false);
 
             // Act
-            await sut.Mediator.Send(source.Discover, cancellationToken);
+            await sut.DiscoverAsync(source.Discover, cancellationToken);
             var projections = sut.Store.All();
 
             // Assert
@@ -197,7 +197,10 @@ public sealed class DownloadFlowTests(ITestOutputHelper output)
         {
             using var deadline = new CancellationTokenSource(TimeSpan.FromMinutes(2));
             var cancellationToken = deadline.Token;
-            var episodeSource = source with { FileName = Path.GetFileNameWithoutExtension(source.FileName) + ".S01E02.mkv" };
+            var episodeSource = source with
+            {
+                FileName = Path.GetFileNameWithoutExtension(source.FileName) + ".S01E02.mkv"
+            };
             var expectedSeason = 1;
             var expectedEpisode = 2;
             await sut.StartAsync(episodeSource, cancellationToken);
@@ -205,11 +208,11 @@ public sealed class DownloadFlowTests(ITestOutputHelper output)
             await sut.Arr.SetEpisodeAsync(true, cancellationToken);
 
             // Act
-            await sut.Mediator.Send(source.Discover, cancellationToken);
+            await sut.DiscoverAsync(source.Discover, cancellationToken);
             var original = sut.Store.All().Single();
             await sut.Swarm.AllowAllPiecesAsync(cancellationToken);
             var importedPath = await sut.ImportAsync(cancellationToken);
-            await sut.Mediator.Send(source.Discover, cancellationToken);
+            await sut.DiscoverAsync(source.Discover, cancellationToken);
             await sut.Swarm.RemoveAsync(cancellationToken);
             var imported = sut.Store.All().Single();
             var received = await sut.ReadAsync(imported, 0, episodeSource.Media.Length, cancellationToken);
@@ -230,13 +233,24 @@ public sealed class DownloadFlowTests(ITestOutputHelper output)
     }
 
     private sealed class AutoMoqDataAttribute() : AutoDataAttribute(() =>
-    {
-        var fixture = new Fixture { RepeatCount = 1 };
-        fixture.Customize(new AutoMoqCustomization { ConfigureMembers = true, GenerateDelegates = true });
-        // Every torrent source must span several complete pieces and use a legal video filename.
-        fixture.Customize<DownloadSource>(composer => composer
-            .With(source => source.Media, fixture.CreateMany<byte>(128 * 1024).ToArray())
-            .With(source => source.FileName, fixture.Create<string>() + ".mkv"));
-        return fixture;
-    });
+        {
+            var fixture = new Fixture
+            {
+                RepeatCount = 1
+            };
+            fixture.Customize(
+                new AutoMoqCustomization
+                {
+                    ConfigureMembers = true,
+                    GenerateDelegates = true
+                }
+            );
+            // Every torrent source must span several complete pieces and use a legal video filename.
+            fixture.Customize<DownloadSource>(composer => composer
+                .With(source => source.Media, fixture.CreateMany<byte>(128 * 1024).ToArray())
+                .With(source => source.FileName, fixture.Create<string>() + ".mkv")
+            );
+            return fixture;
+        }
+    );
 }

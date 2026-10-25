@@ -34,7 +34,11 @@ internal sealed class PluginOptionsChangeTokenSource : IOptionsChangeTokenSource
         CancellationTokenSource previous;
         lock (gate)
         {
-            if (disposed) return;
+            if (disposed)
+            {
+                return;
+            }
+
             previous = changed;
             changed = new CancellationTokenSource();
         }
@@ -56,7 +60,11 @@ internal sealed class PluginOptionsChangeTokenSource : IOptionsChangeTokenSource
         CancellationTokenSource previous;
         lock (gate)
         {
-            if (disposed) return;
+            if (disposed)
+            {
+                return;
+            }
+
             disposed = true;
             previous = changed;
         }

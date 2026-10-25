@@ -4,6 +4,7 @@ using Core.Configuration;
 using Core.Projection;
 using Core.Transmission;
 using Infrastructure;
+using Logic;
 using Logic.Discovery;
 using Logic.Streaming;
 using Mediator;
@@ -22,8 +23,13 @@ internal sealed class IntegrationApplication(DownloadServices containers) : IAsy
     private bool _independentArrMounts;
 
     public TorrentScenario Swarm => _swarm ?? throw new InvalidOperationException("Start the fixture first.");
-    public ArrStub Arr { get; private set; } = null!;
-    public IMediator Mediator => _provider!.GetRequiredService<IMediator>();
+
+    public ArrStub Arr
+    {
+        get;
+        private set;
+    } = null!;
+
     public IProjectionStore Store => _provider!.GetRequiredService<IProjectionStore>();
     public string Workspace => _workspace!;
 
@@ -34,7 +40,7 @@ internal sealed class IntegrationApplication(DownloadServices containers) : IAsy
             _swarm = await containers.OpenAsync(source.Media, source.FileName, cancellationToken).ConfigureAwait(false);
             _workspace = _swarm.Workspace;
             Arr = await ArrStub.StartAsync(_workspace, containers.Network, _swarm, cancellationToken).ConfigureAwait(false);
-            _settings = new MutableOptionsMonitor(new StreamingOptions
+            var settings = new StreamingOptions
             {
                 Enabled = true,
                 StateDirectory = Path.Combine(_workspace, "state"),
@@ -49,7 +55,8 @@ internal sealed class IntegrationApplication(DownloadServices containers) : IAsy
                 JellyfinPublicUrl = "http://unused-jellyfin.invalid",
                 PrioritizePlayback = true,
                 PieceWaitSeconds = 5
-            });
+            };
+            _settings = new MutableOptionsMonitor(settings);
             _provider = BuildProvider();
         }
         catch
@@ -63,25 +70,49 @@ internal sealed class IntegrationApplication(DownloadServices containers) : IAsy
         }
     }
 
+    public async Task DiscoverAsync(DiscoverDownloads.Command command, CancellationToken cancellationToken)
+    {
+        await using var scope = _provider!.CreateAsyncScope();
+        var mediator = scope.ServiceProvider.GetRequiredService<IMediator>();
+        await mediator.Send(command, cancellationToken).ConfigureAwait(false);
+    }
+
     public Task<IReadOnlyList<TorrentSnapshot>> TorrentsAsync(CancellationToken cancellationToken)
     {
         var settings = _settings!.CurrentValue;
         var connection = new TransmissionConnection(settings.TransmissionUrl, settings.TransmissionUsername, settings.TransmissionPassword);
-        return _provider!.GetRequiredService<ITransmissionClient>().GetTorrentsAsync(connection, cancellationToken);
+        var client = _provider!.GetRequiredService<ITransmissionClient>();
+        return client.GetTorrentsAsync(connection, cancellationToken);
     }
 
     public void UseIndependentArrMounts()
     {
         _independentArrMounts = true;
+        var localArrRoot = Path.Combine(_workspace!, "movies");
         _settings!.CurrentValue = _settings.CurrentValue with
         {
             RemoteMediaRoot = "/unused-legacy",
             LocalMediaRoot = Path.Combine(_workspace!, "unused-legacy"),
             PathMappings =
             [
-                new() { Service = MediaService.Transmission, RemoteRoot = "/data", LocalRoot = containers.Workspace },
-                new() { Service = MediaService.Radarr, RemoteRoot = "/arr/library", LocalRoot = Path.Combine(_workspace!, "movies") },
-                new() { Service = MediaService.Sonarr, RemoteRoot = "/arr/library", LocalRoot = Path.Combine(_workspace!, "movies") }
+                new()
+                {
+                    Service = MediaService.Transmission,
+                    RemoteRoot = "/data",
+                    LocalRoot = containers.Workspace
+                },
+                new()
+                {
+                    Service = MediaService.Radarr,
+                    RemoteRoot = "/arr/library",
+                    LocalRoot = localArrRoot
+                },
+                new()
+                {
+                    Service = MediaService.Sonarr,
+                    RemoteRoot = "/arr/library",
+                    LocalRoot = localArrRoot
+                }
             ]
         };
     }
@@ -95,7 +126,10 @@ internal sealed class IntegrationApplication(DownloadServices containers) : IAsy
 
     public void SetEnabled(bool enabled)
     {
-        _settings!.CurrentValue = _settings.CurrentValue with { Enabled = enabled };
+        _settings!.CurrentValue = _settings.CurrentValue with
+        {
+            Enabled = enabled
+        };
     }
 
     public async Task RestartAsync()
@@ -109,7 +143,10 @@ internal sealed class IntegrationApplication(DownloadServices containers) : IAsy
     public async Task<byte[]> ReadAsync(Projection entry, long offset, long count, CancellationToken cancellationToken)
     {
         await using var destination = new MemoryStream();
-        await Mediator.Send(new StreamMedia.Command(entry, destination, offset, count), cancellationToken).ConfigureAwait(false);
+        await using var scope = _provider!.CreateAsyncScope();
+        var mediator = scope.ServiceProvider.GetRequiredService<IMediator>();
+        var command = new StreamMedia.Command(entry, destination, offset, count);
+        await mediator.Send(command, cancellationToken).ConfigureAwait(false);
         return destination.ToArray();
     }
 
@@ -117,13 +154,16 @@ internal sealed class IntegrationApplication(DownloadServices containers) : IAsy
     {
         var destination = Path.Combine(_workspace!, "movies", Swarm.FileName);
         File.Move(Swarm.LocalDownloadPath, destination);
-        await Arr.PublishImportAsync(_independentArrMounts ? "/arr/library/" + Swarm.FileName : Swarm.RemotePath(destination), cancellationToken).ConfigureAwait(false);
+        var remotePath = _independentArrMounts ? "/arr/library/" + Swarm.FileName : Swarm.RemotePath(destination);
+        await Arr.PublishImportAsync(remotePath, cancellationToken).ConfigureAwait(false);
         return destination;
     }
 
     public Task<string> DiagnosticsAsync()
     {
-        return _swarm is null ? Task.FromResult("The disposable swarm did not finish starting.") : _swarm.LogsAsync(CancellationToken.None);
+        return _swarm is null
+            ? Task.FromResult("The disposable swarm did not finish starting.")
+            : _swarm.LogsAsync(CancellationToken.None);
     }
 
     public async ValueTask DisposeAsync()
@@ -152,46 +192,95 @@ internal sealed class IntegrationApplication(DownloadServices containers) : IAsy
         services.AddSingleton<IProjectionOverview, NoopOverview>();
         services.AddSingleton<IMediaLibraryLocations, NoopLibrary>();
         services.AddTransmissionStreamingInfrastructure();
-        services.AddMediator((MediatorOptions options) =>
-        {
-            options.Namespace = "TransmissionStreaming.IntegrationTests.Dispatch";
-            options.ServiceLifetime = ServiceLifetime.Singleton;
-            options.GenerateTypesAsInternal = true;
-            options.Assemblies = [typeof(DiscoverDownloads.Command)];
-        });
-        return services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });
+        services.AddTransmissionStreamingLogic();
+        return services.BuildServiceProvider(
+            new ServiceProviderOptions
+            {
+                ValidateOnBuild = true,
+                ValidateScopes = true
+            }
+        );
     }
 
     /// <summary>The fixture changes current settings directly; production notifications use the framework monitor.</summary>
     private sealed class MutableOptionsMonitor(StreamingOptions value) : IOptionsMonitor<StreamingOptions>
     {
-        public StreamingOptions CurrentValue { get; set; } = value;
+        public StreamingOptions CurrentValue
+        {
+            get;
+            set;
+        } = value;
 
-        public StreamingOptions Get(string? name) => CurrentValue;
+        public StreamingOptions Get(string? name)
+        {
+            return CurrentValue;
+        }
 
-        public IDisposable? OnChange(Action<StreamingOptions, string?> listener) => null;
+        public IDisposable? OnChange(Action<StreamingOptions, string?> listener)
+        {
+            return null;
+        }
     }
 
     private sealed class NoopOverview : IProjectionOverview
     {
-        public string? Format(string? overview, string? publicUrl) => overview;
+        public string? Format(string? overview, string? publicUrl)
+        {
+            return overview;
+        }
     }
 
     private sealed class NoopLibrary : IProjectionLibrary, IMediaLibraryLocations
     {
-        public string? NativePath { get; set; }
-        public LibraryItem? NativeItem { get; set; }
+        public string? NativePath
+        {
+            get;
+            set;
+        }
 
-        public LibraryItem? Find(string path) => path == NativePath ? NativeItem : null;
-        public Task IndexImportedAsync(string path, CancellationToken cancellationToken) => Task.CompletedTask;
-        public Task UpdateMetadataAsync(string itemId, string name, string? overview, CancellationToken cancellationToken) => Task.CompletedTask;
-        public IReadOnlyList<LibraryUserState> GetUserStates(string sourceItemId, string targetItemId) => [];
-        public void SaveUserState(string userId, string itemId, LibraryWatchState state) { }
-        public void Remove(string itemId) { }
+        public LibraryItem? NativeItem
+        {
+            get;
+            set;
+        }
 
-        public IReadOnlyList<string> GetServicePaths(MediaService service) => [];
+        public LibraryItem? Find(string path)
+        {
+            return path == NativePath ? NativeItem : null;
+        }
 
-        public IReadOnlyList<string> GetAllPaths() => [];
+        public Task IndexImportedAsync(string path, CancellationToken cancellationToken)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task UpdateMetadataAsync(string itemId, string name, string? overview, CancellationToken cancellationToken)
+        {
+            return Task.CompletedTask;
+        }
+
+        public IReadOnlyList<LibraryUserState> GetUserStates(string sourceItemId, string targetItemId)
+        {
+            return [];
+        }
+
+        public void SaveUserState(string userId, string itemId, LibraryWatchState state)
+        {
+        }
+
+        public void Remove(string itemId)
+        {
+        }
+
+        public IReadOnlyList<string> GetServicePaths(MediaService service)
+        {
+            return [];
+        }
+
+        public IReadOnlyList<string> GetAllPaths()
+        {
+            return [];
+        }
 
         public IReadOnlyList<string> GetPaths()
         {
@@ -202,6 +291,5 @@ internal sealed class IntegrationApplication(DownloadServices containers) : IAsy
         {
             return Task.CompletedTask;
         }
-
     }
 }

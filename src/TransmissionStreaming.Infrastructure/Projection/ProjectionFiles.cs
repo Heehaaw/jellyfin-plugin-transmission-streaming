@@ -41,9 +41,11 @@ internal sealed class ProjectionFiles(IOptionsMonitor<StreamingOptions> options,
         WriteIfChanged(entry.StreamPath, url + "\n");
         var identity = entry.Identity;
         var episode = identity.Kind == MediaKind.Episode;
-        var nfo = new XElement(episode ? "episodedetails" : "movie",
+        var nfo = new XElement(
+            name: episode ? "episodedetails" : "movie",
             new XElement("title", episode && !string.IsNullOrWhiteSpace(identity.EpisodeTitle) ? identity.EpisodeTitle : identity.Title),
-            new XElement("year", identity.Year));
+            new XElement("year", identity.Year)
+        );
         if (episode)
         {
             nfo.Add(new XElement("showtitle", identity.Title), new XElement("season", identity.SeasonNumber), new XElement("episode", identity.EpisodeNumber));
@@ -117,7 +119,10 @@ internal sealed class ProjectionFiles(IOptionsMonitor<StreamingOptions> options,
         string[] candidates = [entry.StreamPath, metadata, entry.StreamPath + ".new", metadata + ".new"];
         // Validate the complete set before the first delete; a later unsafe sidecar must not cause partial cleanup.
         var targets = candidates.Select(candidate => paths.Map(candidate, root, root)
-                                                     ?? throw new InvalidOperationException("A generated file escapes the projection directory or traverses a symbolic link."))
+                                                     ?? throw new InvalidOperationException(
+                                                         "A generated file escapes the projection directory or traverses a symbolic link."
+                                                     )
+            )
             .ToArray();
         foreach (var target in targets)
         {

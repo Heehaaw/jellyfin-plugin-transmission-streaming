@@ -24,33 +24,36 @@ public static class StreamMedia
         IOptionsMonitor<StreamingOptions> options,
         ITransmissionClient transmission,
         IMediator mediator,
-        IStreamActivity activity) : ICommandHandler<Command>
+        IStreamActivity activity
+    ) : ICommandHandler<Command>
     {
         private const int MinimumStallSeconds = 5;
         private const int MaximumStallSeconds = 600;
 
         public async ValueTask<Unit> Handle(Command command, CancellationToken cancellationToken)
         {
-            var config = options.CurrentValue;
-            if (!config.Enabled)
+            var configuration = options.CurrentValue;
+            if (!configuration.Enabled)
             {
                 throw new InvalidOperationException("Transmission streaming is disabled.");
             }
 
             var entry = command.Projection;
-            if (entry.CompletedPath is null && config.PrioritizePlayback)
+            if (entry.CompletedPath is null && configuration.PrioritizePlayback)
             {
-                var connection = new TransmissionConnection(config.TransmissionUrl, config.TransmissionUsername, config.TransmissionPassword);
+                var connection = new TransmissionConnection(configuration.TransmissionUrl, configuration.TransmissionUsername, configuration.TransmissionPassword);
                 await transmission.EnableSequentialAsync(connection, entry.TorrentHash, cancellationToken).ConfigureAwait(false);
             }
 
+            var stallSeconds = Math.Clamp(configuration.PieceWaitSeconds, MinimumStallSeconds, MaximumStallSeconds);
             var settings = new ProgressiveReadOptions
             {
-                StallTimeout = TimeSpan.FromSeconds(Math.Clamp(config.PieceWaitSeconds, MinimumStallSeconds, MaximumStallSeconds)),
-                PrioritizeMissingPieces = config.PrioritizePlayback
+                StallTimeout = TimeSpan.FromSeconds(stallSeconds),
+                PrioritizeMissingPieces = configuration.PrioritizePlayback
             };
             using var lease = activity.Open(entry.Id);
-            await mediator.Send(new CopyProgressiveMedia.Command(entry, command.Destination, command.Offset, command.Count, settings), cancellationToken).ConfigureAwait(false);
+            var copy = new CopyProgressiveMedia.Command(entry, command.Destination, command.Offset, command.Count, settings);
+            await mediator.Send(copy, cancellationToken).ConfigureAwait(false);
             return Unit.Value;
         }
     }

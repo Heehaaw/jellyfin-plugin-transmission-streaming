@@ -36,7 +36,9 @@ public static class GetStream
                 return ValueTask.FromResult<Projection?>(null);
             }
 
-            var valid = CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(entry.Secret), Encoding.UTF8.GetBytes(query.Key));
+            var expectedSecret = Encoding.UTF8.GetBytes(entry.Secret);
+            var suppliedSecret = Encoding.UTF8.GetBytes(query.Key);
+            var valid = CryptographicOperations.FixedTimeEquals(expectedSecret, suppliedSecret);
             return ValueTask.FromResult(valid ? entry : null);
         }
     }

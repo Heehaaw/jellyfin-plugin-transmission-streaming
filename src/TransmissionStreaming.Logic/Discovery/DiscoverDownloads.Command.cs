@@ -16,7 +16,7 @@ public static class DiscoverDownloads
     /// <summary>Discovers arr-owned downloads and reconciles managed playback entries.</summary>
     public sealed record Command : ICommand;
 
-    /// <summary>Coordinates download discovery and import handoff without owning network or filesystem adapters.</summary>
+    /// <summary>Coordinates discovery and import handoff without owning network or filesystem adapters.</summary>
     internal sealed class Handler(
         IOptionsMonitor<StreamingOptions> options,
         IProjectionStore store,
@@ -25,106 +25,32 @@ public static class DiscoverDownloads
         IProjectionPaths paths,
         IProjectionFiles files,
         IProjectionLibrary library,
-        IMediator mediator) : ICommandHandler<Command>
+        IMediator mediator
+    ) : ICommandHandler<Command>
     {
         private const int SecretBytes = 32;
 
         public async ValueTask<Unit> Handle(Command command, CancellationToken cancellationToken)
         {
-            var config = options.CurrentValue;
-            if (!config.Enabled)
+            var configuration = options.CurrentValue;
+            if (!configuration.Enabled)
             {
                 return Unit.Value;
             }
 
             files.EnsureReady();
-            var connection = new TransmissionConnection(config.TransmissionUrl, config.TransmissionUsername, config.TransmissionPassword);
+            var connection = new TransmissionConnection(configuration.TransmissionUrl, configuration.TransmissionUsername, configuration.TransmissionPassword);
             var torrents = await transmission.GetTorrentsAsync(connection, cancellationToken).ConfigureAwait(false);
             var entries = store.All().ToDictionary(entry => entry.Id, StringComparer.Ordinal);
-            var added = false;
-
-            foreach (var torrent in torrents)
-            {
-                var selection = await mediator.Send(new SelectVideoFiles.Query(torrent.Files), cancellationToken).ConfigureAwait(false);
-                foreach (var index in selection.PlayableIndexes)
-                {
-                    var file = torrent.Files[index];
-                    if (entries.Values.Any(entry => entry.TorrentHash.Equals(torrent.Hash, StringComparison.OrdinalIgnoreCase) && entry.FileIndex == index))
-                    {
-                        continue;
-                    }
-
-                    var identity = await IdentifyAsync(config, torrent.Hash, file.Name, cancellationToken).ConfigureAwait(false);
-                    if (identity is null || identity.Kind == MediaKind.Movie && index != selection.PrimaryMovieIndex)
-                    {
-                        continue;
-                    }
-
-                    var id = paths.Id(identity);
-                    // A completed entry or an active earlier release keeps ownership of its stable identity.
-                    if (entries.ContainsKey(id))
-                    {
-                        continue;
-                    }
-
-                    var entry = new Projection
-                    {
-                        Id = id,
-                        Secret = Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(SecretBytes)),
-                        TorrentHash = torrent.Hash,
-                        FileIndex = index,
-                        SourceName = file.Name,
-                        Length = file.Length,
-                        Identity = identity,
-                        StreamPath = paths.StreamPath(files.Root, identity)
-                    };
-                    files.WriteFiles(entry);
-                    store.Save(entry);
-                    entries.Add(id, entry);
-                    added = true;
-                }
-            }
+            var added = await CreateMissingProjectionsAsync(configuration, torrents, entries, cancellationToken).ConfigureAwait(false);
 
             foreach (var entry in entries.Values.ToArray())
             {
-                var torrent = torrents.FirstOrDefault(item => item.Hash.Equals(entry.TorrentHash, StringComparison.OrdinalIgnoreCase));
-                var file = torrent?.Files.ElementAtOrDefault(entry.FileIndex);
-                entry.Progress = file is null ? entry.Progress : Math.Clamp((double)file.BytesCompleted / entry.Length, 0, 1);
-                if (entry.CompletedPath is null)
-                {
-                    var imported = await mediator.Send(new ResolveImportedFile.Query(entry), cancellationToken).ConfigureAwait(false);
-                    if (imported is not null)
-                    {
-                        entry.CompletedPath = imported;
-                    }
-                }
-
-                if (await mediator.Send(new HandoffCompletedProjection.Command(entry, torrent is not null), cancellationToken).ConfigureAwait(false))
+                var retired = await RefreshProjectionAsync(entry, torrents, cancellationToken).ConfigureAwait(false);
+                if (retired)
                 {
                     entries.Remove(entry.Id);
-                    continue;
                 }
-
-                if (await mediator.Send(new PruneOrphanedProjection.Command(entry, torrent is not null), cancellationToken).ConfigureAwait(false))
-                {
-                    entries.Remove(entry.Id);
-                    continue;
-                }
-
-                // Import proof establishes completion even after the downloader has removed its progress data.
-                if (entry.CompletedPath is not null)
-                {
-                    entry.Progress = 1;
-                }
-
-                entry.Status = entry.CompletedPath is not null && entry.HandoffPending ? "Waiting for Jellyfin handoff"
-                    : entry.CompletedPath is not null ? "Complete"
-                    : torrent is null ? "Download unavailable"
-                    : !string.IsNullOrEmpty(torrent.ErrorString) ? "Download error"
-                    : entry.Progress >= 1 ? "Waiting for import"
-                    : $"Downloading {entry.Progress:P0}";
-                files.WriteFiles(entry);
-                store.Save(entry);
             }
 
             if (added)
@@ -134,25 +60,106 @@ public static class DiscoverDownloads
 
             foreach (var entry in entries.Values)
             {
-                await mediator.Send(new ReconcileProjection.Command(entry), cancellationToken).ConfigureAwait(false);
+                var reconcile = new ReconcileProjection.Command(entry);
+                await mediator.Send(reconcile, cancellationToken).ConfigureAwait(false);
             }
 
             return Unit.Value;
         }
 
-        private async Task<MediaIdentity?> IdentifyAsync(StreamingOptions config, string hash, string filename, CancellationToken cancellationToken)
+        private async Task<bool> CreateMissingProjectionsAsync(
+            StreamingOptions configuration,
+            IReadOnlyList<TorrentSnapshot> torrents,
+            Dictionary<string, Projection> entries,
+            CancellationToken cancellationToken
+        )
         {
-            foreach (var kind in new[] { MediaKind.Movie, MediaKind.Episode })
+            var added = false;
+            foreach (var torrent in torrents)
             {
-                var movie = kind == MediaKind.Movie;
-                var url = movie ? config.RadarrUrl : config.SonarrUrl;
-                var key = movie ? config.RadarrApiKey : config.SonarrApiKey;
-                if (string.IsNullOrWhiteSpace(url) || string.IsNullOrWhiteSpace(key))
+                var selectionQuery = new SelectVideoFiles.Query(torrent.Files);
+                var selection = await mediator.Send(selectionQuery, cancellationToken).ConfigureAwait(false);
+                foreach (var index in selection.PlayableIndexes)
+                {
+                    var entry = await CreateProjectionAsync(configuration, torrent, index, selection.PrimaryMovieIndex, entries, cancellationToken).ConfigureAwait(false);
+                    if (entry is null)
+                    {
+                        continue;
+                    }
+
+                    files.WriteFiles(entry);
+                    store.Save(entry);
+                    entries.Add(entry.Id, entry);
+                    added = true;
+                }
+            }
+
+            return added;
+        }
+
+        private async Task<Projection?> CreateProjectionAsync(
+            StreamingOptions configuration,
+            TorrentSnapshot torrent,
+            int fileIndex,
+            int? primaryMovieIndex,
+            Dictionary<string, Projection> entries,
+            CancellationToken cancellationToken
+        )
+        {
+            var alreadyOwned = entries.Values.Any(entry => entry.TorrentHash.Equals(torrent.Hash, StringComparison.OrdinalIgnoreCase) && entry.FileIndex == fileIndex);
+            if (alreadyOwned)
+            {
+                return null;
+            }
+
+            var file = torrent.Files[fileIndex];
+            var identity = await IdentifyAsync(configuration, torrent.Hash, file.Name, cancellationToken).ConfigureAwait(false);
+            if (identity is null || identity.Kind == MediaKind.Movie && fileIndex != primaryMovieIndex)
+            {
+                return null;
+            }
+
+            var projectionId = paths.Id(identity);
+            // A completed entry or an active earlier release keeps ownership of its stable identity.
+            if (entries.ContainsKey(projectionId))
+            {
+                return null;
+            }
+
+            var secretBytes = RandomNumberGenerator.GetBytes(SecretBytes);
+            return new Projection
+            {
+                Id = projectionId,
+                Secret = Convert.ToHexStringLower(secretBytes),
+                TorrentHash = torrent.Hash,
+                FileIndex = fileIndex,
+                SourceName = file.Name,
+                Length = file.Length,
+                Identity = identity,
+                StreamPath = paths.StreamPath(files.Root, identity)
+            };
+        }
+
+        private async Task<MediaIdentity?> IdentifyAsync(StreamingOptions configuration, string hash, string filename, CancellationToken cancellationToken)
+        {
+            foreach (var kind in new[]
+                     {
+                         MediaKind.Movie, MediaKind.Episode
+                     })
+            {
+                var isMovie = kind == MediaKind.Movie;
+                var serviceUrl = isMovie ? configuration.RadarrUrl : configuration.SonarrUrl;
+                var apiKey = isMovie ? configuration.RadarrApiKey : configuration.SonarrApiKey;
+                if (string.IsNullOrWhiteSpace(serviceUrl) || string.IsNullOrWhiteSpace(apiKey))
                 {
                     continue;
                 }
 
-                var connection = new ArrConnection { Url = url, ApiKey = key };
+                var connection = new ArrConnection
+                {
+                    Url = serviceUrl,
+                    ApiKey = apiKey
+                };
                 var identity = await arr.FindDownloadAsync(connection, kind, hash, filename, cancellationToken).ConfigureAwait(false);
                 if (identity is not null)
                 {
@@ -161,6 +168,66 @@ public static class DiscoverDownloads
             }
 
             return null;
+        }
+
+        private async Task<bool> RefreshProjectionAsync(Projection entry, IReadOnlyList<TorrentSnapshot> torrents, CancellationToken cancellationToken)
+        {
+            var torrent = torrents.FirstOrDefault(item => item.Hash.Equals(entry.TorrentHash, StringComparison.OrdinalIgnoreCase));
+            var file = torrent?.Files.ElementAtOrDefault(entry.FileIndex);
+            if (file is not null)
+            {
+                var completedFraction = (double)file.BytesCompleted / entry.Length;
+                entry.Progress = Math.Clamp(completedFraction, 0, 1);
+            }
+
+            if (entry.CompletedPath is null)
+            {
+                var importQuery = new ResolveImportedFile.Query(entry);
+                entry.CompletedPath = await mediator.Send(importQuery, cancellationToken).ConfigureAwait(false);
+            }
+
+            var handoff = new HandoffCompletedProjection.Command(entry, torrent is not null);
+            if (await mediator.Send(handoff, cancellationToken).ConfigureAwait(false))
+            {
+                return true;
+            }
+
+            var prune = new PruneOrphanedProjection.Command(entry, torrent is not null);
+            if (await mediator.Send(prune, cancellationToken).ConfigureAwait(false))
+            {
+                return true;
+            }
+
+            // Import proof establishes completion even after the downloader has removed its progress data.
+            if (entry.CompletedPath is not null)
+            {
+                entry.Progress = 1;
+            }
+
+            entry.Status = GetDownloadStatus(entry, torrent);
+            files.WriteFiles(entry);
+            store.Save(entry);
+            return false;
+        }
+
+        private static string GetDownloadStatus(Projection entry, TorrentSnapshot? torrent)
+        {
+            if (entry.CompletedPath is not null)
+            {
+                return entry.HandoffPending ? "Waiting for Jellyfin handoff" : "Complete";
+            }
+
+            if (torrent is null)
+            {
+                return "Download unavailable";
+            }
+
+            if (!string.IsNullOrEmpty(torrent.ErrorString))
+            {
+                return "Download error";
+            }
+
+            return entry.Progress >= 1 ? "Waiting for import" : $"Downloading {entry.Progress:P0}";
         }
     }
 }

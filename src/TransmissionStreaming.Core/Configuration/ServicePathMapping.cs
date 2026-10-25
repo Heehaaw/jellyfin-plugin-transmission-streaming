@@ -5,9 +5,23 @@ namespace TransmissionStreaming.Core.Configuration;
 public sealed record ServicePathMapping
 {
     /// <summary>The service whose reported paths use this mapping.</summary>
-    public MediaService Service { get; set; }
+    public MediaService Service
+    {
+        get;
+        set;
+    }
+
     /// <summary>A directory as seen by that service.</summary>
-    public string RemoteRoot { get; set; } = "";
+    public string RemoteRoot
+    {
+        get;
+        set;
+    } = "";
+
     /// <summary>The matching directory as seen by Jellyfin.</summary>
-    public string LocalRoot { get; set; } = "";
+    public string LocalRoot
+    {
+        get;
+        set;
+    } = "";
 }

@@ -13,7 +13,8 @@ internal sealed class LibraryProjection(
     ILibraryManager library,
     IUserManager users,
     IUserDataManager userData,
-    ISessionManager sessions) : IProjectionLibrary
+    ISessionManager sessions
+) : IProjectionLibrary
 {
     public Task RefreshAsync(CancellationToken cancellationToken)
     {
@@ -28,15 +29,21 @@ internal sealed class LibraryProjection(
     public LibraryItem? Find(string path)
     {
         var item = FindNative(path);
-        return item is null ? null : new LibraryItem(item.Id.ToString("N"), item.Name, item.Overview,
-            sessions.Sessions.Any(session => session.NowPlayingItem?.Id == item.Id));
+        if (item is null)
+        {
+            return null;
+        }
+
+        var itemId = item.Id.ToString("N");
+        var isPlaying = sessions.Sessions.Any(session => session.NowPlayingItem?.Id == item.Id);
+        return new LibraryItem(itemId, item.Name, item.Overview, isPlaying);
     }
 
     public async Task UpdateMetadataAsync(string itemId, string name, string? overview, CancellationToken cancellationToken)
     {
         var item = RequiredItem(itemId);
         var parent = library.GetItemById(item.ParentId)
-            ?? throw new InvalidOperationException("The library item's parent is unavailable.");
+                     ?? throw new InvalidOperationException("The library item's parent is unavailable.");
         item.Name = name;
         item.Overview = overview;
         await library.UpdateItemAsync(item, parent, ItemUpdateType.MetadataEdit, cancellationToken).ConfigureAwait(false);
@@ -53,8 +60,13 @@ internal sealed class LibraryProjection(
             var saved = userData.GetUserDataBatch([source, target], user);
             saved.TryGetValue(source.Id, out var sourceState);
             saved.TryGetValue(target.Id, out var targetState);
-            result.Add(new LibraryUserState(user.Id.ToString("N"), Snapshot(sourceState), Snapshot(targetState)));
+            var userId = user.Id.ToString("N");
+            var sourceSnapshot = Snapshot(sourceState);
+            var targetSnapshot = Snapshot(targetState);
+            var userState = new LibraryUserState(userId, sourceSnapshot, targetSnapshot);
+            result.Add(userState);
         }
+
         return result;
     }
 
@@ -62,8 +74,9 @@ internal sealed class LibraryProjection(
     {
         var targetUserId = Guid.Parse(userId);
         var user = users.GetUsers().FirstOrDefault(candidate => candidate.Id == targetUserId)
-            ?? throw new InvalidOperationException("The user is unavailable for history transfer.");
-        userData.SaveUserData(user, RequiredItem(itemId), new UpdateUserItemDataDto
+                   ?? throw new InvalidOperationException("The user is unavailable for history transfer.");
+        var item = RequiredItem(itemId);
+        var update = new UpdateUserItemDataDto
         {
             PlaybackPositionTicks = state.PlaybackPositionTicks,
             Played = state.Played,
@@ -72,15 +85,24 @@ internal sealed class LibraryProjection(
             IsFavorite = state.IsFavorite,
             Rating = state.Rating,
             Likes = state.Likes
-        }, UserDataSaveReason.Import);
+        };
+        userData.SaveUserData(user, item, update, UserDataSaveReason.Import);
     }
 
     public void Remove(string itemId)
     {
-        if (library.GetItemById(Guid.Parse(itemId)) is { } item)
+        var parsedId = Guid.Parse(itemId);
+        var item = library.GetItemById(parsedId);
+        if (item is null)
         {
-            library.DeleteItem(item, new DeleteOptions { DeleteFileLocation = false });
+            return;
         }
+
+        var deleteOptions = new DeleteOptions
+        {
+            DeleteFileLocation = false
+        };
+        library.DeleteItem(item, deleteOptions);
     }
 
     private async Task RefreshContainingAsync(string path, bool includeDescendants, CancellationToken cancellationToken)
@@ -91,37 +113,47 @@ internal sealed class LibraryProjection(
             {
                 continue;
             }
+
             if (Guid.TryParse(folder.ItemId, out var id) && library.GetItemById(id) is Folder item)
             {
-                await item.ValidateChildren(new Progress<double>(), cancellationToken).ConfigureAwait(false);
+                var progress = new Progress<double>();
+                await item.ValidateChildren(progress, cancellationToken).ConfigureAwait(false);
             }
         }
     }
 
     private BaseItem RequiredItem(string id)
     {
-        return library.GetItemById(Guid.Parse(id)) ?? throw new InvalidOperationException("The library item is unavailable.");
+        var parsedId = Guid.Parse(id);
+        return library.GetItemById(parsedId) ?? throw new InvalidOperationException("The library item is unavailable.");
     }
 
     private BaseItem? FindNative(string path)
     {
-        var match = library.GetItemList(new InternalItemsQuery { Path = path, Recursive = true })
+        var query = new InternalItemsQuery
+        {
+            Path = path,
+            Recursive = true
+        };
+        var match = library.GetItemList(query)
             .FirstOrDefault(item => string.Equals(item.Path, path, StringComparison.Ordinal));
         return match is null ? null : library.GetItemById(match.Id) ?? match;
     }
 
     private static LibraryWatchState? Snapshot(UserItemData? state)
     {
-        return state is null ? null : new LibraryWatchState
-        {
-            PlaybackPositionTicks = state.PlaybackPositionTicks,
-            Played = state.Played,
-            LastPlayedDate = state.LastPlayedDate,
-            PlayCount = state.PlayCount,
-            IsFavorite = state.IsFavorite,
-            Rating = state.Rating,
-            Likes = state.Likes
-        };
+        return state is null
+            ? null
+            : new LibraryWatchState
+            {
+                PlaybackPositionTicks = state.PlaybackPositionTicks,
+                Played = state.Played,
+                LastPlayedDate = state.LastPlayedDate,
+                PlayCount = state.PlayCount,
+                IsFavorite = state.IsFavorite,
+                Rating = state.Rating,
+                Likes = state.Likes
+            };
     }
 
     private static bool IsWithin(string root, string path)

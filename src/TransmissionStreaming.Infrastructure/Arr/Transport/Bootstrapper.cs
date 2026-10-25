@@ -14,10 +14,11 @@ internal static class Bootstrapper
         // API keys are scoped to the configured server; redirects must not forward them.
         services.AddHttpClient<IArrTransport, ArrTransport>(ClientName, client => client.Timeout = RequestTimeout)
             .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
-            {
-                AllowAutoRedirect = false,
-                AutomaticDecompression = DecompressionMethods.None
-            });
+                {
+                    AllowAutoRedirect = false,
+                    AutomaticDecompression = DecompressionMethods.None
+                }
+            );
         return services;
     }
 }

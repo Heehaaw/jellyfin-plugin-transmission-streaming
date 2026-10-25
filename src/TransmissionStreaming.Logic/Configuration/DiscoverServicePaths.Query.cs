@@ -11,7 +11,10 @@ public static class DiscoverServicePaths
     /// <summary>Uses the supplied connection, including unsaved edits, without persisting credentials or mappings.</summary>
     public sealed record Query(MediaService Service, ServiceConnection Connection) : IQuery<ServicePathSuggestions>
     {
-        public override string ToString() => $"Discover paths for {Service} (credentials redacted)";
+        public override string ToString()
+        {
+            return $"Discover paths for {Service} (credentials redacted)";
+        }
     }
 
     internal sealed class Handler(
@@ -19,28 +22,42 @@ public static class DiscoverServicePaths
         IOptionsMonitor<StreamingOptions> options,
         IMediaLibraryLocations libraries,
         IMediator mediator,
-        IMediaPathMapper physicalPaths) : IQueryHandler<Query, ServicePathSuggestions>
+        IMediaPathMapper physicalPaths
+    ) : IQueryHandler<Query, ServicePathSuggestions>
     {
         public async ValueTask<ServicePathSuggestions> Handle(Query query, CancellationToken cancellationToken)
         {
             var discovered = await discovery.DiscoverAsync(query.Service, query.Connection, cancellationToken).ConfigureAwait(false);
             var remotePaths = query.Service == MediaService.Transmission
-                ? discovered.DownloadDirectories.Concat(new[] { discovered.DownloadDirectory, discovered.IncompleteDirectory }.OfType<string>())
+                ? discovered.DownloadDirectories.Concat(
+                    new[]
+                    {
+                        discovered.DownloadDirectory, discovered.IncompleteDirectory
+                    }.OfType<string>()
+                )
                 : discovered.LibraryRoots;
             var roots = remotePaths.Where(Path.IsPathFullyQualified).Distinct(StringComparer.Ordinal).ToArray();
-            var config = options.CurrentValue;
+            var configuration = options.CurrentValue;
             var localPaths = (query.Service == MediaService.Transmission ? libraries.GetAllPaths() : libraries.GetServicePaths(query.Service))
                 .Where(Path.IsPathFullyQualified)
-                .Where(path => !Within(config.ProjectionRoot, path))
+                .Where(path => !Within(configuration.ProjectionRoot, path))
                 .Distinct(StringComparer.Ordinal).ToArray();
             var mappings = new List<ServicePathMapping>();
             foreach (var remote in roots)
             {
-                var local = await SuggestLocalAsync(query.Service, remote, roots.Length, localPaths, config, cancellationToken).ConfigureAwait(false);
-                mappings.Add(new ServicePathMapping { Service = query.Service, RemoteRoot = remote, LocalRoot = local });
+                var local = await SuggestLocalAsync(query.Service, remote, roots.Length, localPaths, configuration, cancellationToken).ConfigureAwait(false);
+                mappings.Add(
+                    new ServicePathMapping
+                    {
+                        Service = query.Service,
+                        RemoteRoot = remote,
+                        LocalRoot = local
+                    }
+                );
             }
 
-            return new ServicePathSuggestions(discovered, RemoveCoveredMappings(mappings));
+            var visibleMappings = RemoveCoveredMappings(mappings);
+            return new ServicePathSuggestions(discovered, visibleMappings);
         }
 
         private IReadOnlyList<ServicePathMapping> RemoveCoveredMappings(IReadOnlyList<ServicePathMapping> mappings)
@@ -65,18 +82,27 @@ public static class DiscoverServicePaths
             return expected == localChild && physicalPaths.Map(remoteChild, remoteParent, localParent) == localChild;
         }
 
-        private async ValueTask<string> SuggestLocalAsync(MediaService service, string remote, int remoteCount, string[] localPaths, StreamingOptions config,
-            CancellationToken cancellationToken)
+        private async ValueTask<string> SuggestLocalAsync(
+            MediaService service,
+            string remote,
+            int remoteCount,
+            string[] localPaths,
+            StreamingOptions configuration,
+            CancellationToken cancellationToken
+        )
         {
-            var saved = config.PathMappings.FirstOrDefault(mapping => mapping.Service == service &&
-                                                                      mapping.RemoteRoot.TrimEnd('/') == remote.TrimEnd('/'));
+            var saved = configuration.PathMappings.FirstOrDefault(mapping => mapping.Service == service &&
+                                                                             mapping.RemoteRoot.TrimEnd('/') == remote.TrimEnd('/')
+            );
             if (saved is not null)
             {
                 return saved.LocalRoot;
             }
 
             // A verified administrator mapping is stronger evidence than matching folder names.
-            if (await mediator.Send(new MapServicePath.Query(service, remote), cancellationToken).ConfigureAwait(false) is { } mapped)
+            var mapPath = new MapServicePath.Query(service, remote);
+            var mapped = await mediator.Send(mapPath, cancellationToken).ConfigureAwait(false);
+            if (mapped is not null)
             {
                 return mapped;
             }

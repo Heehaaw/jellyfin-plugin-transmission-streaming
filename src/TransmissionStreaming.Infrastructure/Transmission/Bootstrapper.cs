@@ -14,10 +14,11 @@ internal static class Bootstrapper
     {
         services.AddHttpClient<ITransmissionClient, TransmissionClient>(ClientName, client => client.Timeout = RequestTimeout)
             .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
-            {
-                AllowAutoRedirect = false,
-                AutomaticDecompression = DecompressionMethods.None
-            });
+                {
+                    AllowAutoRedirect = false,
+                    AutomaticDecompression = DecompressionMethods.None
+                }
+            );
         return services;
     }
 }

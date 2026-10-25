@@ -32,8 +32,13 @@ internal sealed class PhysicalMediaFiles : IMediaFiles
         try
         {
             // A short-lived shared handle lets an import rename or remove the backing file between reads.
-            using var handle = File.OpenHandle(path, FileMode.Open, FileAccess.Read,
-                FileShare.ReadWrite | FileShare.Delete, FileOptions.Asynchronous | FileOptions.RandomAccess);
+            using var handle = File.OpenHandle(
+                path: path,
+                mode: FileMode.Open,
+                access: FileAccess.Read,
+                share: FileShare.ReadWrite | FileShare.Delete,
+                options: FileOptions.Asynchronous | FileOptions.RandomAccess
+            );
             return await RandomAccess.ReadAsync(handle, buffer, offset, cancellationToken).ConfigureAwait(false);
         }
         catch (FileNotFoundException)

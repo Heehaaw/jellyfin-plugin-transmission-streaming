@@ -20,9 +20,14 @@ public static class GetConfigurationDefaults
             var projectionRoot = string.IsNullOrWhiteSpace(configuration.ProjectionRoot)
                 ? Path.Combine(configuration.StateDirectory, "library")
                 : configuration.ProjectionRoot;
-            var localRoot = string.IsNullOrWhiteSpace(configuration.LocalMediaRoot)
-                ? await mediator.Send(new InferMediaRoot.Query(libraries.GetPaths(), projectionRoot), cancellationToken).ConfigureAwait(false)
-                : configuration.LocalMediaRoot;
+            var localRoot = configuration.LocalMediaRoot;
+            if (string.IsNullOrWhiteSpace(localRoot))
+            {
+                var libraryPaths = libraries.GetPaths();
+                var inferRoot = new InferMediaRoot.Query(libraryPaths, projectionRoot);
+                localRoot = await mediator.Send(inferRoot, cancellationToken).ConfigureAwait(false);
+            }
+
             return new ConfigurationDefaults(projectionRoot, localRoot);
         }
     }

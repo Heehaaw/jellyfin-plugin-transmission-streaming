@@ -8,6 +8,8 @@ using global::TransmissionStreaming.Core.Configuration;
 using global::TransmissionStreaming.Core.Discovery;
 using Jellyfin.Plugin.TransmissionStreaming.Discovery;
 using Mediator;
+using Microsoft.Extensions.DependencyInjection;
+using Jellyfin.Plugin.TransmissionStreaming.Tests.Hosting;
 using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
@@ -15,13 +17,25 @@ using Xunit;
 public sealed class DiscoveryHostedServiceTests
 {
     [Theory, AutoMoqData]
-    internal async Task Should_PollOnlyAtTheConfiguredInterval(StreamingOptions source,
-        [Frozen] ObservableFakeTimeProvider clock, [Frozen] Mock<IOptionsMonitor<StreamingOptions>> configuration,
-        [Frozen] Mock<IMediator> mediator, [Frozen] Mock<IDiscoveryStatus> status, DiscoveryHostedService sut)
+    internal async Task Should_PollOnlyAtTheConfiguredInterval(
+        StreamingOptions source,
+        [Frozen] ObservableFakeTimeProvider clock,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> configuration,
+        [Frozen] Mock<IMediator> mediator,
+        [Frozen] Mock<IDiscoveryStatus> status,
+        [Frozen] Mock<IServiceScopeFactory> scopes,
+        [Frozen] Mock<IServiceScope> scope,
+        DiscoveryHostedService sut
+    )
     {
         // Arrange
         using var worker = sut;
-        configuration.SetupGet(value => value.CurrentValue).Returns(source with { Enabled = true });
+        configuration.SetupGet(value => value.CurrentValue).Returns(
+            source with
+            {
+                Enabled = true
+            }
+        );
         mediator.Setup(value => value.Send(It.IsAny<ICommand>(), It.IsAny<CancellationToken>())).Returns(ValueTask.FromResult(Unit.Value));
         var updates = new List<DiscoveryStatus>();
         status.Setup(value => value.Set(It.IsAny<DiscoveryStatus>())).Callback<DiscoveryStatus>(updates.Add);
@@ -44,18 +58,27 @@ public sealed class DiscoveryHostedServiceTests
         nextDelay.Should().Be(expectedDelay);
         beforeBoundary.Should().Be(expectedPollCount - 1);
         updates.Should().HaveCount(expectedPollCount);
+        scopes.Verify(value => value.CreateScope(), Times.Exactly(expectedPollCount));
+        scope.Verify(value => value.Dispose(), Times.Exactly(expectedPollCount));
         updates[0].LastSuccessfulPoll.Should().Be(startedAt);
         updates[1].LastSuccessfulPoll.Should().Be(startedAt + expectedDelay);
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_ResumeDiscoveryAfterItIsEnabled(StreamingOptions source,
-        [Frozen] ObservableFakeTimeProvider clock, [Frozen] Mock<IOptionsMonitor<StreamingOptions>> configuration,
-        [Frozen] Mock<IMediator> mediator, DiscoveryHostedService sut)
+    internal async Task Should_ResumeDiscoveryAfterItIsEnabled(
+        StreamingOptions source,
+        [Frozen] ObservableFakeTimeProvider clock,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> configuration,
+        [Frozen] Mock<IMediator> mediator,
+        DiscoveryHostedService sut
+    )
     {
         // Arrange
         using var worker = sut;
-        var current = source with { Enabled = false };
+        var current = source with
+        {
+            Enabled = false
+        };
         configuration.SetupGet(value => value.CurrentValue).Returns(() => current);
         mediator.Setup(value => value.Send(It.IsAny<ICommand>(), It.IsAny<CancellationToken>())).Returns(ValueTask.FromResult(Unit.Value));
         var expectedPollCount = 1;
@@ -64,7 +87,10 @@ public sealed class DiscoveryHostedServiceTests
         await worker.StartAsync(CancellationToken.None);
         var delay = await clock.NextDelayAsync();
         var whileDisabled = mediator.Invocations.Count;
-        current = source with { Enabled = true };
+        current = source with
+        {
+            Enabled = true
+        };
         clock.Advance(delay);
         await clock.NextDelayAsync();
         await worker.StopAsync(CancellationToken.None);
@@ -75,13 +101,25 @@ public sealed class DiscoveryHostedServiceTests
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_RetainSuccessTimeAcrossFailureAndRetry(StreamingOptions source, DiscoveryStatus initial, HttpRequestException failure,
-        [Frozen] ObservableFakeTimeProvider clock, [Frozen] Mock<IOptionsMonitor<StreamingOptions>> configuration,
-        [Frozen] Mock<IMediator> mediator, [Frozen] Mock<IDiscoveryStatus> status, DiscoveryHostedService sut)
+    internal async Task Should_RetainSuccessTimeAcrossFailureAndRetry(
+        StreamingOptions source,
+        DiscoveryStatus initial,
+        HttpRequestException failure,
+        [Frozen] ObservableFakeTimeProvider clock,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> configuration,
+        [Frozen] Mock<IMediator> mediator,
+        [Frozen] Mock<IDiscoveryStatus> status,
+        DiscoveryHostedService sut
+    )
     {
         // Arrange
         using var worker = sut;
-        configuration.SetupGet(value => value.CurrentValue).Returns(source with { Enabled = true });
+        configuration.SetupGet(value => value.CurrentValue).Returns(
+            source with
+            {
+                Enabled = true
+            }
+        );
         mediator.SetupSequence(value => value.Send(It.IsAny<ICommand>(), It.IsAny<CancellationToken>()))
             .Returns(ValueTask.FromResult(Unit.Value))
             .Returns(ValueTask.FromException<Unit>(failure))
@@ -109,11 +147,22 @@ public sealed class DiscoveryHostedServiceTests
     }
 
     private sealed class AutoMoqDataAttribute() : AutoDataAttribute(() =>
-    {
-        var fixture = new Fixture { RepeatCount = 1 };
-        fixture.Customize(new AutoMoqCustomization { ConfigureMembers = true, GenerateDelegates = true });
-        fixture.Customize<ObservableFakeTimeProvider>(composer => composer.OmitAutoProperties());
-        fixture.Register<TimeProvider>(() => fixture.Create<ObservableFakeTimeProvider>());
-        return fixture;
-    });
+        {
+            var fixture = new Fixture
+            {
+                RepeatCount = 1
+            };
+            fixture.Customize(
+                new AutoMoqCustomization
+                {
+                    ConfigureMembers = true,
+                    GenerateDelegates = true
+                }
+            );
+            fixture.Customize(new ScopedMediatorCustomization());
+            fixture.Customize<ObservableFakeTimeProvider>(composer => composer.OmitAutoProperties());
+            fixture.Register<TimeProvider>(() => fixture.Create<ObservableFakeTimeProvider>());
+            return fixture;
+        }
+    );
 }

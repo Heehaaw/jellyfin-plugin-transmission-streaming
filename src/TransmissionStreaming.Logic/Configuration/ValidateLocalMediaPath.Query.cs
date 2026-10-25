@@ -14,7 +14,8 @@ public static class ValidateLocalMediaPath
     {
         public async ValueTask<string?> Handle(Query query, CancellationToken cancellationToken)
         {
-            var mappings = await mediator.Send(new GetServicePathMappings.Query(query.Service), cancellationToken).ConfigureAwait(false);
+            var mappingsQuery = new GetServicePathMappings.Query(query.Service);
+            var mappings = await mediator.Send(mappingsQuery, cancellationToken).ConfigureAwait(false);
             foreach (var mapping in mappings)
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -25,6 +26,7 @@ public static class ValidateLocalMediaPath
                     return local;
                 }
             }
+
             return null;
         }
     }

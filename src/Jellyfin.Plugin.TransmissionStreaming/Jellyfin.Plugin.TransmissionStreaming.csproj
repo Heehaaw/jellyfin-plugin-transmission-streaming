@@ -10,7 +10,6 @@
         <PackageReference Include="Jellyfin.Controller" ExcludeAssets="runtime" />
         <PackageReference Include="Jellyfin.Model" ExcludeAssets="runtime" />
         <PackageReference Include="Mediator.Abstractions" />
-        <PackageReference Include="Mediator.SourceGenerator" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
         <ProjectReference Include="../TransmissionStreaming.Core/TransmissionStreaming.Core.csproj" />
         <ProjectReference Include="../TransmissionStreaming.Infrastructure/TransmissionStreaming.Infrastructure.csproj" />
         <ProjectReference Include="../TransmissionStreaming.Logic/TransmissionStreaming.Logic.csproj" />

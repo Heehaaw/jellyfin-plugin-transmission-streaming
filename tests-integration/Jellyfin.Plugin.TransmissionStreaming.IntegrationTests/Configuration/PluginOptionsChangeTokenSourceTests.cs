@@ -15,8 +15,13 @@ using Xunit;
 public sealed class PluginOptionsChangeTokenSourceTests
 {
     [Theory, AutoMoqData]
-    internal void Should_RebuildOptionsOnHostSaveAndUnsubscribeOnDisposal(PluginConfiguration source, ServiceCollection services,
-        [Frozen] Mock<IPluginSettings> settings, ConfigureStreamingOptions configure, PluginOptionsChangeTokenSource sut)
+    internal void Should_RebuildOptionsOnHostSaveAndUnsubscribeOnDisposal(
+        PluginConfiguration source,
+        ServiceCollection services,
+        [Frozen] Mock<IPluginSettings> settings,
+        ConfigureStreamingOptions configure,
+        PluginOptionsChangeTokenSource sut
+    )
     {
         // Arrange
         using var changes = sut;
@@ -57,10 +62,20 @@ public sealed class PluginOptionsChangeTokenSourceTests
     }
 
     private sealed class AutoMoqDataAttribute() : AutoDataAttribute(() =>
-    {
-        var fixture = new Fixture { RepeatCount = 1 };
-        fixture.Customize(new AutoMoqCustomization { ConfigureMembers = true, GenerateDelegates = true });
-        fixture.Customize<ServiceCollection>(composer => composer.OmitAutoProperties());
-        return fixture;
-    });
+        {
+            var fixture = new Fixture
+            {
+                RepeatCount = 1
+            };
+            fixture.Customize(
+                new AutoMoqCustomization
+                {
+                    ConfigureMembers = true,
+                    GenerateDelegates = true
+                }
+            );
+            fixture.Customize<ServiceCollection>(composer => composer.OmitAutoProperties());
+            return fixture;
+        }
+    );
 }
