@@ -14,15 +14,16 @@ Invalid metadata prevents activation instead of displaying an invented version.
 
 ## Release promotion
 
-Main CI builds, tests, and retains both development ZIPs. After that exact commit passes, manually run **Actions → Prepare release**. Choose `patch`, `minor`, or `major`
-to increment the highest published stable version, or choose `custom` and supply a `vMAJOR.MINOR.PATCH` tag. The job downloads both artifacts and passes the shared
-version to metadata generation.
+Main CI builds, tests, and retains both development ZIPs. After it passes, run the same **Build, test, and package** workflow in `release` mode, with that build run ID.
+Choose `patch`, `minor`, or `major` to increment the highest published stable version, or `custom` with a `vMAJOR.MINOR.PATCH` tag. The job checks out the selected run's exact
+commit, downloads both artifacts, and passes the shared version to metadata generation.
 That step evaluates the project without compiling. Repacking replaces `meta.json`, names the release ZIP from the package version, and preserves every DLL's contents.
 The catalog checksum describes each final repacked ZIP, so release ZIPs are expected to differ from development ZIPs. Both packages and their retained histories are
 merged into one catalog in the draft release. Publish that draft manually in Releases; tag pushes do not trigger publication.
 
-If the retained artifact is missing or expired, the job builds the tagged source and applies the same metadata and packaging steps. Neither release path reruns tests.
-No version-bump commit follows publication.
+If either retained artifact is missing or expired, preparation fails rather than silently rebuilding it. Release mode never rebuilds plugin assemblies or reruns tests. No
+version-bump commit
+follows publication. The finished summary links to the actual draft, which can have an untagged URL until publication.
 
 To exercise promotion locally:
 

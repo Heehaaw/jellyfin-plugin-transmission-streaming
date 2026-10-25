@@ -85,11 +85,11 @@ With a local Docker-compatible daemon running:
 dotnet test JellyfinPlugins.slnx -c Release
 ```
 
-Main-branch CI and pull requests run these suites and retain a separate installable ZIP for each plugin for 90 days. After main CI passes, run **Actions → Prepare release**.
-Choose a patch, minor, major, or custom version and a tested commit. The job prepares a draft with both plugin ZIPs and the merged catalog. Review it in **Releases**, then publish
-it as Latest. Pushing a tag alone does not publish a release. Missing or expired artifacts are rebuilt from the selected commit. See [versioning](doc/versioning.md) and
-[testing](doc/testing.md)
-for separate test commands and coverage boundaries, and [installation and releases](doc/installation.md) for the two installation flows.
+Main-branch CI and pull requests run these suites and retain both plugin ZIPs for 90 days. To release a successful main build, open the same workflow's **Run workflow** form,
+choose **mode: release**, enter the build run ID from its summary, and select patch, minor, major, or custom. Release mode skips building and reuses that run's exact commit
+and ZIPs. Its summary links directly to the draft containing both plugins and the merged catalog. Review and publish the draft manually.
+
+See [versioning](doc/versioning.md), [testing](doc/testing.md), and [installation and releases](doc/installation.md) for details.
 
 ## Further reading
 

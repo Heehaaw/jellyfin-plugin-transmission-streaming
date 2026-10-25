@@ -50,26 +50,31 @@ The artifact is already the plugin ZIP; it is uploaded without another wrapping 
 ```mermaid
 flowchart LR
     P[Push main] --> C[Build and all tests]
-    C --> D[Manually run Prepare release]
-    D --> V[Require successful main CI for selected commit]
-    V --> Z[Promote both plugin ZIPs]
-    Z --> R[Draft release with merged catalog]
+    C --> A[Retain both tested plugin ZIPs]
+    A --> D[Run the same workflow in release mode]
+    D --> V[Verify selected build run and exact commit]
+    V --> Z[Repack both tested ZIPs]
+    Z --> R[Summary links to prepared draft]
     R --> U[Review and publish as Latest]
     U --> J[Jellyfin Catalog install]
-    J --> S[Restart Jellyfin]
 ```
 
 1. Push the release commit to `main` and wait for passing CI.
-2. Open **Actions → Prepare release → Run workflow**, using the workflow on `main`.
-3. Choose `patch`, `minor`, or `major` to increment the highest published stable version. Alternatively, choose `custom` and enter a `vMAJOR.MINOR.PATCH` tag.
-4. Leave the commit input as `main`, or enter the exact tested commit. Run the workflow.
-5. Open its draft in **Releases**, review the notes and all three assets, then **Publish release** as Latest.
+2. Open that build's summary and copy its **Build run ID**. The summary also links to release preparation in the same workflow.
+3. Choose **Actions → Build, test, and package → Run workflow**, with the workflow on `main` and **mode: release**.
+4. Paste the successful build run ID. Choose `patch`, `minor`, or `major` to increment the highest published stable version, or `custom` with a `vMAJOR.MINOR.PATCH` tag.
+5. Run the workflow. Its build job is skipped; **Prepare draft release** verifies and downloads the selected run's artifacts and checks out that run's exact commit.
+6. Follow **Review and publish the prepared release** in the finished summary. Review the notes and all three assets, then **Publish release** as Latest.
+
+GitHub shows input dropdowns when starting a workflow. Preparation therefore has its own run in the same workflow, with a link back to the source build. It does not append a
+manual job to an already completed build. No environment approval gates or duplicate version jobs are needed.
 
 Both plugins receive the same version. For example, `v1.2.3` produces `TransmissionStreaming_1.2.3.0.zip`, `HDRPlayback_1.2.3.0.zip`, and `manifest.json`. No source-version edit
 or post-release bump is needed. See [versioning](versioning.md) for development versions and stable assembly identity. Pushing a tag alone does not create or publish a release.
 
-Preparation requires successful `main` push CI for the exact selected commit. A passing pull-request or manual build cannot substitute for it. The job reuses both tested DLL
-bundles, generates tag-derived metadata, and repacks their ZIPs without compilation. If an artifact is missing or expired, it builds the selected source. Neither path reruns tests.
+Preparation accepts only a completed, successful `main` push run from this build workflow. Pull-request, failed, and release-preparation runs cannot substitute for it. The
+job reuses both retained bundles without recompiling plugin DLLs or rerunning tests; missing or expired artifacts cause an error. It never falls back to rebuilding a
+different bundle.
 
 The repository manifest contains both plugin identities, their versions and target Jellyfin ABI, tag-specific ZIP URLs, and MD5 checksums of the final ZIP bytes. MD5 is the
 checksum Jellyfin's repository protocol requires. The newest published catalog asset is merged so older versions remain available, even if a newer release has no catalog yet.

@@ -6,17 +6,36 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      mode:
+        description: Build normally or prepare a release from an existing successful main build
+        type: choice
+        required: true
+        default: build
+        options: [build, release]
+      build_run:
+        description: Successful main build run ID, shown in that run's summary (release mode only)
+        type: string
+      bump:
+        description: Release type, based on the highest published stable version
+        type: choice
+        required: true
+        default: patch
+        options: [patch, minor, major, custom]
+      tag:
+        description: Version tag when release type is custom (for example, v1.2.3)
+        type: string
 
 permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ inputs.mode || 'build' }}-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
   build:
-    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+    if: (github.event_name == 'pull_request' || github.ref == 'refs/heads/main') && inputs.mode != 'release'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -35,7 +54,6 @@ jobs:
       - name: Upload Transmission artifact
         uses: actions/upload-artifact@v7
         with:
-          name: transmission-streaming.zip
           path: artifacts/TransmissionStreaming_0.0.0.0.zip
           archive: false
           retention-days: 90
@@ -43,8 +61,171 @@ jobs:
       - name: Upload HDR artifact
         uses: actions/upload-artifact@v7
         with:
-          name: hdr-playback.zip
           path: artifacts/HDRPlayback_0.0.0.0.zip
           archive: false
           retention-days: 90
           if-no-files-found: error
+      - name: Show build and release preparation links
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        shell: bash
+        run: |
+          {
+            echo '## Verified build'
+            echo
+            echo "Commit: [${GITHUB_SHA}](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/commit/${GITHUB_SHA})"
+            echo
+            echo "Build run ID: \`${GITHUB_RUN_ID}\`"
+            echo
+            echo "[Prepare a draft release](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/workflows/build.yml)"
+            echo
+            echo 'Choose **Run workflow → mode: release**, paste this build run ID, and choose patch, minor, major, or custom.'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  prepare-release:
+    name: Prepare draft release
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'release' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      actions: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Verify selected build
+        id: source
+        env:
+          BUILD_RUN: ${{ inputs.build_run }}
+        shell: bash
+        run: |
+          if [[ ! "$BUILD_RUN" =~ ^[0-9]+$ ]]; then
+            echo '::error::Enter the successful main build run ID shown in its summary.'
+            exit 1
+          fi
+          workflow_id=$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/build.yml" --jq '.id')
+          gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${BUILD_RUN}" > "$RUNNER_TEMP/source-run.json"
+          if ! jq -e --argjson workflow "$workflow_id" '
+            .workflow_id == $workflow and .event == "push" and .head_branch == "main" and
+            .status == "completed" and .conclusion == "success"' "$RUNNER_TEMP/source-run.json" > /dev/null; then
+            echo '::error::Select a completed, successful main push build from this workflow.'
+            exit 1
+          fi
+          # Keep pagination and JSON filtering separate for the GitHub CLI version on hosted runners.
+          gh api --paginate --slurp "repos/${GITHUB_REPOSITORY}/actions/runs/${BUILD_RUN}/artifacts" |
+            jq '[.[].artifacts[]]' > "$RUNNER_TEMP/source-artifacts.json"
+          for artifact in TransmissionStreaming_0.0.0.0.zip HDRPlayback_0.0.0.0.zip; do
+            if ! jq -e --arg name "$artifact" 'any(.[]; .name == $name and .expired == false)' \
+              "$RUNNER_TEMP/source-artifacts.json" > /dev/null; then
+              echo '::error::Both retained plugin ZIPs are required. Select a build whose artifacts have not expired.'
+              exit 1
+            fi
+          done
+          commit=$(jq -r '.head_sha' "$RUNNER_TEMP/source-run.json")
+          echo "commit=$commit" >> "$GITHUB_OUTPUT"
+          echo "run_id=$BUILD_RUN" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ steps.source.outputs.commit }}
+          fetch-depth: 0
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+      - name: Select shared release version
+        id: version
+        env:
+          RELEASE_KIND: ${{ inputs.bump }}
+          CUSTOM_TAG: ${{ inputs.tag }}
+        shell: bash
+        run: |
+          gh api --paginate --slurp "repos/${GITHUB_REPOSITORY}/releases" > "$RUNNER_TEMP/releases.json"
+          if [[ "$RELEASE_KIND" == custom ]]; then
+            release_tag="$CUSTOM_TAG"
+          else
+            release_tag=$(jq -r --arg bump "$RELEASE_KIND" '
+              [.[][] | select(.draft == false and .prerelease == false) | .tag_name |
+                select(test("^v[0-9]+\\.[0-9]+\\.[0-9]+$")) | ltrimstr("v") | split(".") | map(tonumber)] |
+              max // [0, 0, 0] |
+              if $bump == "major" then [.[0] + 1, 0, 0]
+              elif $bump == "minor" then [.[0], .[1] + 1, 0]
+              else [.[0], .[1], .[2] + 1] end |
+              "v" + (map(tostring) | join("."))' "$RUNNER_TEMP/releases.json")
+          fi
+          if [[ ! "$release_tag" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo '::error::Use a numeric vMAJOR.MINOR.PATCH tag for both plugins.'
+            exit 1
+          fi
+          if jq -e --arg tag "$release_tag" 'any(.[][]; .tag_name == $tag)' "$RUNNER_TEMP/releases.json" > /dev/null; then
+            echo '::error::A release or draft already uses this tag. Publish or remove that draft, or choose another version.'
+            exit 1
+          fi
+          if git show-ref --verify --quiet "refs/tags/$release_tag" && [[ "$(git rev-parse "refs/tags/$release_tag^{commit}")" != "$(git rev-parse HEAD)" ]]; then
+            echo '::error::The tag already points to another commit.'
+            exit 1
+          fi
+          echo "tag=$release_tag" >> "$GITHUB_OUTPUT"
+          echo "Preparing $release_tag for both plugins."
+      - name: Download both tested plugin ZIPs
+        uses: actions/download-artifact@v8
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ steps.source.outputs.run_id }}
+          pattern: '*_0.0.0.0.zip'
+          path: artifacts/input
+          merge-multiple: true
+          skip-decompress: true
+      - name: Promote plugins and merge their catalog histories
+        env:
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+        shell: bash
+        run: |
+          # A manually created latest release may have no catalog yet. Use the newest published catalog asset.
+          previous_manifest=$(jq -r '[.[][] | select(.draft == false and .prerelease == false) |
+            {published_at, url: (.assets[] | select(.name == "manifest.json") | .browser_download_url)}] |
+            sort_by(.published_at) | reverse | .[0].url // empty' "$RUNNER_TEMP/releases.json")
+          previous_options=()
+          if [[ -n "$previous_manifest" ]]; then
+            previous_options=(--previous-manifest-url "$previous_manifest")
+          fi
+          : > artifacts/input/current-packages.jsonl
+          for plugin in transmission-streaming hdr-playback; do
+            if [[ "$plugin" == transmission-streaming ]]; then
+              source_archive=artifacts/input/TransmissionStreaming_0.0.0.0.zip
+            else
+              source_archive=artifacts/input/HDRPlayback_0.0.0.0.zip
+            fi
+            dotnet run --file scripts/Package.cs -- --plugin "$plugin" --archive "$source_archive" --release-tag "$RELEASE_TAG"
+            if [[ "$plugin" == transmission-streaming ]]; then
+              archives=(artifacts/TransmissionStreaming_*.zip)
+            else
+              archives=(artifacts/HDRPlayback_*.zip)
+            fi
+            archive="${archives[0]}"
+            release_url="https://github.com/${GITHUB_REPOSITORY}/releases/download/${RELEASE_TAG}/$(basename "$archive")"
+            dotnet run --file scripts/Package.cs -- --plugin "$plugin" --archive "$archive" \
+              --source-url "$release_url" "${previous_options[@]}"
+            jq -e --arg source "$release_url" '.[] | select(any(.versions[]; .sourceUrl == $source))' \
+              artifacts/manifest.json >> artifacts/input/current-packages.jsonl
+          done
+          # Each package retains its own history. Keep both new entries in the shared catalog.
+          jq --slurpfile current artifacts/input/current-packages.jsonl \
+            'map(select(.guid as $id | $current | all(.guid != $id))) + $current' \
+            artifacts/manifest.json > artifacts/input/manifest.json
+          mv artifacts/input/manifest.json artifacts/manifest.json
+      - name: Create linked draft release
+        env:
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+          SOURCE_RUN: ${{ steps.source.outputs.run_id }}
+          SOURCE_COMMIT: ${{ steps.source.outputs.commit }}
+        shell: bash
+        run: |
+          draft_url=$(gh release create "$RELEASE_TAG" artifacts/*.zip artifacts/manifest.json \
+            --target "$SOURCE_COMMIT" --draft --generate-notes --title "$RELEASE_TAG")
+          {
+            echo "## Draft release $RELEASE_TAG"
+            echo
+            echo "[**Review and publish the prepared release**]($draft_url)"
+            echo
+            echo "Built from [run ${SOURCE_RUN}](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${SOURCE_RUN}) at [${SOURCE_COMMIT}](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/commit/${SOURCE_COMMIT})."
+            echo
+            echo 'The draft contains both plugin ZIPs and the merged catalog. Publication remains manual.'
+          } >> "$GITHUB_STEP_SUMMARY"
