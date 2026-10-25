@@ -59,7 +59,7 @@ See [configuration](doc/configuration.md) for the settings, path examples, and s
 With a local Docker-compatible daemon running:
 
 ```sh
-dotnet test TransmissionStreaming.slnx -c Release
+dotnet test JellyfinPlugins.slnx -c Release
 ```
 
 Main-branch CI and pull requests run these suites and retain an installable ZIP for 90 days. After main CI passes, a version tag repacks its tested DLLs with release metadata
@@ -79,7 +79,7 @@ for separate test commands and coverage boundaries, and [installation and releas
 - [Testing guidelines](doc/testing-guidelines.md)
 - [UI guidelines](doc/ui-guidelines.md)
 - [Release guidelines](doc/release-guidelines.md)
-- [TODO list](TODO.md)
+- [Transmission Streaming TODO](doc/transmission-streaming-todo.md)
 
 ## License
 

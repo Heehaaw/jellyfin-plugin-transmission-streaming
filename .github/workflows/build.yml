@@ -27,7 +27,7 @@ jobs:
         with:
           dotnet-version: '10.0.x'
       - name: Build and run all tests
-        run: dotnet test TransmissionStreaming.slnx -c Release
+        run: dotnet test JellyfinPlugins.slnx -c Release
       - name: Package plugin
         run: dotnet run --file scripts/Package.cs
       - name: Upload plugin ZIP

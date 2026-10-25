@@ -4,7 +4,7 @@ using System.Runtime.CompilerServices;
 
 internal sealed record RepositoryLayout(string Root)
 {
-    public string ProjectPath => Path.Combine(Root, "src", "Jellyfin.Plugin.TransmissionStreaming", "Jellyfin.Plugin.TransmissionStreaming.csproj");
+    public string ProjectPath => Path.Combine(Root, "src", "TransmissionStreaming", "Jellyfin.Plugin.TransmissionStreaming", "Jellyfin.Plugin.TransmissionStreaming.csproj");
 
     public string ArtifactsDirectory => Path.Combine(Root, "artifacts");
 

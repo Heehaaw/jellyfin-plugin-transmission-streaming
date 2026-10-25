@@ -42,13 +42,13 @@ dotnet test tests/UnitTests.slnx -c Release
 Run the single integration project:
 
 ```sh
-dotnet test tests-integration/TransmissionStreaming.IntegrationTests -c Release
+dotnet test tests-integration/TransmissionStreaming/TransmissionStreaming.IntegrationTests -c Release
 ```
 
 Run only host wiring and packaging checks without starting containers:
 
 ```sh
-dotnet test tests-integration/TransmissionStreaming.IntegrationTests -c Release \
+dotnet test tests-integration/TransmissionStreaming/TransmissionStreaming.IntegrationTests -c Release \
   --filter "FullyQualifiedName~Host|FullyQualifiedName~Packaging"
 ```
 
@@ -57,13 +57,13 @@ Downloader services start only when a scenario borrows them. Filtered host and p
 Run the Jellyfin application tests:
 
 ```sh
-dotnet test tests-application/Jellyfin.Plugin.TransmissionStreaming.ApplicationTests -c Release
+dotnet test tests-application/TransmissionStreaming/Jellyfin.Plugin.TransmissionStreaming.ApplicationTests -c Release
 ```
 
 Run everything:
 
 ```sh
-dotnet test TransmissionStreaming.slnx -c Release
+dotnet test JellyfinPlugins.slnx -c Release
 ```
 
 ## Business tests
@@ -188,7 +188,7 @@ After publishing a release, verify the actual public repository with:
 
 ```sh
 TRANSMISSION_STREAMING_TEST_REPOSITORY="https://github.com/Heehaaw/jellyfin-plugin-transmission-streaming/releases/latest/download/manifest.json" \
-  dotnet test tests-application/Jellyfin.Plugin.TransmissionStreaming.ApplicationTests -c Release \
+  dotnet test tests-application/TransmissionStreaming/Jellyfin.Plugin.TransmissionStreaming.ApplicationTests -c Release \
   -p:Version=1.2.3 --filter FullyQualifiedName~Should_InstallFromRepositoryAndLoadAfterRestart
 ```
 

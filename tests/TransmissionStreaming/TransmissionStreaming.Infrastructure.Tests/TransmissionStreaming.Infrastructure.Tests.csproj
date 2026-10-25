@@ -11,8 +11,8 @@
         <PackageReference Include="AutoFixture.Xunit2" />
         <PackageReference Include="AutoFixture.AutoMoq" />
         <PackageReference Include="FluentAssertions" />
-        <ProjectReference Include="../../src/TransmissionStreaming.Core/TransmissionStreaming.Core.csproj" />
-        <ProjectReference Include="../../src/TransmissionStreaming.Infrastructure/TransmissionStreaming.Infrastructure.csproj" />
+        <ProjectReference Include="../../../src/TransmissionStreaming/TransmissionStreaming.Core/TransmissionStreaming.Core.csproj" />
+        <ProjectReference Include="../../../src/TransmissionStreaming/TransmissionStreaming.Infrastructure/TransmissionStreaming.Infrastructure.csproj" />
         <PackageReference Include="Moq" />
         <PackageReference Include="Microsoft.Data.Sqlite" />
     </ItemGroup>

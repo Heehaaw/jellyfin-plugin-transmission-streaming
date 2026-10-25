@@ -9,8 +9,8 @@
         <PackageReference Include="Jellyfin.Controller" />
         <PackageReference Include="Jellyfin.Model" />
         <PackageReference Include="Moq" />
-        <Compile Include="../../scripts/Packaging/*.cs" Link="Packaging/%(Filename)%(Extension)" />
-        <ProjectReference Include="../../src/Jellyfin.Plugin.TransmissionStreaming/Jellyfin.Plugin.TransmissionStreaming.csproj" />
+        <Compile Include="../../../scripts/Packaging/*.cs" Link="Packaging/%(Filename)%(Extension)" />
+        <ProjectReference Include="../../../src/TransmissionStreaming/Jellyfin.Plugin.TransmissionStreaming/Jellyfin.Plugin.TransmissionStreaming.csproj" />
         <PackageReference Include="Microsoft.NET.Test.Sdk" />
         <PackageReference Include="xunit.v3" />
         <PackageReference Include="xunit.runner.visualstudio" PrivateAssets="all" />
@@ -18,8 +18,8 @@
         <PackageReference Include="AutoFixture.AutoMoq" />
         <PackageReference Include="FluentAssertions" />
         <PackageReference Include="Microsoft.Data.Sqlite" />
-        <ProjectReference Include="../../src/TransmissionStreaming.Logic/TransmissionStreaming.Logic.csproj" />
-        <ProjectReference Include="../../src/TransmissionStreaming.Infrastructure/TransmissionStreaming.Infrastructure.csproj" />
-        <ProjectReference Include="../../tests/TransmissionStreaming.TestSupport/TransmissionStreaming.TestSupport.csproj" />
+        <ProjectReference Include="../../../src/TransmissionStreaming/TransmissionStreaming.Logic/TransmissionStreaming.Logic.csproj" />
+        <ProjectReference Include="../../../src/TransmissionStreaming/TransmissionStreaming.Infrastructure/TransmissionStreaming.Infrastructure.csproj" />
+        <ProjectReference Include="../../../tests/TransmissionStreaming/TransmissionStreaming.TestSupport/TransmissionStreaming.TestSupport.csproj" />
     </ItemGroup>
 </Project>

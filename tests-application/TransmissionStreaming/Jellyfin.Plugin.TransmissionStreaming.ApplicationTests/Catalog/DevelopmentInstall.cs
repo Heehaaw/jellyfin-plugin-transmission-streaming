@@ -10,7 +10,7 @@ internal static class DevelopmentInstall
         var root = FindRepositoryRoot();
         var script = Path.Combine(root, "scripts", "Install.cs");
         await DotnetAsync(root, ["run", "--file", script, "--plugins-dir", pluginsDirectory], cancellationToken);
-        var project = Path.Combine(root, "src", "Jellyfin.Plugin.TransmissionStreaming", "Jellyfin.Plugin.TransmissionStreaming.csproj");
+        var project = Path.Combine(root, "src", "TransmissionStreaming", "Jellyfin.Plugin.TransmissionStreaming", "Jellyfin.Plugin.TransmissionStreaming.csproj");
         return (await DotnetAsync(root, ["msbuild", project, "-property:Configuration=Debug", "-getProperty:TargetDir", "-nologo"], cancellationToken)).Trim();
     }
 
@@ -18,7 +18,7 @@ internal static class DevelopmentInstall
     {
         for (var directory = new DirectoryInfo(AppContext.BaseDirectory); directory is not null; directory = directory.Parent)
         {
-            if (File.Exists(Path.Combine(directory.FullName, "TransmissionStreaming.slnx")))
+            if (File.Exists(Path.Combine(directory.FullName, "JellyfinPlugins.slnx")))
             {
                 return directory.FullName;
             }
