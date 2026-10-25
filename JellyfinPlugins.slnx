@@ -6,13 +6,13 @@
         <Project Path="src/TransmissionStreaming/TransmissionStreaming.Logic/TransmissionStreaming.Logic.csproj" />
     </Folder>
     <Folder Name="/tests-integration/TransmissionStreaming/">
+        <Project Path="tests-integration/TransmissionStreaming/TransmissionStreaming.TestSupport/TransmissionStreaming.TestSupport.csproj" />
         <Project Path="tests-integration/TransmissionStreaming/TransmissionStreaming.IntegrationTests/TransmissionStreaming.IntegrationTests.csproj" />
     </Folder>
     <Folder Name="/tests-application/TransmissionStreaming/">
         <Project Path="tests-application/TransmissionStreaming/Jellyfin.Plugin.TransmissionStreaming.ApplicationTests/Jellyfin.Plugin.TransmissionStreaming.ApplicationTests.csproj" />
     </Folder>
     <Folder Name="/tests/TransmissionStreaming/">
-        <Project Path="tests/TransmissionStreaming/TransmissionStreaming.TestSupport/TransmissionStreaming.TestSupport.csproj" />
         <Project Path="tests/TransmissionStreaming/Jellyfin.Plugin.TransmissionStreaming.Tests/Jellyfin.Plugin.TransmissionStreaming.Tests.csproj" />
         <Project Path="tests/TransmissionStreaming/TransmissionStreaming.Core.Tests/TransmissionStreaming.Core.Tests.csproj" />
         <Project Path="tests/TransmissionStreaming/TransmissionStreaming.Infrastructure.Tests/TransmissionStreaming.Infrastructure.Tests.csproj" />

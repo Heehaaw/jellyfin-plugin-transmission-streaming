@@ -20,6 +20,6 @@
         <PackageReference Include="Microsoft.Data.Sqlite" />
         <ProjectReference Include="../../../src/TransmissionStreaming/TransmissionStreaming.Logic/TransmissionStreaming.Logic.csproj" />
         <ProjectReference Include="../../../src/TransmissionStreaming/TransmissionStreaming.Infrastructure/TransmissionStreaming.Infrastructure.csproj" />
-        <ProjectReference Include="../../../tests/TransmissionStreaming/TransmissionStreaming.TestSupport/TransmissionStreaming.TestSupport.csproj" />
+        <ProjectReference Include="../TransmissionStreaming.TestSupport/TransmissionStreaming.TestSupport.csproj" />
     </ItemGroup>
 </Project>

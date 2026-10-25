@@ -33,10 +33,10 @@ and configuration; mutable library data and watch history are never shared. Inst
 
 ## Run the suites
 
-Run the fast unit and adapter tests without building or discovering the container suites:
+Run unit cases through their `.Tests.` namespace, excluding integration and application cases:
 
 ```sh
-dotnet test tests/UnitTests.slnx -c Release
+dotnet test JellyfinPlugins.slnx -c Release --filter 'FullyQualifiedName~.Tests.'
 ```
 
 Run the single integration project:

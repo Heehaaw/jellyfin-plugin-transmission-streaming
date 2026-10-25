@@ -5,7 +5,7 @@
         <OutputType>Exe</OutputType>
     </PropertyGroup>
     <ItemGroup>
-        <ProjectReference Include="../../../tests/TransmissionStreaming/TransmissionStreaming.TestSupport/TransmissionStreaming.TestSupport.csproj" />
+        <ProjectReference Include="../../../tests-integration/TransmissionStreaming/TransmissionStreaming.TestSupport/TransmissionStreaming.TestSupport.csproj" />
         <ProjectReference Include="../../../src/TransmissionStreaming/Jellyfin.Plugin.TransmissionStreaming/Jellyfin.Plugin.TransmissionStreaming.csproj" ReferenceOutputAssembly="false" />
         <PackageReference Include="Microsoft.Playwright" />
         <PackageReference Include="Microsoft.NET.Test.Sdk" />
