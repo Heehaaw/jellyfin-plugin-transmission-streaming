@@ -123,12 +123,7 @@ public sealed class DownloadServices : IAsyncLifetime
             {
                 try
                 {
-                    await ControlAsync(
-                        operation: "end",
-                        value: new
-                            { },
-                        cancellationToken: deadline.Token
-                    );
+                    await ControlAsync("end", new { }, deadline.Token);
                 }
                 finally
                 {

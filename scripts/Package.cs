@@ -14,39 +14,20 @@ return await ScriptHost.RunAsync(async cancellationToken =>
     {
         // Release jobs can publish the verified CI bytes without rebuilding the plugin.
         archivePath = existingArchive;
-        descriptor = await PluginBundle.ReadDescriptorAsync
-        (
-            archivePath: archivePath,
-            cancellationToken: cancellationToken
-        );
+        descriptor = await PluginBundle.ReadDescriptorAsync(archivePath, cancellationToken);
     }
     else
     {
-        var bundle = await PluginBuild.BuildAsync
-        (
-            layout: layout,
-            configuration: "Release",
-            cancellationToken: cancellationToken
-        );
+        var bundle = await PluginBuild.BuildAsync(layout, "Release", cancellationToken);
         descriptor = bundle.Descriptor;
-        archivePath = PluginBundle.CreateArchive
-        (
-            plugin: bundle,
-            artifactsDirectory: layout.ArtifactsDirectory
-        );
+        archivePath = PluginBundle.CreateArchive(bundle, layout.ArtifactsDirectory);
     }
 
     options.ValidateVersion(descriptor.Version);
     Console.WriteLine($"Plugin ZIP: {archivePath}");
     if (options.SourceUrl is not null)
     {
-        var manifestPath = await Catalog.WriteAsync
-        (
-            descriptor: descriptor,
-            archivePath: archivePath,
-            options: options,
-            cancellationToken: cancellationToken
-        );
+        var manifestPath = await Catalog.WriteAsync(descriptor, archivePath, options, cancellationToken);
         Console.WriteLine($"Repository manifest: {manifestPath}");
     }
 });

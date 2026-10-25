@@ -4,8 +4,7 @@ internal static class ArrEndpoints
 {
     public static void Map(WebApplication app, SeedControl owner)
     {
-        app.MapGet
-        (
+        app.MapGet(
             pattern: "/api/v3/{**path}",
             handler: (string path, HttpContext context) =>
             {

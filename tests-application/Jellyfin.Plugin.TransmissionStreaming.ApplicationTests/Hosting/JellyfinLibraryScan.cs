@@ -24,11 +24,7 @@ internal sealed class JellyfinLibraryScan(JellyfinApi api)
 
         try
         {
-            await api.RequestAsync(
-                path: $"/ScheduledTasks/Running/{idle!.Id}",
-                body: new
-                    { }
-            );
+            await api.RequestAsync($"/ScheduledTasks/Running/{idle!.Id}", new { });
         }
         catch (HttpRequestException exception) when (exception.StatusCode == HttpStatusCode.Conflict)
         {

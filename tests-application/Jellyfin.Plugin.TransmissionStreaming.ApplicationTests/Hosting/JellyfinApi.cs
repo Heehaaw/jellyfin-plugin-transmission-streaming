@@ -79,11 +79,7 @@ internal sealed class JellyfinApi(Uri address) : IDisposable
                     EnableAutomaticPortMapping = false
                 }
             );
-            await RequestAsync(
-                path: "/Startup/Complete",
-                body: new
-                    { }
-            );
+            await RequestAsync("/Startup/Complete", new { });
         }
 
         var authentication = await WaitForAsync(

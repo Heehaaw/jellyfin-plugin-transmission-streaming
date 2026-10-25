@@ -4,8 +4,7 @@ internal static class CatalogEndpoints
 {
     public static void Map(WebApplication app, SeedControl control)
     {
-        app.MapGet
-        (
+        app.MapGet(
             pattern: "/{fileName}",
             handler: (string fileName) =>
             {
@@ -15,22 +14,10 @@ internal static class CatalogEndpoints
                     return Results.NotFound();
                 }
 
-                var jsonFile = fileName.EndsWith
-                (
-                    value: ".json",
-                    comparisonType: StringComparison.Ordinal
-                );
+                var jsonFile = fileName.EndsWith(".json", StringComparison.Ordinal);
                 var contentType = jsonFile ? "application/json" : "application/zip";
-                var path = Path.Combine
-                (
-                    path1: root,
-                    path2: fileName
-                );
-                return Results.File
-                (
-                    path: path,
-                    contentType: contentType
-                );
+                var path = Path.Combine(root, fileName);
+                return Results.File(path, contentType);
             }
         );
     }

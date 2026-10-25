@@ -8,37 +8,23 @@ internal static class TrackerEndpoints
 {
     public static void Map(WebApplication app, SeedControl control)
     {
-        app.MapGet
-        (
+        app.MapGet(
             pattern: "/health",
             handler: () => Results.Json(new
             {
             })
         );
-        app.MapGet
-        (
+        app.MapGet(
             pattern: "/announce",
             handler: async (HttpContext context) =>
             {
-                var addresses = await Dns.GetHostAddressesAsync
-                (
-                    hostNameOrAddress: control.Current.Configuration.Host,
-                    cancellationToken: context.RequestAborted
-                );
+                var addresses = await Dns.GetHostAddressesAsync(control.Current.Configuration.Host, context.RequestAborted);
                 var hostAddress = addresses.First(value => value.AddressFamily == AddressFamily.InterNetwork);
                 var address = hostAddress.GetAddressBytes();
                 var compact = new byte[6];
-                address.CopyTo
-                (
-                    array: compact,
-                    index: 0
-                );
+                address.CopyTo(compact, 0);
                 var port = (ushort)control.Current.Configuration.PeerPort;
-                BinaryPrimitives.WriteUInt16BigEndian
-                (
-                    destination: compact.AsSpan(4),
-                    value: port
-                );
+                BinaryPrimitives.WriteUInt16BigEndian(compact.AsSpan(4), port);
 
                 var response = new SortedDictionary<string, object>(StringComparer.Ordinal)
                 {
@@ -49,11 +35,7 @@ internal static class TrackerEndpoints
                     ["peers"] = compact
                 };
                 var bytes = Bencode.Encode(response);
-                return Results.Bytes
-                (
-                    contents: bytes,
-                    contentType: "text/plain"
-                );
+                return Results.Bytes(bytes, "text/plain");
             }
         );
     }

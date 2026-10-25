@@ -31,10 +31,6 @@ internal sealed record InstallOptions(string PluginsDirectory, string Configurat
             throw new ArgumentException("An explicit --plugins-dir and a nonempty build configuration are required.");
         }
 
-        return new InstallOptions
-        (
-            PluginsDirectory: pluginsDirectory,
-            Configuration: configuration
-        );
+        return new InstallOptions(pluginsDirectory, configuration);
     }
 }

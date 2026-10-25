@@ -66,12 +66,7 @@ internal sealed class TorrentScenario(DownloadServices services, string workspac
 
     public async Task AllowFirstPieceAsync(CancellationToken cancellationToken)
     {
-        await ControlAsync(
-            operation: "first",
-            value: new
-                { },
-            cancellationToken: cancellationToken
-        );
+        await ControlAsync("first", new { }, cancellationToken);
         await Poll.UntilAsync(
             probe: () => ProgressAsync(cancellationToken),
             ready: state => state.FirstPieceAvailable,
@@ -82,12 +77,7 @@ internal sealed class TorrentScenario(DownloadServices services, string workspac
 
     public async Task AllowAllPiecesAsync(CancellationToken cancellationToken)
     {
-        await ControlAsync(
-            operation: "all",
-            value: new
-                { },
-            cancellationToken: cancellationToken
-        );
+        await ControlAsync("all", new { }, cancellationToken);
         await Poll.UntilAsync(
             probe: () => ProgressAsync(cancellationToken),
             ready: state => state.Complete && File.Exists(LocalDownloadPath),

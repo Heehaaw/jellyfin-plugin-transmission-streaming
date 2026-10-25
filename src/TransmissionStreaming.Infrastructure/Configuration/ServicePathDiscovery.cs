@@ -26,14 +26,12 @@ internal sealed class ServicePathDiscovery(ITransmissionClient transmission, IAr
                 };
             case MediaService.Radarr:
             case MediaService.Sonarr:
-                var roots = await arr.GetRootFoldersAsync(
-                    connection: new ArrConnection
-                    {
-                        Url = connection.Url,
-                        ApiKey = connection.ApiKey
-                    },
-                    cancellationToken: cancellationToken
-                ).ConfigureAwait(false);
+                var arrConnection = new ArrConnection
+                {
+                    Url = connection.Url,
+                    ApiKey = connection.ApiKey
+                };
+                var roots = await arr.GetRootFoldersAsync(arrConnection, cancellationToken).ConfigureAwait(false);
                 return new DiscoveredServicePaths
                 {
                     LibraryRoots = roots

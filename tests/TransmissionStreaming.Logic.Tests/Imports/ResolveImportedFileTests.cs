@@ -155,12 +155,7 @@ public sealed class ResolveImportedFileTests
         var entry = source.Query.Projection;
         entry.CompletedPath = null;
         options.SetupGet(value => value.CurrentValue).Returns(source.Options);
-        arr.Setup(value => value.FindImportedFileAsync(
-                connection: It.IsAny<ArrConnection>(),
-                identity: entry.Identity,
-                expectedSize: entry.Length,
-                cancellationToken: It.IsAny<CancellationToken>()
-            )
+        arr.Setup(value => value.FindImportedFileAsync(It.IsAny<ArrConnection>(), entry.Identity, entry.Length, It.IsAny<CancellationToken>())
         ).ReturnsAsync(source.RemotePath);
         paths.Setup(value => value.Send(It.Is<MapServicePath.Query>(request => request.Path == source.RemotePath), It.IsAny<CancellationToken>()))
             .Returns(ValueTask.FromResult<string?>(source.LocalPath));
@@ -197,12 +192,7 @@ public sealed class ResolveImportedFileTests
         // Assert
         result.Should().BeNull();
         arr.Verify(
-            expression: value => value.FindImportedFileAsync(
-                connection: It.IsAny<ArrConnection>(),
-                identity: It.IsAny<MediaIdentity>(),
-                expectedSize: It.IsAny<long>(),
-                cancellationToken: It.IsAny<CancellationToken>()
-            ),
+            expression: value => value.FindImportedFileAsync(It.IsAny<ArrConnection>(), It.IsAny<MediaIdentity>(), It.IsAny<long>(), It.IsAny<CancellationToken>()),
             times: Times.Never
         );
     }

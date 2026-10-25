@@ -26,11 +26,7 @@ internal sealed record PackageOptions(Uri? SourceUrl, Uri? PreviousManifestUrl, 
                     break;
                 case "--source-url":
                     source = HttpsUrl(arguments[index + 1]);
-                    var hasZipExtension = source.AbsolutePath.EndsWith
-                    (
-                        value: ".zip",
-                        comparisonType: StringComparison.OrdinalIgnoreCase
-                    );
+                    var hasZipExtension = source.AbsolutePath.EndsWith(".zip", StringComparison.OrdinalIgnoreCase);
                     if (!hasZipExtension || source.Query.Length != 0 || source.Fragment.Length != 0)
                     {
                         throw new ArgumentException("The source URL must end in .zip, without a query or fragment.");
@@ -53,24 +49,12 @@ internal sealed record PackageOptions(Uri? SourceUrl, Uri? PreviousManifestUrl, 
             throw new ArgumentException("A previous manifest can only be merged when --source-url is supplied.");
         }
 
-        return new PackageOptions
-        (
-            SourceUrl: source,
-            PreviousManifestUrl: previousManifest,
-            ReleaseTag: releaseTag,
-            ArchivePath: archivePath
-        );
+        return new PackageOptions(source, previousManifest, releaseTag, archivePath);
     }
 
     private static Uri HttpsUrl(string value)
     {
-        if (!Uri.TryCreate
-            (
-                uriString: value,
-                uriKind: UriKind.Absolute,
-                result: out var uri
-            )
-            || uri.Scheme != Uri.UriSchemeHttps || !string.IsNullOrEmpty(uri.UserInfo))
+        if (!Uri.TryCreate(value, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps || !string.IsNullOrEmpty(uri.UserInfo))
         {
             throw new ArgumentException("Package URLs must be absolute HTTPS URLs without embedded credentials.");
         }
@@ -86,12 +70,7 @@ internal sealed record PackageOptions(Uri? SourceUrl, Uri? PreviousManifestUrl, 
         }
 
         var tagVersion = ReleaseTag.StartsWith('v') ? ReleaseTag[1..] : ReleaseTag;
-        if (!Version.TryParse
-            (
-                input: tagVersion,
-                result: out var parsed
-            )
-        )
+        if (!Version.TryParse(tagVersion, out var parsed))
         {
             throw new ArgumentException(VersionMismatch);
         }
@@ -107,22 +86,8 @@ internal sealed record PackageOptions(Uri? SourceUrl, Uri? PreviousManifestUrl, 
 
     private static Version Normalize(Version version)
     {
-        var build = Math.Max
-        (
-            val1: 0,
-            val2: version.Build
-        );
-        var revision = Math.Max
-        (
-            val1: 0,
-            val2: version.Revision
-        );
-        return new Version
-        (
-            major: version.Major,
-            minor: version.Minor,
-            build: build,
-            revision: revision
-        );
+        var build = Math.Max(0, version.Build);
+        var revision = Math.Max(0, version.Revision);
+        return new Version(version.Major, version.Minor, build, revision);
     }
 }

@@ -25,16 +25,8 @@ internal sealed class ArrDownloadDiscovery(IArrTransport transport) : IArrDownlo
         var suffix = kind == MediaKind.Movie
             ? "includeMovie=true&includeUnknownMovieItems=false"
             : "includeSeries=true&includeEpisode=true&includeUnknownSeriesItems=false";
-        var records = await transport.GetPagesAsync(
-            connection: connection,
-            endpoint: "queue",
-            query: suffix,
-            cancellationToken: cancellationToken
-        ).ConfigureAwait(false);
-        var matches = MatchingDownloads(
-            records: records,
-            hash: hash
-        );
+        var records = await transport.GetPagesAsync(connection, "queue", suffix, cancellationToken).ConfigureAwait(false);
+        var matches = MatchingDownloads(records, hash);
         if (matches.Count == 0)
         {
             return null;
@@ -42,21 +34,10 @@ internal sealed class ArrDownloadDiscovery(IArrTransport transport) : IArrDownlo
 
         if (kind == MediaKind.Movie)
         {
-            return await FindMovieAsync(
-                connection: connection,
-                matches: matches,
-                filename: filename,
-                cancellationToken: cancellationToken
-            ).ConfigureAwait(false);
+            return await FindMovieAsync(connection, matches, filename, cancellationToken).ConfigureAwait(false);
         }
 
-        return await FindEpisodeAsync(
-            connection: connection,
-            kind: kind,
-            matches: matches,
-            filename: filename,
-            cancellationToken: cancellationToken
-        ).ConfigureAwait(false);
+        return await FindEpisodeAsync(connection, kind, matches, filename, cancellationToken).ConfigureAwait(false);
     }
 
     private static List<JsonElement> MatchingDownloads(IReadOnlyList<JsonElement> records, string hash)
@@ -64,15 +45,8 @@ internal sealed class ArrDownloadDiscovery(IArrTransport transport) : IArrDownlo
         var matches = new List<JsonElement>();
         foreach (var row in records)
         {
-            var downloadId = Text(
-                element: row,
-                name: "downloadId"
-            );
-            var matchesHash = string.Equals(
-                a: downloadId,
-                b: hash,
-                comparisonType: StringComparison.OrdinalIgnoreCase
-            );
+            var downloadId = Text(row, "downloadId");
+            var matchesHash = string.Equals(downloadId, hash, StringComparison.OrdinalIgnoreCase);
             if (matchesHash)
             {
                 matches.Add(row);
@@ -89,10 +63,7 @@ internal sealed class ArrDownloadDiscovery(IArrTransport transport) : IArrDownlo
         CancellationToken cancellationToken
     )
     {
-        var movieId = UniquePositiveId(
-            rows: matches,
-            name: "movieId"
-        );
+        var movieId = UniquePositiveId(matches, "movieId");
         if (movieId is null)
         {
             return null;
@@ -100,36 +71,18 @@ internal sealed class ArrDownloadDiscovery(IArrTransport transport) : IArrDownlo
 
         var row = matches.First(candidate =>
             {
-                var candidateId = Number(
-                    element: candidate,
-                    name: "movieId"
-                );
+                var candidateId = Number(candidate, "movieId");
                 return candidateId == movieId.Value;
             }
         );
-        var movie = Object(
-            element: row,
-            name: "movie"
-        );
+        var movie = Object(row, "movie");
         if (movie.ValueKind != JsonValueKind.Object)
         {
-            movie = await transport.GetAsync(
-                connection: connection,
-                path: $"movie/{movieId.Value}",
-                cancellationToken: cancellationToken
-            ).ConfigureAwait(false);
+            movie = await transport.GetAsync(connection, $"movie/{movieId.Value}", cancellationToken).ConfigureAwait(false);
         }
 
-        var hash = Text(
-            element: row,
-            name: "downloadId"
-        );
-        var identity = Identity(
-            kind: MediaKind.Movie,
-            media: movie,
-            hash: hash,
-            filename: filename
-        );
+        var hash = Text(row, "downloadId");
+        var identity = Identity(MediaKind.Movie, movie, hash, filename);
         identity.MovieId = movieId.Value;
         return identity;
     }
@@ -139,10 +92,7 @@ internal sealed class ArrDownloadDiscovery(IArrTransport transport) : IArrDownlo
         var ids = new HashSet<int>();
         foreach (var row in rows)
         {
-            var id = Number(
-                element: row,
-                name: name
-            );
+            var id = Number(row, name);
             if (id > 0)
             {
                 ids.Add(id);
@@ -157,26 +107,11 @@ internal sealed class ArrDownloadDiscovery(IArrTransport transport) : IArrDownlo
         return new()
         {
             Kind = kind,
-            Title = Text(
-                element: media,
-                name: "title"
-            ),
-            Year = Number(
-                element: media,
-                name: "year"
-            ),
-            TmdbId = Number(
-                element: media,
-                name: "tmdbId"
-            ),
-            TvdbId = Number(
-                element: media,
-                name: "tvdbId"
-            ),
-            ImdbId = Text(
-                element: media,
-                name: "imdbId"
-            ),
+            Title = Text(media, "title"),
+            Year = Number(media, "year"),
+            TmdbId = Number(media, "tmdbId"),
+            TvdbId = Number(media, "tvdbId"),
+            ImdbId = Text(media, "imdbId"),
             OriginalFileName = filename,
             DownloadHash = hash
         };
@@ -196,54 +131,27 @@ internal sealed class ArrDownloadDiscovery(IArrTransport transport) : IArrDownlo
             return null;
         }
 
-        var seriesId = UniquePositiveId(
-            rows: matches,
-            name: "seriesId"
-        );
+        var seriesId = UniquePositiveId(matches, "seriesId");
         if (seriesId is null)
         {
             return null;
         }
 
-        var episode = await FindEpisodeRowAsync(
-            connection: connection,
-            seriesId: seriesId.Value,
-            number: episodeNumber.Value,
-            cancellationToken: cancellationToken
-        ).ConfigureAwait(false);
+        var episode = await FindEpisodeRowAsync(connection, seriesId.Value, episodeNumber.Value, cancellationToken).ConfigureAwait(false);
         if (episode is null)
         {
             return null;
         }
 
         var first = matches[0];
-        var series = await ReadSeriesAsync(
-            connection: connection,
-            row: first,
-            seriesId: seriesId.Value,
-            cancellationToken: cancellationToken
-        ).ConfigureAwait(false);
-        var hash = Text(
-            element: first,
-            name: "downloadId"
-        );
-        var identity = Identity(
-            kind: kind,
-            media: series,
-            hash: hash,
-            filename: filename
-        );
+        var series = await ReadSeriesAsync(connection, first, seriesId.Value, cancellationToken).ConfigureAwait(false);
+        var hash = Text(first, "downloadId");
+        var identity = Identity(kind, series, hash, filename);
         identity.SeriesId = seriesId.Value;
-        identity.EpisodeId = Number(
-            element: episode.Value,
-            name: "id"
-        );
+        identity.EpisodeId = Number(episode.Value, "id");
         identity.SeasonNumber = episodeNumber.Value.Season;
         identity.EpisodeNumber = episodeNumber.Value.Episode;
-        identity.EpisodeTitle = Text(
-            element: episode.Value,
-            name: "title"
-        );
+        identity.EpisodeTitle = Text(episode.Value, "title");
         return identity;
     }
 
@@ -254,27 +162,17 @@ internal sealed class ArrDownloadDiscovery(IArrTransport transport) : IArrDownlo
         CancellationToken cancellationToken
     )
     {
-        var episodes = await transport.GetAsync(
-            connection: connection,
-            path: $"episode?seriesId={seriesId}&seasonNumber={number.Season}",
-            cancellationToken: cancellationToken
-        ).ConfigureAwait(false);
+        var episodes = await transport.GetAsync(connection, $"episode?seriesId={seriesId}&seasonNumber={number.Season}", cancellationToken).ConfigureAwait(false);
         var candidates = new List<JsonElement>();
         foreach (var episode in Array(episodes))
         {
-            var season = Number(
-                element: episode,
-                name: "seasonNumber"
-            );
+            var season = Number(episode, "seasonNumber");
             if (season != number.Season)
             {
                 continue;
             }
 
-            var episodeNumber = Number(
-                element: episode,
-                name: "episodeNumber"
-            );
+            var episodeNumber = Number(episode, "episodeNumber");
             if (episodeNumber == number.Episode)
             {
                 candidates.Add(episode);
@@ -291,19 +189,12 @@ internal sealed class ArrDownloadDiscovery(IArrTransport transport) : IArrDownlo
         CancellationToken cancellationToken
     )
     {
-        var series = Object(
-            element: row,
-            name: "series"
-        );
+        var series = Object(row, "series");
         if (series.ValueKind == JsonValueKind.Object)
         {
             return series;
         }
 
-        return await transport.GetAsync(
-            connection: connection,
-            path: $"series/{seriesId}",
-            cancellationToken: cancellationToken
-        ).ConfigureAwait(false);
+        return await transport.GetAsync(connection, $"series/{seriesId}", cancellationToken).ConfigureAwait(false);
     }
 }

@@ -122,11 +122,7 @@ internal sealed class CatalogInstallation(DownloadServices containers) : IAsyncD
         var repositoryAddress = Uri.EscapeDataString(repositoryUrl!.AbsoluteUri);
         var path = $"/Packages/Installed/{packageName}?assemblyGuid={Bundle.Id}&version={Bundle.Version}"
                    + $"&repositoryUrl={repositoryAddress}";
-        return api!.RequestAsync(
-            path: path,
-            body: new
-                { }
-        ).WaitAsync(cancellationToken);
+        return api!.RequestAsync(path, new { }).WaitAsync(cancellationToken);
     }
 
     public async Task RestartAsync(CancellationToken cancellationToken)

@@ -23,20 +23,8 @@ internal static class PluginBuild
             cancellationToken: cancellationToken
         );
 
-        var metadataPath = Path.Combine
-        (
-            path1: outputDirectory,
-            path2: PluginDescriptor.FileName
-        );
-        var descriptor = await PluginDescriptor.ReadAsync
-        (
-            path: metadataPath,
-            cancellationToken: cancellationToken
-        );
-        return new BuiltPlugin
-        (
-            Directory: outputDirectory,
-            Descriptor: descriptor
-        );
+        var metadataPath = Path.Combine(outputDirectory, PluginDescriptor.FileName);
+        var descriptor = await PluginDescriptor.ReadAsync(metadataPath, cancellationToken);
+        return new BuiltPlugin(outputDirectory, descriptor);
     }
 }

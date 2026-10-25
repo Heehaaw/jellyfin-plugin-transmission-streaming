@@ -4,19 +4,9 @@ using System.Runtime.CompilerServices;
 
 internal sealed record RepositoryLayout(string Root)
 {
-    public string ProjectPath => Path.Combine
-    (
-        path1: Root,
-        path2: "src",
-        path3: "Jellyfin.Plugin.TransmissionStreaming",
-        path4: "Jellyfin.Plugin.TransmissionStreaming.csproj"
-    );
+    public string ProjectPath => Path.Combine(Root, "src", "Jellyfin.Plugin.TransmissionStreaming", "Jellyfin.Plugin.TransmissionStreaming.csproj");
 
-    public string ArtifactsDirectory => Path.Combine
-    (
-        path1: Root,
-        path2: "artifacts"
-    );
+    public string ArtifactsDirectory => Path.Combine(Root, "artifacts");
 
     public static RepositoryLayout FromEntry([CallerFilePath] string entryPath = "")
     {

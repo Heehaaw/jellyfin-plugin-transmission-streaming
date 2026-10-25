@@ -182,10 +182,7 @@ public sealed class TransmissionClientTests
         {
             using var payload = JsonDocument.Parse(await request.Content!.ReadAsStringAsync());
             parameters = payload.RootElement.GetProperty("params").Clone();
-            return RpcResponse(
-                new
-                    { }
-            );
+            return RpcResponse(new { });
         };
 
         // Act
@@ -212,10 +209,7 @@ public sealed class TransmissionClientTests
         {
             using var payload = JsonDocument.Parse(await request.Content!.ReadAsStringAsync());
             parameters = payload.RootElement.GetProperty("params").Clone();
-            return RpcResponse(
-                new
-                    { }
-            );
+            return RpcResponse(new { });
         };
 
         // Act

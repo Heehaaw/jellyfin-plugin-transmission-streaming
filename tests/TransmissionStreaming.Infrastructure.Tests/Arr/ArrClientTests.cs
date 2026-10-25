@@ -202,12 +202,7 @@ public sealed class ArrClientTests
             : Response(source.File);
 
         // Act
-        var result = await sut.FindImportedFileAsync(
-            connection: source.Connection,
-            identity: source.Identity,
-            expectedSize: source.File.Size,
-            cancellationToken: CancellationToken.None
-        );
+        var result = await sut.FindImportedFileAsync(source.Connection, source.Identity, source.File.Size, CancellationToken.None);
 
         // Assert
         result.Should().Be(source.File.Path);
@@ -229,12 +224,7 @@ public sealed class ArrClientTests
         handler.Respond = _ => Response(source.History);
 
         // Act
-        var result = await sut.FindImportedFileAsync(
-            connection: source.Connection,
-            identity: source.Identity,
-            expectedSize: source.File.Size,
-            cancellationToken: CancellationToken.None
-        );
+        var result = await sut.FindImportedFileAsync(source.Connection, source.Identity, source.File.Size, CancellationToken.None);
 
         // Assert
         result.Should().BeNull();
@@ -258,12 +248,7 @@ public sealed class ArrClientTests
             : Response(source.File);
 
         // Act
-        var result = await sut.FindImportedFileAsync(
-            connection: source.Connection,
-            identity: source.Identity,
-            expectedSize: expectedSize,
-            cancellationToken: CancellationToken.None
-        );
+        var result = await sut.FindImportedFileAsync(source.Connection, source.Identity, expectedSize, CancellationToken.None);
 
         // Assert
         result.Should().BeNull();
@@ -283,12 +268,7 @@ public sealed class ArrClientTests
         handler.Respond = _ => Response(source.History);
 
         // Act
-        var result = await sut.FindImportedFileAsync(
-            connection: source.Connection,
-            identity: source.Identity,
-            expectedSize: source.File.Size,
-            cancellationToken: CancellationToken.None
-        );
+        var result = await sut.FindImportedFileAsync(source.Connection, source.Identity, source.File.Size, CancellationToken.None);
 
         // Assert
         result.Should().BeNull();
@@ -334,12 +314,7 @@ public sealed class ArrClientTests
             : new HttpResponseMessage(HttpStatusCode.NotFound);
 
         // Act
-        var result = await sut.FindImportedFileAsync(
-            connection: source.Connection,
-            identity: source.Identity,
-            expectedSize: source.File.Size,
-            cancellationToken: CancellationToken.None
-        );
+        var result = await sut.FindImportedFileAsync(source.Connection, source.Identity, source.File.Size, CancellationToken.None);
 
         // Assert
         result.Should().BeNull();
@@ -363,12 +338,7 @@ public sealed class ArrClientTests
                 : Response(source.File);
 
         // Act
-        var result = await sut.FindImportedFileAsync(
-            connection: source.Connection,
-            identity: source.Identity,
-            expectedSize: source.File.Size,
-            cancellationToken: CancellationToken.None
-        );
+        var result = await sut.FindImportedFileAsync(source.Connection, source.Identity, source.File.Size, CancellationToken.None);
 
         // Assert
         result.Should().Be(source.File.Path);
@@ -393,12 +363,7 @@ public sealed class ArrClientTests
                 : Response(source.File);
 
         // Act
-        var result = await sut.FindImportedFileAsync(
-            connection: source.Connection,
-            identity: source.Identity,
-            expectedSize: source.File.Size,
-            cancellationToken: CancellationToken.None
-        );
+        var result = await sut.FindImportedFileAsync(source.Connection, source.Identity, source.File.Size, CancellationToken.None);
 
         // Assert
         result.Should().BeNull();

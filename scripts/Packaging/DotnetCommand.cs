@@ -6,11 +6,7 @@ internal static class DotnetCommand
 {
     public static async Task<string> RunAsync(string workingDirectory, IReadOnlyList<string> arguments, bool quiet, CancellationToken cancellationToken)
     {
-        var startInfo = CreateStartInfo
-        (
-            workingDirectory: workingDirectory,
-            arguments: arguments
-        );
+        var startInfo = CreateStartInfo(workingDirectory, arguments);
         using var process = Process.Start(startInfo) ?? throw new InvalidOperationException("Could not start the .NET SDK.");
         // The SDK process owns build workers. Cancelling a script must not leave a build running behind it.
         using var cancellation = cancellationToken.Register(() => CancelProcess(process));

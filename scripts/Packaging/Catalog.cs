@@ -18,11 +18,7 @@ internal static class Catalog
     {
         var previous = options.PreviousManifestUrl is null
             ? []
-            : await ReadPreviousAsync
-            (
-                address: options.PreviousManifestUrl,
-                cancellationToken: cancellationToken
-            );
+            : await ReadPreviousAsync(options.PreviousManifestUrl, cancellationToken);
         var existing = previous.SingleOrDefault(package => package.Guid == descriptor.Guid);
         if (existing?.Versions.Any(version => version.Version == descriptor.Version) == true)
         {
@@ -31,44 +27,15 @@ internal static class Catalog
 
         await using var archive = File.OpenRead(archivePath);
         // MD5 is the checksum required by Jellyfin's repository protocol, not a signature or a trust decision.
-        var checksumBytes = await MD5.HashDataAsync
-        (
-            source: archive,
-            cancellationToken: cancellationToken
-        );
+        var checksumBytes = await MD5.HashDataAsync(archive, cancellationToken);
         var checksum = Convert.ToHexStringLower(checksumBytes);
-        var release = new CatalogVersion
-        (
-            Version: descriptor.Version,
-            TargetAbi: descriptor.TargetAbi,
-            SourceUrl: options.SourceUrl!,
-            Checksum: checksum
-        );
-        var package = CreatePackage
-        (
-            descriptor: descriptor,
-            existing: existing,
-            release: release
-        );
+        var release = new CatalogVersion(descriptor.Version, descriptor.TargetAbi, options.SourceUrl!, checksum);
+        var package = CreatePackage(descriptor, existing, release);
         var manifest = previous.Where(value => value.Guid != descriptor.Guid).Append(package).ToArray();
         var archiveDirectory = Path.GetDirectoryName(archivePath)!;
-        var manifestPath = Path.Combine
-        (
-            path1: archiveDirectory,
-            path2: "manifest.json"
-        );
-        var contents = JsonSerializer.Serialize
-        (
-            value: manifest,
-            options: JsonOptions
-        )
-        + Environment.NewLine;
-        await File.WriteAllTextAsync
-        (
-            path: manifestPath,
-            contents: contents,
-            cancellationToken: cancellationToken
-        );
+        var manifestPath = Path.Combine(archiveDirectory, "manifest.json");
+        var contents = JsonSerializer.Serialize(manifest, JsonOptions) + Environment.NewLine;
+        await File.WriteAllTextAsync(manifestPath, contents, cancellationToken);
         return manifestPath;
     }
 
@@ -78,11 +45,7 @@ internal static class Catalog
         {
             Timeout = TimeSpan.FromSeconds(30)
         };
-        using var response = await client.GetAsync
-        (
-            requestUri: address,
-            cancellationToken: cancellationToken
-        );
+        using var response = await client.GetAsync(address, cancellationToken);
         if (response.StatusCode == HttpStatusCode.NotFound)
         {
             return [];
@@ -90,13 +53,8 @@ internal static class Catalog
 
         response.EnsureSuccessStatusCode();
         await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-        return await JsonSerializer.DeserializeAsync<CatalogPackage[]>
-               (
-                   utf8Json: stream,
-                   options: JsonOptions,
-                   cancellationToken: cancellationToken
-               )
-               ?? throw new InvalidDataException("The previous repository manifest is empty.");
+        return await JsonSerializer.DeserializeAsync<CatalogPackage[]>(stream, JsonOptions, cancellationToken)
+            ?? throw new InvalidDataException("The previous repository manifest is empty.");
     }
 
     private static CatalogPackage CreatePackage(PluginDescriptor descriptor, CatalogPackage? existing, CatalogVersion release)

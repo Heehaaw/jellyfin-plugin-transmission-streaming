@@ -11,12 +11,7 @@ internal static class BitTorrentPeer
             while (!cancellationToken.IsCancellationRequested)
             {
                 var peer = await listener.AcceptTcpClientAsync(cancellationToken);
-                _ = ServeAsync
-                (
-                    peer: peer,
-                    scenario: control.Current,
-                    stoppingToken: cancellationToken
-                );
+                _ = ServeAsync(peer, control.Current, cancellationToken);
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -29,34 +24,20 @@ internal static class BitTorrentPeer
 
     private static async Task ServeAsync(TcpClient peer, SeedScenario scenario, CancellationToken stoppingToken)
     {
-        using var lifetime = CancellationTokenSource.CreateLinkedTokenSource
-        (
-            token1: stoppingToken,
-            token2: scenario.CancellationToken
-        );
+        using var lifetime = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken, scenario.CancellationToken);
         var cancellationToken = lifetime.Token;
         using (peer)
         {
             try
             {
                 var stream = peer.GetStream();
-                var accepted = await BitTorrentProtocol.HandshakeAsync
-                (
-                    stream: stream,
-                    hash: scenario.Configuration.Hash,
-                    cancellationToken: cancellationToken
-                );
+                var accepted = await BitTorrentProtocol.HandshakeAsync(stream, scenario.Configuration.Hash, cancellationToken);
                 if (!accepted)
                 {
                     return;
                 }
 
-                await BitTorrentTransfer.CopyAsync
-                (
-                    stream: stream,
-                    control: scenario,
-                    cancellationToken: cancellationToken
-                );
+                await BitTorrentTransfer.CopyAsync(stream, scenario, cancellationToken);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {

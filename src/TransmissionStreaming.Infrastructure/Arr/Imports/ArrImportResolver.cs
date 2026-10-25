@@ -23,39 +23,20 @@ internal sealed class ArrImportResolver(IArrTransport transport) : IArrImportRes
         }
 
         var query = "eventType=3&sortKey=date&sortDirection=descending&downloadId=" + Uri.EscapeDataString(identity.DownloadHash);
-        var records = await transport.GetPagesAsync(
-            connection: connection,
-            endpoint: "history",
-            query: query,
-            cancellationToken: cancellationToken
-        ).ConfigureAwait(false);
-        var candidate = FindCandidate(
-            records: records,
-            identity: identity,
-            expectedSize: expectedSize
-        );
+        var records = await transport.GetPagesAsync(connection, "history", query, cancellationToken).ConfigureAwait(false);
+        var candidate = FindCandidate(records, identity, expectedSize);
         if (candidate is null)
         {
             return null;
         }
 
-        var file = await ReadImportedFileAsync(
-            connection: connection,
-            kind: identity.Kind,
-            fileId: candidate.FileId,
-            cancellationToken: cancellationToken
-        ).ConfigureAwait(false);
+        var file = await ReadImportedFileAsync(connection, identity.Kind, candidate.FileId, cancellationToken).ConfigureAwait(false);
         if (file is null)
         {
             return null;
         }
 
-        var matchesFile = MatchesImportedFile(
-            file: file.Value,
-            identity: identity,
-            candidate: candidate,
-            expectedSize: expectedSize
-        );
+        var matchesFile = MatchesImportedFile(file.Value, identity, candidate, expectedSize);
         if (!matchesFile)
         {
             return null;
@@ -66,12 +47,7 @@ internal sealed class ArrImportResolver(IArrTransport transport) : IArrImportRes
             return candidate.Path;
         }
 
-        var singleEpisode = await HasSingleImportedEpisodeAsync(
-            connection: connection,
-            identity: identity,
-            fileId: candidate.FileId,
-            cancellationToken: cancellationToken
-        ).ConfigureAwait(false);
+        var singleEpisode = await HasSingleImportedEpisodeAsync(connection, identity, candidate.FileId, cancellationToken).ConfigureAwait(false);
         return singleEpisode ? candidate.Path : null;
     }
 
@@ -81,11 +57,7 @@ internal sealed class ArrImportResolver(IArrTransport transport) : IArrImportRes
         var imports = new List<JsonElement>();
         foreach (var row in records)
         {
-            var matches = MatchesImport(
-                row: row,
-                identity: identity,
-                expectedSize: expectedSize
-            );
+            var matches = MatchesImport(row, identity, expectedSize);
             if (matches)
             {
                 imports.Add(row);
@@ -105,10 +77,7 @@ internal sealed class ArrImportResolver(IArrTransport transport) : IArrImportRes
             return null;
         }
 
-        return new ImportCandidate(
-            Path: path,
-            FileId: fileIds[0]
-        );
+        return new ImportCandidate(path, fileIds[0]);
     }
 
     private static bool MatchesImport(JsonElement row, MediaIdentity identity, long expectedSize)
@@ -118,90 +87,50 @@ internal sealed class ArrImportResolver(IArrTransport transport) : IArrImportRes
             return false;
         }
 
-        var hash = Text(
-            element: row,
-            name: "downloadId"
-        );
-        var matchesHash = string.Equals(
-            a: hash,
-            b: identity.DownloadHash,
-            comparisonType: StringComparison.OrdinalIgnoreCase
-        );
+        var hash = Text(row, "downloadId");
+        var matchesHash = string.Equals(hash, identity.DownloadHash, StringComparison.OrdinalIgnoreCase);
         if (!matchesHash)
         {
             return false;
         }
 
-        var matchesIdentity = MatchesIdentity(
-            row: row,
-            identity: identity
-        );
+        var matchesIdentity = MatchesIdentity(row, identity);
         if (!matchesIdentity)
         {
             return false;
         }
 
-        var droppedPath = Data(
-            row: row,
-            name: "droppedPath"
-        );
+        var droppedPath = Data(row, "droppedPath");
         var droppedName = Basename(droppedPath);
         var originalName = Basename(identity.OriginalFileName);
-        var matchesName = string.Equals(
-            a: droppedName,
-            b: originalName,
-            comparisonType: StringComparison.OrdinalIgnoreCase
-        );
+        var matchesName = string.Equals(droppedName, originalName, StringComparison.OrdinalIgnoreCase);
         if (!matchesName)
         {
             return false;
         }
 
-        var importedSize = Data(
-            row: row,
-            name: "size"
-        );
-        var parsedSize = long.TryParse(
-            s: importedSize,
-            style: NumberStyles.Integer,
-            provider: CultureInfo.InvariantCulture,
-            result: out var size
-        );
+        var importedSize = Data(row, "size");
+        var parsedSize = long.TryParse(importedSize, NumberStyles.Integer, CultureInfo.InvariantCulture, out var size);
         if (!parsedSize || size != expectedSize)
         {
             return false;
         }
 
-        var importedFileId = Data(
-            row: row,
-            name: "fileId"
-        );
-        var parsedFileId = int.TryParse(
-            s: importedFileId,
-            result: out var fileId
-        );
+        var importedFileId = Data(row, "fileId");
+        var parsedFileId = int.TryParse(importedFileId, out var fileId);
         return parsedFileId && fileId > 0;
     }
 
     private static bool IsImport(JsonElement row)
     {
-        var eventType = Text(
-            element: row,
-            name: "eventType"
-        );
-        var namedImport = eventType.Equals(
-            value: "downloadFolderImported",
-            comparisonType: StringComparison.OrdinalIgnoreCase
-        );
+        var eventType = Text(row, "eventType");
+        var namedImport = eventType.Equals("downloadFolderImported", StringComparison.OrdinalIgnoreCase);
         if (namedImport)
         {
             return true;
         }
 
-        var eventNumber = Number(
-            element: row,
-            name: "eventType"
-        );
+        var eventNumber = Number(row, "eventType");
         return eventNumber == 3;
     }
 
@@ -209,26 +138,17 @@ internal sealed class ArrImportResolver(IArrTransport transport) : IArrImportRes
     {
         if (identity.Kind == MediaKind.Movie)
         {
-            var movieId = Number(
-                element: row,
-                name: "movieId"
-            );
+            var movieId = Number(row, "movieId");
             return movieId == identity.MovieId;
         }
 
-        var seriesId = Number(
-            element: row,
-            name: "seriesId"
-        );
+        var seriesId = Number(row, "seriesId");
         if (seriesId != identity.SeriesId)
         {
             return false;
         }
 
-        var episodeId = Number(
-            element: row,
-            name: "episodeId"
-        );
+        var episodeId = Number(row, "episodeId");
         return episodeId == identity.EpisodeId;
     }
 
@@ -237,10 +157,7 @@ internal sealed class ArrImportResolver(IArrTransport transport) : IArrImportRes
         var paths = new HashSet<string>(StringComparer.Ordinal);
         foreach (var row in imports)
         {
-            var path = Data(
-                row: row,
-                name: "importedPath"
-            );
+            var path = Data(row, "importedPath");
             if (!string.IsNullOrWhiteSpace(path))
             {
                 paths.Add(path);
@@ -252,14 +169,8 @@ internal sealed class ArrImportResolver(IArrTransport transport) : IArrImportRes
 
     private static int ReadFileId(JsonElement row)
     {
-        var value = Data(
-            row: row,
-            name: "fileId"
-        );
-        return int.Parse(
-            s: value,
-            provider: CultureInfo.InvariantCulture
-        );
+        var value = Data(row, "fileId");
+        return int.Parse(value, CultureInfo.InvariantCulture);
     }
 
     private async Task<JsonElement?> ReadImportedFileAsync(ArrConnection connection, MediaKind kind, int fileId, CancellationToken cancellationToken)
@@ -267,11 +178,7 @@ internal sealed class ArrImportResolver(IArrTransport transport) : IArrImportRes
         var endpoint = kind == MediaKind.Movie ? "moviefile" : "episodefile";
         try
         {
-            return await transport.GetAsync(
-                connection: connection,
-                path: $"{endpoint}/{fileId}",
-                cancellationToken: cancellationToken
-            ).ConfigureAwait(false);
+            return await transport.GetAsync(connection, $"{endpoint}/{fileId}", cancellationToken).ConfigureAwait(false);
         }
         catch (ArrNotFoundException)
         {
@@ -281,53 +188,33 @@ internal sealed class ArrImportResolver(IArrTransport transport) : IArrImportRes
 
     private static bool MatchesImportedFile(JsonElement file, MediaIdentity identity, ImportCandidate candidate, long expectedSize)
     {
-        var size = Long(
-            element: file,
-            name: "size"
-        );
+        var size = Long(file, "size");
         if (size != expectedSize)
         {
             return false;
         }
 
-        var path = Text(
-            element: file,
-            name: "path"
-        );
-        var matchesPath = string.Equals(
-            a: path,
-            b: candidate.Path,
-            comparisonType: StringComparison.Ordinal
-        );
+        var path = Text(file, "path");
+        var matchesPath = string.Equals(path, candidate.Path, StringComparison.Ordinal);
         if (!matchesPath)
         {
             return false;
         }
 
         var field = identity.Kind == MediaKind.Movie ? "movieId" : "seriesId";
-        var fileMediaId = Number(
-            element: file,
-            name: field
-        );
+        var fileMediaId = Number(file, field);
         var expectedMediaId = identity.Kind == MediaKind.Movie ? identity.MovieId : identity.SeriesId;
         return fileMediaId == expectedMediaId;
     }
 
     private async Task<bool> HasSingleImportedEpisodeAsync(ArrConnection connection, MediaIdentity identity, int fileId, CancellationToken cancellationToken)
     {
-        var episodes = await transport.GetAsync(
-            connection: connection,
-            path: $"episode?seriesId={identity.SeriesId}&episodeFileId={fileId}",
-            cancellationToken: cancellationToken
-        ).ConfigureAwait(false);
+        var episodes = await transport.GetAsync(connection, $"episode?seriesId={identity.SeriesId}&episodeFileId={fileId}", cancellationToken).ConfigureAwait(false);
         // Sonarr prefers seriesId over episodeFileId, so filter the returned episodes ourselves.
         var linked = new List<JsonElement>();
         foreach (var row in Array(episodes))
         {
-            var linkedFileId = Number(
-                element: row,
-                name: "episodeFileId"
-            );
+            var linkedFileId = Number(row, "episodeFileId");
             if (linkedFileId == fileId)
             {
                 linked.Add(row);
@@ -339,10 +226,7 @@ internal sealed class ArrImportResolver(IArrTransport transport) : IArrImportRes
             return false;
         }
 
-        var episodeId = Number(
-            element: linked[0],
-            name: "id"
-        );
+        var episodeId = Number(linked[0], "id");
         return episodeId == identity.EpisodeId;
     }
 

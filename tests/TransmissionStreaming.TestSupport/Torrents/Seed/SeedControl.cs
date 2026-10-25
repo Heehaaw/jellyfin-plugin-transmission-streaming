@@ -12,8 +12,7 @@ internal sealed class SeedScenario : IDisposable
     {
         Configuration = configuration;
         Media = media;
-        State = new SeedState
-        (
+        State = new SeedState(
             Allowed: 0,
             ImportedPath: null,
             Failure: false,
@@ -59,11 +58,7 @@ internal sealed class SeedScenario : IDisposable
 
     public void Dispose()
     {
-        if (Interlocked.Exchange
-            (
-                location1: ref disposed,
-                value: 1
-            ) == 0)
+        if (Interlocked.Exchange(ref disposed, 1) == 0)
         {
             lifetime.Cancel();
             lifetime.Dispose();
@@ -73,11 +68,7 @@ internal sealed class SeedScenario : IDisposable
 
 internal sealed class SeedControl(SeedConfiguration configuration, byte[] media) : IDisposable
 {
-    private SeedScenario current = new
-    (
-        configuration: configuration,
-        media: media
-    );
+    private SeedScenario current = new(configuration, media);
 
     public SeedScenario Current => Volatile.Read(ref current);
 
@@ -90,16 +81,8 @@ internal sealed class SeedControl(SeedConfiguration configuration, byte[] media)
     public void Reset(SeedConfiguration next, byte[] bytes)
     {
         // A peer keeps one immutable scenario. Reset cancels its reads before another torrent can borrow the server.
-        var replacement = new SeedScenario
-        (
-            configuration: next,
-            media: bytes
-        );
-        var previous = Interlocked.Exchange
-        (
-            location1: ref current,
-            value: replacement
-        );
+        var replacement = new SeedScenario(next, bytes);
+        var previous = Interlocked.Exchange(ref current, replacement);
         previous.Dispose();
         CatalogRoot = null;
     }

@@ -72,11 +72,7 @@ public sealed class StreamMediaTests
             }
         );
         activity.Setup(value => value.Open(source.Command.Projection.Id)).Returns(source.Lease);
-        transmission.Setup(value => value.EnableSequentialAsync(
-                connection: It.IsAny<TransmissionConnection>(),
-                hash: source.Command.Projection.TorrentHash,
-                cancellationToken: It.IsAny<CancellationToken>()
-            )
+        transmission.Setup(value => value.EnableSequentialAsync(It.IsAny<TransmissionConnection>(), source.Command.Projection.TorrentHash, It.IsAny<CancellationToken>())
         ).Returns(Task.CompletedTask);
         mediator.Setup(value => value.Send(It.IsAny<ICommand>(), CancellationToken.None)).Returns(ValueTask.FromResult(Unit.Value));
 
