@@ -3,6 +3,7 @@ namespace Jellyfin.Plugin.HdrPlayback.ApplicationTests.Hosting;
 using DotNet.Testcontainers.Builders;
 using DotNet.Testcontainers.Containers;
 using DotNet.Testcontainers.Networks;
+using global::TransmissionStreaming.TestSupport;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -42,7 +43,9 @@ public sealed class HdrJellyfinFixture : IAsyncLifetime
                                    "<EnableAutoDiscovery>false</EnableAutoDiscovery></NetworkConfiguration>";
         await File.WriteAllTextAsync(Path.Combine(settings, "network.xml"), networkConfiguration);
         await network.CreateAsync();
+        // Linux preserves bind-mount UIDs; match the runner so teardown can remove generated files.
         container = new ContainerBuilder(Image)
+            .WithCreateParameterModifier(parameters => parameters.User = ContainerIdentity.User)
             .WithNetwork(network)
             .WithNetworkAliases("hdr-jellyfin")
             .WithPortBinding(8096, true)

@@ -5,6 +5,7 @@
         <OutputType>Exe</OutputType>
     </PropertyGroup>
     <ItemGroup>
+        <Compile Include="../../../tests-integration/TransmissionStreaming/TransmissionStreaming.TestSupport/ContainerIdentity.cs" Link="Hosting/ContainerIdentity.cs" />
         <ProjectReference Include="../../../src/HdrPlayback/Jellyfin.Plugin.HdrPlayback/Jellyfin.Plugin.HdrPlayback.csproj" ReferenceOutputAssembly="false" />
         <ProjectReference Include="../../../src/TransmissionStreaming/Jellyfin.Plugin.TransmissionStreaming/Jellyfin.Plugin.TransmissionStreaming.csproj" ReferenceOutputAssembly="false" />
         <PackageReference Include="Testcontainers" />
