@@ -27,6 +27,7 @@ public sealed class PlaybackFlowTests(JellyfinTestServer sut, ITestOutputHelper 
         using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(60) };
         var permanentUrl = await sut.WaitForStreamAsync();
         var hostUrl = sut.HostStream(permanentUrl);
+        var activityAddress = new Uri(JellyfinContainer.InternalAddress, "web/#/configurationpage?name=transmission-streaming").AbsoluteUri;
 
         try
         {
@@ -34,6 +35,13 @@ public sealed class PlaybackFlowTests(JellyfinTestServer sut, ITestOutputHelper 
             // The library entry must be usable while the seed still withholds the remaining pieces.
             await sut.AddLibraryAsync("Streaming", sut.ProjectionMoviesPath);
             var itemId = await sut.WaitForItemAsync();
+            string? downloadingOverview = null;
+            await JellyfinTestServer.UntilAsync(async () =>
+            {
+                var details = await sut.Api.RequestAsync($"/Users/{sut.Administrator}/Items/{itemId}");
+                downloadingOverview = JellyfinApi.Field(details, "Overview")?.GetValue<string>();
+                return downloadingOverview?.Contains(activityAddress, StringComparison.Ordinal) == true;
+            }, "download activity link in the movie description");
             var indexingDownload = await sut.Swarm.ProgressAsync(cancellationToken);
             var playbackInfo = await sut.Api.RequestAsync($"/Items/{itemId}/PlaybackInfo?userId={sut.Administrator}");
             var sources = JellyfinApi.Field(playbackInfo, "MediaSources")!.AsArray();
@@ -48,10 +56,12 @@ public sealed class PlaybackFlowTests(JellyfinTestServer sut, ITestOutputHelper 
             using var afterImport = await client.GetAsync(hostUrl, cancellationToken);
             var importedBytes = await afterImport.Content.ReadAsByteArrayAsync(cancellationToken);
             var afterItem = await sut.FindItemAsync(true);
+            var afterDetails = await sut.Api.RequestAsync($"/Users/{sut.Administrator}/Items/{itemId}");
             await sut.RestartAsync();
             using var afterRestart = await client.GetAsync(sut.HostStream(permanentUrl), cancellationToken);
             var restartedBytes = await afterRestart.Content.ReadAsByteArrayAsync(cancellationToken);
             var restartedId = await sut.WaitForItemAsync();
+            var restartedDetails = await sut.Api.RequestAsync($"/Users/{sut.Administrator}/Items/{restartedId}");
             var retainedUrl = await sut.WaitForStreamAsync();
             // Assert
             indexingDownload.Complete.Should().BeFalse("Jellyfin must advertise the projected item before the download finishes");
@@ -61,6 +71,11 @@ public sealed class PlaybackFlowTests(JellyfinTestServer sut, ITestOutputHelper 
             restartedBytes.Should().Equal(sut.ExpectedBytes);
             JellyfinApi.Value<string>(afterItem, "Id").Should().Be(itemId);
             restartedId.Should().Be(itemId);
+            downloadingOverview.Should().Contain(activityAddress);
+            JellyfinApi.Value<string>(afterDetails, "Overview").Should().Contain(activityAddress);
+            var restartedOverview = JellyfinApi.Value<string>(restartedDetails, "Overview");
+            restartedOverview.Should().Contain(activityAddress);
+            restartedOverview.Split("View download status", StringSplitOptions.None).Should().HaveCount(2, "repeated polls and restart must keep one activity link");
             (retainedUrl == permanentUrl).Should().BeTrue("the permanent capability must survive import and restart");
             await history.ShouldBeRetainedAsync(sut.Api);
         }

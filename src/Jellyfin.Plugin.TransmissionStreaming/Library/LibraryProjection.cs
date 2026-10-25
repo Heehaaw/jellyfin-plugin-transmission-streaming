@@ -17,7 +17,8 @@ internal sealed class LibraryProjection(
     IUserManager users,
     IUserDataManager userData,
     ISessionManager sessions,
-    IWatchStateMerger watchStates) : IProjectionIndex
+    IWatchStateMerger watchStates,
+    IProjectionOverview overviews) : IProjectionIndex
 {
     public async Task RefreshAsync(CancellationToken cancellationToken)
     {
@@ -50,12 +51,15 @@ internal sealed class LibraryProjection(
         var title = identity.Kind == MediaKind.Episode && !string.IsNullOrWhiteSpace(identity.EpisodeTitle)
             ? identity.EpisodeTitle
             : identity.Title;
-        var display = configuration.CurrentValue.ShowDownloadStatus && entry.CompletedPath is null
+        var config = configuration.CurrentValue;
+        var display = config.ShowDownloadStatus && entry.CompletedPath is null
             ? $"{title} [{entry.Status}]"
             : title;
-        if (projected.Name != display && projected.ParentId != Guid.Empty && library.GetItemById(projected.ParentId) is { } parent)
+        var overview = overviews.Format(projected.Overview, config.JellyfinPublicUrl);
+        if ((projected.Name != display || projected.Overview != overview) && projected.ParentId != Guid.Empty && library.GetItemById(projected.ParentId) is { } parent)
         {
             projected.Name = display;
+            projected.Overview = overview;
             await library.UpdateItemAsync(projected, parent, ItemUpdateType.MetadataEdit, cancellationToken).ConfigureAwait(false);
         }
 

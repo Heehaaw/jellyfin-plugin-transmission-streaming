@@ -248,6 +248,32 @@ public sealed class LibraryProjectionTests
         library.Verify(value => value.DeleteItem(It.IsAny<BaseItem>(), It.IsAny<DeleteOptions>()), Times.Never);
     }
 
+    [Theory, AutoMoqData]
+    internal async Task Should_SaveTheOverviewLinkEvenWhenTheTitleIsUnchanged(Projection source, Movie projected, Folder parent,
+        StreamingOptions configuration, string formattedOverview, [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        [Frozen] Mock<ILibraryManager> library, [Frozen] Mock<IProjectionOverview> overviews, LibraryProjection sut)
+    {
+        // Arrange
+        source.CompletedPath = null;
+        source.Identity.Kind = MediaKind.Movie;
+        projected.Name = source.Identity.Title;
+        projected.Path = source.StreamPath;
+        projected.ParentId = parent.Id;
+        Index(library, projected);
+        library.Setup(value => value.GetItemById(parent.Id)).Returns(parent);
+        library.Setup(value => value.UpdateItemAsync(projected, parent, ItemUpdateType.MetadataEdit, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        options.SetupGet(value => value.CurrentValue).Returns(configuration with { ShowDownloadStatus = false });
+        overviews.Setup(value => value.Format(projected.Overview, configuration.JellyfinPublicUrl)).Returns(formattedOverview);
+
+        // Act
+        await sut.ReconcileAsync(source, CancellationToken.None);
+
+        // Assert
+        projected.Name.Should().Be(source.Identity.Title);
+        projected.Overview.Should().Be(formattedOverview);
+        library.Verify(value => value.UpdateItemAsync(projected, parent, ItemUpdateType.MetadataEdit, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
     private static void Index(Mock<ILibraryManager> library, BaseItem item)
     {
         library.Setup(value => value.GetItemList(It.Is<InternalItemsQuery>(query => query.Path == item.Path))).Returns([item]);
@@ -258,6 +284,8 @@ public sealed class LibraryProjectionTests
     {
         var fixture = new Fixture { RepeatCount = 1 };
         fixture.Customize(new AutoMoqCustomization { ConfigureMembers = true, GenerateDelegates = true });
+        fixture.Customize<Mock<IProjectionOverview>>(composer => composer.Do(mock => mock
+            .Setup(value => value.Format(It.IsAny<string?>(), It.IsAny<string?>())).Returns((string? overview, string? _) => overview)));
         fixture.Customize<Movie>(composer =>
             composer.OmitAutoProperties().With(value => value.Id).With(value => value.ParentId).With(value => value.Path).With(value => value.Name));
         fixture.Customize<Folder>(composer => composer.OmitAutoProperties().With(value => value.Id).With(value => value.Path));
