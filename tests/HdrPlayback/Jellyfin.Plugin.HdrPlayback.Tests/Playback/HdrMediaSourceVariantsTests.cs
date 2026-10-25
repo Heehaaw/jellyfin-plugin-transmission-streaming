@@ -20,7 +20,7 @@ public sealed class HdrMediaSourceVariantsTests
         source.SupportsTranscoding = true;
 
         // Act
-        var choices = HdrMediaSourceVariants.AddChoices([source]);
+        var choices = HdrMediaSourceVariants.AddChoices([source], new HashSet<string> { source.Id });
         var converted = choices.Last();
 
         // Assert
@@ -37,7 +37,7 @@ public sealed class HdrMediaSourceVariantsTests
     }
 
     [Theory, AutoMoqData]
-    internal void Should_NotOfferConversionForNativeHdr(MediaSourceInfo source)
+    internal void Should_PreserveSourcesWhenNoChoiceIsEligible(MediaSourceInfo source)
     {
         // Arrange
         source.MediaStreams[0].Type = MediaStreamType.Video;
@@ -45,7 +45,7 @@ public sealed class HdrMediaSourceVariantsTests
         source.SupportsTranscoding = true;
 
         // Act
-        var choices = HdrMediaSourceVariants.AddChoices([source]);
+        var choices = HdrMediaSourceVariants.AddChoices([source], new HashSet<string>());
 
         // Assert
         choices.Should().ContainSingle().Which.Should().BeSameAs(source);
@@ -58,10 +58,10 @@ public sealed class HdrMediaSourceVariantsTests
         source.MediaStreams[0].Type = MediaStreamType.Video;
         source.MediaStreams[0].ColorTransfer = "bt709";
         source.SupportsTranscoding = true;
-        var choices = HdrMediaSourceVariants.AddChoices([source]);
+        var choices = HdrMediaSourceVariants.AddChoices([source], new HashSet<string> { source.Id });
 
         // Act
-        var repeated = HdrMediaSourceVariants.AddChoices(choices);
+        var repeated = HdrMediaSourceVariants.AddChoices(choices, new HashSet<string> { source.Id });
 
         // Assert
         repeated.Select(choice => choice.Id).Should().Equal(choices.Select(choice => choice.Id));

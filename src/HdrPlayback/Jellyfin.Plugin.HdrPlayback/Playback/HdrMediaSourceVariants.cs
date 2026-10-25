@@ -1,7 +1,6 @@
 namespace Jellyfin.Plugin.HdrPlayback.Playback;
 
 using MediaBrowser.Model.Dto;
-using Jellyfin.Data.Enums;
 using System.Text.Json;
 
 /// <summary>Names transient conversion choices without adding library items or relabelling source video metadata.</summary>
@@ -21,10 +20,10 @@ internal static class HdrMediaSourceVariants
         return original.StartsWith(Prefix, StringComparison.Ordinal) ? null : original;
     }
 
-    public static IReadOnlyList<MediaSourceInfo> AddChoices(IReadOnlyList<MediaSourceInfo> sources)
+    public static IReadOnlyList<MediaSourceInfo> AddChoices(IReadOnlyList<MediaSourceInfo> sources, IReadOnlySet<string> eligibleIds)
     {
         var choices = new List<MediaSourceInfo>(sources);
-        foreach (var source in sources.Where(source => source.VideoStream?.VideoRange == VideoRange.SDR && source.SupportsTranscoding && OriginalId(source.Id) is null))
+        foreach (var source in sources.Where(source => eligibleIds.Contains(source.Id) && OriginalId(source.Id) is null))
         {
             var id = Prefix + source.Id;
             if (string.IsNullOrEmpty(source.Id) || choices.Any(choice => choice.Id == id))

@@ -145,6 +145,30 @@ public sealed class SelectHdrModeTests
         };
     }
 
+    [Theory, AutoMoqData]
+    internal async Task Should_OfferPreplayChoiceBeforeClientNegotiation(SelectHdrMode.Query source, SelectHdrMode.Handler sut)
+    {
+        // Arrange
+        var query = source with
+        {
+            Context = source.Context with
+            {
+                Requested = false,
+                SourceIsSdr = true,
+                ClientSupportsHdr = null,
+                CanTranscode = true,
+                PipelineSupported = true
+            }
+        };
+
+        // Act
+        var result = await sut.Handle(query, CancellationToken.None);
+
+        // Assert
+        result.Available.Should().BeTrue();
+        result.Enabled.Should().BeFalse();
+    }
+
     private sealed class AutoMoqDataAttribute() : AutoDataAttribute(() =>
     {
         var fixture = new Fixture

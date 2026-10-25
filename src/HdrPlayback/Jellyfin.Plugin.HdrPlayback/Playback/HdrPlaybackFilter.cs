@@ -43,9 +43,8 @@ internal sealed class HdrPlaybackFilter(
 
     public async Task OnResourceExecutionAsync(ResourceExecutingContext context, ResourceExecutionDelegate next)
     {
-        if (context.RouteData.Values.TryGetValue("itemId", out var routeId)
-            && HdrMediaSourceVariants.OriginalId(routeId?.ToString()) is { } originalItemId
-            && Guid.TryParse(originalItemId, out var originalItemGuid))
+        if (context.RouteData.Values.TryGetValue("itemId", out var routeId) && HdrMediaSourceVariants.OriginalId(routeId?.ToString()) is { } originalItemId &&
+            Guid.TryParse(originalItemId, out var originalItemGuid))
         {
             // Native clients fetch the selected version as an item before requesting PlaybackInfo. Keep native access checks on the original item.
             context.RouteData.Values["itemId"] = originalItemGuid;
@@ -131,11 +130,13 @@ internal sealed class HdrPlaybackFilter(
         context.HttpContext.Items[HdrRequest.NegotiationKey] = decision;
         if (requested && !decision.Available)
         {
-            context.Result = new BadRequestObjectResult(new ProblemDetails
-            {
-                Title = "HDR conversion unavailable",
-                Detail = decision.Reason
-            });
+            context.Result = new BadRequestObjectResult(
+                new ProblemDetails
+                {
+                    Title = "HDR conversion unavailable",
+                    Detail = decision.Reason
+                }
+            );
             return;
         }
 
@@ -151,9 +152,8 @@ internal sealed class HdrPlaybackFilter(
 
     private static bool IsPlaybackReport(string path)
     {
-        return path.EndsWith("/Sessions/Playing", StringComparison.OrdinalIgnoreCase)
-               || path.EndsWith("/Sessions/Playing/Progress", StringComparison.OrdinalIgnoreCase)
-               || path.EndsWith("/Sessions/Playing/Stopped", StringComparison.OrdinalIgnoreCase);
+        return path.EndsWith("/Sessions/Playing", StringComparison.OrdinalIgnoreCase) || path.EndsWith("/Sessions/Playing/Progress", StringComparison.OrdinalIgnoreCase) ||
+               path.EndsWith("/Sessions/Playing/Stopped", StringComparison.OrdinalIgnoreCase);
     }
 
     private static async Task ExecuteNativeAsync(ResourceExecutingContext context, ResourceExecutionDelegate next, JsonObject body)
@@ -238,7 +238,7 @@ internal sealed class HdrPlaybackFilter(
 
     public async Task OnResultExecutionAsync(ResultExecutingContext context, ResultExecutionDelegate next)
     {
-        AddItemChoices(context);
+        await AddItemChoicesAsync(context).ConfigureAwait(false);
         if (context.HttpContext.Items[HdrRequest.NegotiationKey] is HdrPlaybackDecision decision)
         {
             context.HttpContext.Response.Headers[HdrRequest.AvailableHeader] = decision.Available ? "true" : "false";
@@ -264,12 +264,11 @@ internal sealed class HdrPlaybackFilter(
             }
             else if (decision.Available && context.Result is ObjectResult { Value: PlaybackInfoResponse choices } && choices.ErrorCode is null)
             {
-                choices.MediaSources = HdrMediaSourceVariants.AddChoices(choices.MediaSources);
+                choices.MediaSources = await AddChoicesAsync(choices.MediaSources, context.HttpContext, true).ConfigureAwait(false);
             }
         }
-        else if (context.Result is FileContentResult playlist
-                 && playlist.ContentType.Contains("mpegurl", StringComparison.OrdinalIgnoreCase)
-                 && sessions.Contains(HdrRequest.Session(context.HttpContext)))
+        else if (context.Result is FileContentResult playlist && playlist.ContentType.Contains("mpegurl", StringComparison.OrdinalIgnoreCase) &&
+                 sessions.Contains(HdrRequest.Session(context.HttpContext)))
         {
             var content = Encoding.UTF8.GetString(playlist.FileContents);
             if (content.Contains("#EXT-X-STREAM-INF", StringComparison.Ordinal))
@@ -283,22 +282,42 @@ internal sealed class HdrPlaybackFilter(
         await next().ConfigureAwait(false);
     }
 
-    private void AddItemChoices(ResultExecutingContext context)
+    private async Task AddItemChoicesAsync(ResultExecutingContext context)
     {
         if (context.Result is not ObjectResult { Value: BaseItemDto { MediaSources.Length: > 0 } item })
         {
             return;
         }
 
-        var userId = HdrRequest.UserId(context.HttpContext.User);
+        // Item pages have no negotiated device profile. Playback supplies and validates it later.
+        item.MediaSources = (await AddChoicesAsync(item.MediaSources, context.HttpContext, null).ConfigureAwait(false)).ToArray();
+        item.MediaSourceCount = item.MediaSources.Length;
+    }
+
+    private async Task<IReadOnlyList<MediaSourceInfo>> AddChoicesAsync(IReadOnlyList<MediaSourceInfo> mediaSources, HttpContext http, bool? clientSupportsHdr)
+    {
+        var userId = HdrRequest.UserId(http.User);
         var user = userId == Guid.Empty ? null : users.GetUserById(userId);
-        if (user is null || !user.HasPermission(PermissionKind.EnableVideoPlaybackTranscoding) || !capabilities.PipelineSupported())
+        var canTranscode = user?.HasPermission(PermissionKind.EnableVideoPlaybackTranscoding) == true;
+        var pipelineSupported = capabilities.PipelineSupported();
+        var eligible = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var source in mediaSources)
         {
-            return;
+            var facts = new HdrPlaybackContext(
+                Requested: false,
+                SourceIsSdr: source.VideoStream?.VideoRange == VideoRange.SDR,
+                ClientSupportsHdr: clientSupportsHdr,
+                CanTranscode: canTranscode && source.SupportsTranscoding,
+                PipelineSupported: pipelineSupported
+            );
+            var decision = await sender.Send(new SelectHdrMode.Query(facts), http.RequestAborted).ConfigureAwait(false);
+            if (decision.Available)
+            {
+                eligible.Add(source.Id);
+            }
         }
 
-        item.MediaSources = HdrMediaSourceVariants.AddChoices(item.MediaSources).ToArray();
-        item.MediaSourceCount = item.MediaSources.Length;
+        return HdrMediaSourceVariants.AddChoices(mediaSources, eligible);
     }
 
     internal static string HdrTranscodingUrl(string url)

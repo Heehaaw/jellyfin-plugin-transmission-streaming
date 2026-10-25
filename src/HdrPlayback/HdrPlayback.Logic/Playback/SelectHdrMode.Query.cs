@@ -31,7 +31,7 @@ public static class SelectHdrMode
                 return "Video transcoding is disabled for this user.";
             }
 
-            if (!source.ClientSupportsHdr)
+            if (source.ClientSupportsHdr is false)
             {
                 return "This player does not advertise HEVC HDR10 playback.";
             }
