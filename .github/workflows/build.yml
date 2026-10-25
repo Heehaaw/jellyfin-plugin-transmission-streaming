@@ -3,7 +3,6 @@ name: Build, test, and package
 on:
   push:
     branches: [main]
-    tags: ['v*', 'hdr-v*']
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -11,9 +10,8 @@ on:
 permissions:
   contents: read
 
-# Both plugins publish a merged catalog; serialize release jobs across both tag families.
 concurrency:
-  group: ${{ startsWith(github.ref, 'refs/tags/') && 'plugin-release' || github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -50,74 +48,3 @@ jobs:
           archive: false
           retention-days: 90
           if-no-files-found: error
-
-  release:
-    if: startsWith(github.ref, 'refs/tags/')
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      contents: write
-      actions: read
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-dotnet@v6
-        with:
-          dotnet-version: '10.0.x'
-      - name: Select plugin
-        id: plugin
-        env:
-          RELEASE_TAG: ${{ github.ref_name }}
-        shell: bash
-        run: |
-          if [[ "$RELEASE_TAG" == hdr-v* ]]; then
-            echo 'name=hdr-playback' >> "$GITHUB_OUTPUT"
-            echo 'archive=HDRPlayback' >> "$GITHUB_OUTPUT"
-          else
-            echo 'name=transmission-streaming' >> "$GITHUB_OUTPUT"
-            echo 'archive=TransmissionStreaming' >> "$GITHUB_OUTPUT"
-          fi
-      - name: Download the selected verified main artifact
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PLUGIN: ${{ steps.plugin.outputs.name }}
-        shell: bash
-        run: |
-          commit=$(git rev-parse HEAD)
-          run_id=$(gh api --method GET "repos/${GITHUB_REPOSITORY}/actions/workflows/build.yml/runs" \
-            -f branch=main -f event=push -f head_sha="$commit" -f status=success -f per_page=1 \
-            --jq '.workflow_runs[0].id // empty')
-          if [[ -z "$run_id" ]]; then
-            echo '::error::Tag only a commit whose main push CI has passed.'
-            exit 1
-          fi
-          download_url=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/artifacts" \
-            --jq ".artifacts[] | select(.expired == false and .name == \"${PLUGIN}.zip\") | .archive_download_url")
-          mkdir -p artifacts/input
-          if [[ -n "$download_url" ]]; then
-            gh api "$download_url" > "artifacts/input/${PLUGIN}.zip"
-          fi
-      - name: Promote plugin and merge repository manifest
-        env:
-          RELEASE_TAG: ${{ github.ref_name }}
-          PLUGIN: ${{ steps.plugin.outputs.name }}
-          ARCHIVE_PREFIX: ${{ steps.plugin.outputs.archive }}
-        shell: bash
-        run: |
-          if [[ -f "artifacts/input/${PLUGIN}.zip" ]]; then
-            dotnet run --file scripts/Package.cs -- --plugin "$PLUGIN" --archive "artifacts/input/${PLUGIN}.zip" --release-tag "$RELEASE_TAG"
-          else
-            dotnet run --file scripts/Package.cs -- --plugin "$PLUGIN" --release-tag "$RELEASE_TAG"
-          fi
-          archives=(artifacts/"${ARCHIVE_PREFIX}"_*.zip)
-          archive="${archives[0]}"
-          archive_name=$(basename "$archive")
-          release_url="https://github.com/${GITHUB_REPOSITORY}/releases/download/${RELEASE_TAG}/${archive_name}"
-          previous_manifest="https://github.com/${GITHUB_REPOSITORY}/releases/latest/download/manifest.json"
-          dotnet run --file scripts/Package.cs -- --plugin "$PLUGIN" --archive "$archive" --source-url "$release_url" --previous-manifest-url "$previous_manifest"
-      - name: Publish GitHub Release
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ github.ref_name }}
-        run: |
-          gh release create "$RELEASE_TAG" artifacts/*.zip artifacts/manifest.json --verify-tag --draft --generate-notes --title "$RELEASE_TAG"
-          gh release edit "$RELEASE_TAG" --draft=false --latest

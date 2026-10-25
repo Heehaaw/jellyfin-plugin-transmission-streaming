@@ -2,12 +2,13 @@
 
 Independent plugins for Jellyfin 12.3 and .NET 10, maintained in one repository.
 
-| Plugin | Purpose | Release tags |
-| --- | --- | --- |
-| Transmission Streaming | Play arr-managed Transmission downloads before completion, retaining native library identity and watch history. | `v*` |
-| [HDR Playback](doc/hdr-playback.md) | Opt-in SDR-to-HDR conversion in the native transcode, selected in the player settings menu. AMD VA-API/Vulkan on Linux. | `hdr-v*` |
+| Plugin | Purpose |
+| --- | --- |
+| Transmission Streaming | Play arr-managed Transmission downloads before completion, retaining native library identity and watch history. |
+| [HDR Playback](doc/hdr-playback.md) | Opt-in SDR-to-HDR conversion in the native transcode, selected in the player settings menu. AMD VA-API/Vulkan on Linux. |
 
-Both use the same catalog URL below and install independently. Renaming the repository does not change the Transmission plugin GUID, assemblies, configuration, or routes.
+Both install independently from the same catalog. A manually prepared release contains both plugins at the same version. Renaming the repository does not change the
+Transmission plugin GUID, assemblies, configuration, or routes.
 
 Source and tests are scoped by plugin:
 
@@ -84,9 +85,10 @@ With a local Docker-compatible daemon running:
 dotnet test JellyfinPlugins.slnx -c Release
 ```
 
-Main-branch CI and pull requests run these suites and retain a separate installable ZIP for each plugin for 90 days. After main CI passes, a version tag repacks its tested
-DLLs with release metadata
-and updates the Jellyfin repository manifest without rerunning tests. Missing or expired artifacts are rebuilt from the tagged commit. See [versioning](doc/versioning.md) and [testing](doc/testing.md)
+Main-branch CI and pull requests run these suites and retain a separate installable ZIP for each plugin for 90 days. After main CI passes, run **Actions → Prepare release**.
+Choose a patch, minor, major, or custom version and a tested commit. The job prepares a draft with both plugin ZIPs and the merged catalog. Review it in **Releases**, then publish
+it as Latest. Pushing a tag alone does not publish a release. Missing or expired artifacts are rebuilt from the selected commit. See [versioning](doc/versioning.md) and
+[testing](doc/testing.md)
 for separate test commands and coverage boundaries, and [installation and releases](doc/installation.md) for the two installation flows.
 
 ## Further reading

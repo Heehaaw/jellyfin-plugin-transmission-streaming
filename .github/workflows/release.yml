@@ -1,0 +1,146 @@
+name: Prepare release
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: Release type, based on the highest published stable version
+        type: choice
+        required: true
+        default: patch
+        options: [patch, minor, major, custom]
+      tag:
+        description: Version tag when release type is custom (for example, v1.2.3)
+        type: string
+      commit:
+        description: Commit or ref with successful main push CI
+        type: string
+        required: true
+        default: main
+
+permissions:
+  contents: read
+
+# Both ZIPs share one version and catalog; prepare only one release at a time.
+concurrency:
+  group: plugin-release
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      actions: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.commit }}
+          fetch-depth: 0
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+      - name: Select shared release version
+        id: version
+        env:
+          RELEASE_KIND: ${{ inputs.bump }}
+          CUSTOM_TAG: ${{ inputs.tag }}
+        shell: bash
+        run: |
+          gh api --paginate --slurp "repos/${GITHUB_REPOSITORY}/releases" > "$RUNNER_TEMP/releases.json"
+          if [[ "$RELEASE_KIND" == custom ]]; then
+            release_tag="$CUSTOM_TAG"
+          else
+            release_tag=$(jq -r --arg bump "$RELEASE_KIND" '
+              [.[][] | select(.draft == false and .prerelease == false) | .tag_name |
+                select(test("^v[0-9]+\\.[0-9]+\\.[0-9]+$")) | ltrimstr("v") | split(".") | map(tonumber)] |
+              max // [0, 0, 0] |
+              if $bump == "major" then [.[0] + 1, 0, 0]
+              elif $bump == "minor" then [.[0], .[1] + 1, 0]
+              else [.[0], .[1], .[2] + 1] end |
+              "v" + (map(tostring) | join("."))' "$RUNNER_TEMP/releases.json")
+          fi
+          if [[ ! "$release_tag" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo '::error::Use a numeric vMAJOR.MINOR.PATCH tag for both plugins.'
+            exit 1
+          fi
+          if jq -e --arg tag "$release_tag" 'any(.[][]; .tag_name == $tag)' "$RUNNER_TEMP/releases.json" > /dev/null; then
+            echo '::error::A release or draft already uses this tag. Publish or remove that draft, or choose another version.'
+            exit 1
+          fi
+          if git show-ref --verify --quiet "refs/tags/$release_tag" && [[ "$(git rev-parse "refs/tags/$release_tag^{commit}")" != "$(git rev-parse HEAD)" ]]; then
+            echo '::error::The tag already points to another commit.'
+            exit 1
+          fi
+          echo "tag=$release_tag" >> "$GITHUB_OUTPUT"
+          echo "Preparing $release_tag for both plugins."
+      - name: Download verified main artifacts
+        shell: bash
+        run: |
+          commit=$(git rev-parse HEAD)
+          run_id=$(gh api --method GET "repos/${GITHUB_REPOSITORY}/actions/workflows/build.yml/runs" \
+            -f branch=main -f event=push -f head_sha="$commit" -f status=success -f per_page=1 \
+            --jq '.workflow_runs[0].id // empty')
+          if [[ -z "$run_id" ]]; then
+            echo '::error::The selected commit must have successful main push CI.'
+            exit 1
+          fi
+          mkdir -p artifacts/input
+          gh api --paginate --slurp "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/artifacts" \
+            --jq '[.[].artifacts[]]' > artifacts/input/main-artifacts.json
+          for plugin in transmission-streaming hdr-playback; do
+            download_url=$(jq -r --arg name "${plugin}.zip" \
+              '.[] | select(.expired == false and .name == $name) | .archive_download_url' artifacts/input/main-artifacts.json)
+            if [[ -n "$download_url" ]]; then
+              gh api "$download_url" > "artifacts/input/${plugin}.zip"
+            fi
+          done
+      - name: Promote plugins and merge their catalog histories
+        env:
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+        shell: bash
+        run: |
+          # A manually created latest release may have no catalog yet. Use the newest published catalog asset.
+          previous_manifest=$(jq -r '[.[][] | select(.draft == false and .prerelease == false) |
+            {published_at, url: (.assets[] | select(.name == "manifest.json") | .browser_download_url)}] |
+            sort_by(.published_at) | reverse | .[0].url // empty' "$RUNNER_TEMP/releases.json")
+          previous_options=()
+          if [[ -n "$previous_manifest" ]]; then
+            previous_options=(--previous-manifest-url "$previous_manifest")
+          fi
+          : > artifacts/input/current-packages.jsonl
+          for plugin in transmission-streaming hdr-playback; do
+            archive_options=()
+            if [[ -f "artifacts/input/${plugin}.zip" ]]; then
+              archive_options=(--archive "artifacts/input/${plugin}.zip")
+            fi
+            dotnet run --file scripts/Package.cs -- --plugin "$plugin" "${archive_options[@]}" --release-tag "$RELEASE_TAG"
+            if [[ "$plugin" == transmission-streaming ]]; then
+              archives=(artifacts/TransmissionStreaming_*.zip)
+            else
+              archives=(artifacts/HDRPlayback_*.zip)
+            fi
+            archive="${archives[0]}"
+            release_url="https://github.com/${GITHUB_REPOSITORY}/releases/download/${RELEASE_TAG}/$(basename "$archive")"
+            dotnet run --file scripts/Package.cs -- --plugin "$plugin" --archive "$archive" \
+              --source-url "$release_url" "${previous_options[@]}"
+            jq -e --arg source "$release_url" '.[] | select(any(.versions[]; .sourceUrl == $source))' \
+              artifacts/manifest.json >> artifacts/input/current-packages.jsonl
+          done
+          # Each package retains its own history. Keep both new entries in the shared catalog.
+          jq --slurpfile current artifacts/input/current-packages.jsonl \
+            'map(select(.guid as $id | $current | all(.guid != $id))) + $current' \
+            artifacts/manifest.json > artifacts/input/manifest.json
+          mv artifacts/input/manifest.json artifacts/manifest.json
+      - name: Create draft release with plugins
+        env:
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+        shell: bash
+        run: |
+          gh release create "$RELEASE_TAG" artifacts/*.zip artifacts/manifest.json \
+            --target "$(git rev-parse HEAD)" --draft --generate-notes --title "$RELEASE_TAG"
+          echo "Draft $RELEASE_TAG contains both plugin ZIPs and manifest.json. Review it in Releases, then publish it as Latest." >> "$GITHUB_STEP_SUMMARY"

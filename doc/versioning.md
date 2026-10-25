@@ -1,6 +1,6 @@
 # Package versions and artifact promotion
 
-Release tags choose the user-visible plugin version. Transmission tags use `v1.2.3`; HDR Playback tags use `hdr-v1.2.3`. Both become Jellyfin version `1.2.3.0` for their own plugin.
+One shared release tag chooses both plugins' user-visible version. A `v1.2.3` release contains Transmission Streaming and HDR Playback version `1.2.3.0`.
 Missing numeric components become zero; prerelease labels are not used for Jellyfin package versions. There is no release-version edit or next-version bump on main.
 
 ## Development builds
@@ -14,9 +14,12 @@ Invalid metadata prevents activation instead of displaying an invented version.
 
 ## Release promotion
 
-Main CI builds, tests, and retains the development ZIP. After that exact commit passes, the tag job downloads its artifact and passes the tag version to metadata generation.
+Main CI builds, tests, and retains both development ZIPs. After that exact commit passes, manually run **Actions → Prepare release**. Choose `patch`, `minor`, or `major`
+to increment the highest published stable version, or choose `custom` and supply a `vMAJOR.MINOR.PATCH` tag. The job downloads both artifacts and passes the shared
+version to metadata generation.
 That step evaluates the project without compiling. Repacking replaces `meta.json`, names the release ZIP from the package version, and preserves every DLL's contents.
-The catalog checksum describes the final repacked ZIP, so the release ZIP itself is expected to differ from the development ZIP.
+The catalog checksum describes each final repacked ZIP, so release ZIPs are expected to differ from development ZIPs. Both packages and their retained histories are
+merged into one catalog in the draft release. Publish that draft manually in Releases; tag pushes do not trigger publication.
 
 If the retained artifact is missing or expired, the job builds the tagged source and applies the same metadata and packaging steps. Neither release path reruns tests.
 No version-bump commit follows publication.
@@ -36,8 +39,8 @@ unchanged DLL hashes. See [installation and releases](installation.md) for comma
 For HDR Playback, select its artifact explicitly:
 
 ```sh
-dotnet run --file scripts/Package.cs -- --plugin hdr-playback --archive /path/to/hdr-playback.zip --release-tag hdr-v1.2.3
+dotnet run --file scripts/Package.cs -- --plugin hdr-playback --archive /path/to/hdr-playback.zip --release-tag v1.2.3
 ```
 
-This creates `artifacts/HDRPlayback_1.2.3.0.zip`. Each plugin has an independent version history in the shared catalog. Release jobs are serialized across both tag families to
-prevent either update overwriting the other plugin's history.
+This creates `artifacts/HDRPlayback_1.2.3.0.zip`. The preparation job promotes both plugins to the same version and preserves each plugin's existing catalog history. Preparation
+jobs run serially; publish or discard the pending draft before preparing another version.

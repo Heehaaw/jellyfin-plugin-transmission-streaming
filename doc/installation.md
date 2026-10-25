@@ -50,36 +50,41 @@ The artifact is already the plugin ZIP; it is uploaded without another wrapping 
 ```mermaid
 flowchart LR
     P[Push main] --> C[Build and all tests]
-    C --> T[Tag the passing commit]
-    T --> V[Require successful main CI]
-    V --> Z[Reuse DLLs or rebuild if absent]
-    Z --> P2[Stamp tag metadata and repack]
-    P2 --> R[GitHub Release]
-    R --> M[Stable repository manifest URL]
-    M --> J[Jellyfin Catalog install]
+    C --> D[Manually run Prepare release]
+    D --> V[Require successful main CI for selected commit]
+    V --> Z[Promote both plugin ZIPs]
+    Z --> R[Draft release with merged catalog]
+    R --> U[Review and publish as Latest]
+    U --> J[Jellyfin Catalog install]
     J --> S[Restart Jellyfin]
 ```
 
-Push the release commit to `main` and let CI pass, then create a numeric `v` version tag on that same commit. The tag determines the package version; for example, `v1.2.3`
-produces `1.2.3.0`. No source-version edit or post-release bump is needed. See [versioning](versioning.md) for development versions and stable assembly identity.
+1. Push the release commit to `main` and wait for passing CI.
+2. Open **Actions → Prepare release → Run workflow**, using the workflow on `main`.
+3. Choose `patch`, `minor`, or `major` to increment the highest published stable version. Alternatively, choose `custom` and enter a `vMAJOR.MINOR.PATCH` tag.
+4. Leave the commit input as `main`, or enter the exact tested commit. Run the workflow.
+5. Open its draft in **Releases**, review the notes and all three assets, then **Publish release** as Latest.
 
-Tag runs require a successful `main` push run for the exact tagged commit. A passing pull-request or manual run cannot substitute for it. The release reuses that run's DLLs,
-generates tag-derived metadata, and repacks the ZIP without compilation. If the artifact is missing or expired, it builds and packages the tagged source. Neither path reruns tests.
-If the tag arrives before main CI passes, the
-release fails immediately; rerun the release job after main CI succeeds.
+Both plugins receive the same version. For example, `v1.2.3` produces `TransmissionStreaming_1.2.3.0.zip`, `HDRPlayback_1.2.3.0.zip`, and `manifest.json`. No source-version edit
+or post-release bump is needed. See [versioning](versioning.md) for development versions and stable assembly identity. Pushing a tag alone does not create or publish a release.
 
-The release package includes a repository manifest with the plugin identity, version, target Jellyfin ABI, immutable tag-specific ZIP URL, and MD5 checksum of those exact ZIP bytes.
-MD5 is the checksum Jellyfin's repository protocol requires. The previous published manifest is merged so older versions remain available. Release workflows run serially to retain
-that catalog history, and an already published plugin version cannot be reused.
+Preparation requires successful `main` push CI for the exact selected commit. A passing pull-request or manual build cannot substitute for it. The job reuses both tested DLL
+bundles, generates tag-derived metadata, and repacks their ZIPs without compilation. If an artifact is missing or expired, it builds the selected source. Neither path reruns tests.
 
-The workflow creates a draft release, uploads the ZIP and manifest, then publishes it as the latest release. The stable repository address is:
+The repository manifest contains both plugin identities, their versions and target Jellyfin ABI, tag-specific ZIP URLs, and MD5 checksums of the final ZIP bytes. MD5 is the
+checksum Jellyfin's repository protocol requires. The newest published catalog asset is merged so older versions remain available, even if a newer release has no catalog yet.
+An already published plugin version cannot be reused.
+
+Preparation jobs run serially. Publish or discard a pending draft before preparing another release so the next draft includes its published catalog history. If an upload fails
+and leaves an incomplete draft, remove that draft before rerunning preparation. The workflow does not publish drafts or change their notes or Latest status for you.
+
+The stable repository address is:
 
 ```text
 https://github.com/Heehaaw/jellyfin-plugins/releases/latest/download/manifest.json
 ```
 
-The first release makes this URL available. Every subsequent release updates its contents while each version's ZIP URL remains tied to its own tag. If an upload fails and leaves
-a draft release, remove that incomplete draft before rerunning the release job.
+The first published release with its catalog makes this URL available. Every subsequent release updates its contents while each version's ZIP URL remains tied to its own tag.
 
 To install through Jellyfin:
 
