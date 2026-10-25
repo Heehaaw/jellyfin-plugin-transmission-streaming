@@ -11,6 +11,14 @@ Application policy belongs in Logic. An adapter obtains facts or performs an ope
 
 Dependencies point toward Core. Plugin composes Logic and Infrastructure. Logic calls Core contracts and other use cases through Mediator. Infrastructure implements Core contracts without referencing Logic.
 
+## Shared code
+
+`src/Shared/Shared.Infrastructure` contains the duplicated filesystem/JSON package-version reader and its registration. Both plugin bundles include that assembly.
+Its interface stays beside the adapter because only plugin composition consumes it. There is no shared application policy requiring a Shared.Core or Shared.Logic project.
+
+Both plugin projects import `src/Shared/PluginPackaging.targets` for identical metadata generation. Plugin-specific Jellyfin hooks, UI, configuration and client capability
+mapping remain with their plugin. Similar structure alone is not a reason to share an abstraction.
+
 ## Use cases and composition
 
 Use a public static container with a nested public Query or Command and an internal Handler. Queries return facts or calculated results; commands perform work. Keep the request and handler in the matching feature folder, in a `Name.Query.cs` or `Name.Command.cs` file.

@@ -58,11 +58,17 @@ Run the Transmission integration project:
 dotnet test tests-integration/TransmissionStreaming/TransmissionStreaming.IntegrationTests -c Release
 ```
 
-Run only host wiring and packaging checks without starting containers:
+Run host wiring, filesystem, SQLite, arr protocol and packaging checks without starting containers:
 
 ```sh
 dotnet test tests-integration/TransmissionStreaming/TransmissionStreaming.IntegrationTests -c Release \
-  --filter "FullyQualifiedName~Host|FullyQualifiedName~Packaging"
+  --filter "FullyQualifiedName~Host|FullyQualifiedName~Packaging|FullyQualifiedName~Infrastructure|FullyQualifiedName~IntegrationTests.Arr"
+```
+
+The installed-package reader is tested once in the shared integration project:
+
+```sh
+dotnet test tests-integration/Shared/Shared.Infrastructure.IntegrationTests -c Release
 ```
 
 Downloader services start only when a scenario borrows them. Filtered host and packaging checks need no Docker daemon; service flows retain shared containers and isolated data.
@@ -85,10 +91,10 @@ The suites divide responsibilities so failures point to a specific behavior:
 
 | Layer | Behaviors |
 | --- | --- |
-| Unit | Service-path suggestions, mount confinement, range and piece boundaries, ownership and video selection, import validation, authorization, reader cleanup, virtual deadlines and caches, status, history merging, and host adapters. |
+| Unit | Service-path decisions, range and piece boundaries, video selection, authorization, reader cleanup, virtual deadlines and caches, status, history merging, and host mapping. |
 | Plugin integration | Jellyfin-owned settings, DI composition, options snapshots and live reload, installed metadata, and subscription disposal without starting a server. |
 | Packaging integration | Tag normalization, generated package metadata, archive contents, missing files, repeat repacking, and preservation of tested DLL bytes. |
-| Component integration | Real handlers, HTTP adapters, SQLite, projection files, and Transmission working together across discovery, playback, import through independent arr mounts, and application restart. |
+| Component integration | Physical confinement, real SQLite/files, arr protocol plus ownership/import decisions, and handlers working with Transmission across discovery, playback, import through independent arr mounts, and application restart. |
 | Jellyfin application | Actual plugin loading and DI, indexing unfinished media, HTTP delivery and video decoding, duplicate reconciliation, per-user history, server restart, and installation. |
 
 Integration scenarios cover competing releases for one title, a removed torrent followed by a late import, completed bytes awaiting import, recovery after an arr outage, and

@@ -13,13 +13,14 @@ Transmission plugin GUID, assemblies, configuration, or routes.
 Source and tests are scoped by plugin:
 
 ```text
-src/{TransmissionStreaming,HdrPlayback}/
+src/{TransmissionStreaming,HdrPlayback,Shared}/
 tests/{TransmissionStreaming,HdrPlayback}/
-tests-integration/{TransmissionStreaming,HdrPlayback}/
+tests-integration/{TransmissionStreaming,HdrPlayback,Shared}/
 tests-application/{TransmissionStreaming,HdrPlayback}/
 ```
 
-Each plugin owns Core, Logic, Infrastructure, and Jellyfin adapter projects. Shared build scripts and CI package them separately.
+Each plugin owns Core, Logic, Infrastructure, and Jellyfin adapter projects. `src/Shared/Shared.Infrastructure` owns the common installed-package metadata reader;
+`src/Shared/PluginPackaging.targets` generates metadata for both plugins. Each ZIP includes the shared assembly, so either plugin installs independently.
 
 ## Transmission Streaming
 

@@ -1,6 +1,6 @@
 # Architecture audit
 
-Reviewed on 2026-10-25 during native-handoff implementation. This audit distinguishes application policy from adapter work and records the remaining boundary debt.
+Reviewed on 2026-10-25 after the test-purpose and layer-ownership cleanup. This audit records the current boundaries.
 
 ## Established boundaries
 
@@ -10,16 +10,26 @@ Playback progression, prioritization, service-path decisions, resolver visibilit
 
 The thin Jellyfin library adapter obtains canonical item facts, playback activity, and hydrated user snapshots, writes mapped metadata/history, and removes database entries without deleting media. HTTP range responses, cancellation-to-response handling, live options bridging, and Jellyfin link formatting are legitimate host concerns.
 
-## Remaining boundary debt
+## Resolved boundary debt
 
-| Area | Remaining application decision | Suggested boundary |
-| --- | --- | --- |
-| Arr download discovery and filename interpretation | Chooses supported files, rejects samples and ambiguous episode payloads, and decides ownership from queue candidates | Let Infrastructure return typed queue/episode facts. Keep conservative selection and ambiguity decisions in Logic. |
-| Arr import resolution | Accepts an import using hash, identity, basename, size, history, and linked episode cardinality | Keep endpoint access and JSON translation in Infrastructure; move acceptance of those facts into Logic. |
-| Projection paths | One adapter combines identity keys, stable hashed IDs, media naming/layout, and physical remote-to-local confinement | Keep physical confinement in Infrastructure. Move stable identity and generated layout rules into application/domain policy without changing existing IDs or paths. |
-| Core byte range | A useful range value also parses HTTP header syntax | Keep the range data host-neutral and place HTTP parsing at the HTTP boundary. This is dependency-direction debt, not a new security finding. |
+| Area | Current owner |
+| --- | --- |
+| Arr discovery | `FindArrDownload` and the shared filename policy in Logic select supported files and reject ambiguous ownership. Infrastructure returns typed queue, media and episode facts. |
+| Arr imports and tracking | Logic Mediator queries accept import evidence and determine tracked ownership. Infrastructure maps history, current files and validated library responses. |
+| Projection identity and layout | `BuildProjectionPaths` in Logic preserves existing hashed IDs and names. Physical confinement remains in Infrastructure; the unused second mapper was removed. |
+| Byte ranges | Core retains the interval value. `HttpByteRange` parses HTTP syntax beside the controller. |
+| HDR availability | `SelectHdrMode` owns eligibility for both preplay choices and playback. A missing preplay profile is explicit; playback still checks the negotiated profile and transcoding permission. |
+| Installed package version | One shared Infrastructure reader replaces the identical filesystem/JSON implementations in both Plugin projects. |
 
-These moves should preserve existing conservative rejection and safety checks. They do not require a general rules engine or wrapper service around Mediator.
+The moved acceptance checks retain conservative rejection, file-length proof, ambiguous-file refusal and failure propagation. No application wrapper services were added.
+
+## Test ownership
+
+Real SQLite, filesystem, DI composition and combined arr protocol/decision checks live under `tests-integration/`. Pure selection, naming and playback decisions remain under
+`tests/`. HTTP range parsing tests follow the HTTP adapter. The shared metadata reader has one integration suite under `tests-integration/Shared`.
+
+Tests for the unused mapper and its forwarding-only duplicate were removed. Symlink refusal remains covered against the mapper used in production. Policy unit tests,
+protocol integration checks and actual Jellyfin/browser regressions cover different boundaries and remain separate.
 
 ## Adapter responsibilities to retain
 
@@ -32,4 +42,5 @@ Unknown identities, malformed library responses, and outages must continue to re
 
 ## Verification boundary
 
-The assembled unit, component, and real-Jellyfin suites verify these boundaries through native handoff, user-history transfer, cleanup, restart, and playback with the plugin disabled. Local LXC installation also preserves configuration, library identities, and watch data. Intended-player and public-swarm trials remain separate from server/API verification.
+Unit, component and actual Jellyfin suites exercise handoff, history transfer, cleanup, restart, packaging and playback. Server/API and headless browser checks do not establish
+Android decoder compatibility or HDR display quality on a physical television. These structural changes do not imply installation on the home server.
