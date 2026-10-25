@@ -45,14 +45,43 @@ public sealed class DownloadServices : IAsyncLifetime
     {
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         deadline.CancelAfter(TimeSpan.FromMinutes(3));
-        var bootstrapMedia = new byte[SwarmSettings.PieceSize * 3];
-        var bootstrap = await TorrentWorkspace.PrepareAsync(Workspace, bootstrapMedia, "bootstrap.mkv", deadline.Token);
-        network = new NetworkBuilder().Build();
-        await network.CreateAsync(deadline.Token);
-        seed = SwarmContainers.Seed(bootstrap.SeedRoot, network);
-        transmission = SwarmContainers.Transmission(Workspace, network);
-        await Task.WhenAll(seed.StartAsync(deadline.Token), transmission.StartAsync(deadline.Token));
-        rpc = new TransmissionRpcClient(http, () => RpcUrl);
+        var phase = "workspace preparation";
+        try
+        {
+            var bootstrapMedia = new byte[SwarmSettings.PieceSize * 3];
+            var bootstrap = await TorrentWorkspace.PrepareAsync(Workspace, bootstrapMedia, "bootstrap.mkv", deadline.Token);
+            phase = "network creation";
+            network = new NetworkBuilder().Build();
+            await network.CreateAsync(deadline.Token);
+            phase = "container construction";
+            seed = SwarmContainers.Seed(bootstrap.SeedRoot, network);
+            transmission = SwarmContainers.Transmission(Workspace, network);
+            phase = "container startup and readiness";
+            await Task.WhenAll(seed.StartAsync(deadline.Token), transmission.StartAsync(deadline.Token));
+            rpc = new TransmissionRpcClient(http, () => RpcUrl);
+        }
+        catch (Exception exception)
+        {
+            await WriteStartupDiagnosticsAsync(phase, exception.GetType().Name, cancellationToken.IsCancellationRequested, deadline.IsCancellationRequested);
+            throw;
+        }
+    }
+
+    private async Task WriteStartupDiagnosticsAsync(string phase, string failureType, bool callerCanceled, bool startupCanceled)
+    {
+        try
+        {
+            Console.Error.WriteLine(
+                $"Downloader startup failed: phase={phase}; failure={failureType}; callerCanceled={callerCanceled}; startupDeadlineCanceled={startupCanceled}."
+            );
+            // The startup token is already canceled on a timeout. Diagnostics have their own bounded lifetime.
+            var logs = await ContainerDiagnostics.ReadAsync(transmission, seed, CancellationToken.None);
+            Console.Error.WriteLine(logs);
+        }
+        catch
+        {
+            // Neither Docker diagnostics nor a failed console write may replace the original startup exception.
+        }
     }
 
     internal async Task<TorrentScenario> BeginScenarioAsync(CancellationToken cancellationToken)
@@ -110,7 +139,7 @@ public sealed class DownloadServices : IAsyncLifetime
 
     internal Task<string> LogsAsync(CancellationToken cancellationToken)
     {
-        return ContainerDiagnostics.ReadAsync(transmission!, seed!, cancellationToken);
+        return ContainerDiagnostics.ReadAsync(transmission, seed, cancellationToken);
     }
 
     internal async ValueTask EndScenarioAsync(string workspace)

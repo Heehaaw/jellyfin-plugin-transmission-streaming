@@ -5,32 +5,59 @@ using System.Text.RegularExpressions;
 
 internal static class ContainerDiagnostics
 {
-    public static async Task<string> ReadAsync(IContainer daemon, IContainer seed, CancellationToken cancellationToken)
+    private const int MaximumContainerLogLines = 28;
+    private const int MaximumContainerLogCharacters = 6000;
+    private const string SensitiveContent =
+        @"(?i)\b(?:api[_ -]?key|access[_ -]?token|refresh[_ -]?token|token|password|passwd|credentials?|authorization|bearer|secret)\b" +
+        @"|\bkey\s*=|https?://[^/\s]+@";
+
+    public static async Task<string> ReadAsync(IContainer? daemon, IContainer? seed, CancellationToken cancellationToken)
     {
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         deadline.CancelAfter(TimeSpan.FromSeconds(10));
-        var daemonLogs = await ReadLogsAsync(daemon, deadline.Token).ConfigureAwait(false);
-        var seedLogs = await ReadLogsAsync(seed, deadline.Token).ConfigureAwait(false);
-        // Future fixture changes must not leak playback capabilities into failure output.
-        return Regex.Replace("Transmission:\n" + daemonLogs + "\nControlled seed:\n" + seedLogs, "(?i)(key=)[^&\\s\\\"<>]+", "$1[redacted]");
+        // Read both independently so an unresponsive Docker log request cannot consume the other's diagnostic budget.
+        var daemonLogs = ReadLogsAsync(daemon, deadline.Token);
+        var seedLogs = ReadLogsAsync(seed, deadline.Token);
+        await Task.WhenAll(daemonLogs, seedLogs).ConfigureAwait(false);
+        return "Transmission:\n" + await daemonLogs.ConfigureAwait(false) + "\nControlled seed:\n" + await seedLogs.ConfigureAwait(false);
     }
 
-    private static async Task<string> ReadLogsAsync(IContainer container, CancellationToken cancellationToken)
+    private static async Task<string> ReadLogsAsync(IContainer? container, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrEmpty(container.Id))
+        if (container is null)
         {
-            return "Container was not created.";
+            return "Container was not constructed.";
         }
 
+        var state = "State unavailable";
         try
         {
-            var logs = await container.GetLogsAsync(ct: cancellationToken).ConfigureAwait(false);
-            return logs.Stdout + logs.Stderr;
+            state = "State: " + container.State;
+            if (string.IsNullOrEmpty(container.Id))
+            {
+                return state + "; container was not created.";
+            }
+
+            var logs = await container.GetLogsAsync(ct: cancellationToken).WaitAsync(cancellationToken).ConfigureAwait(false);
+            var tail = SanitizedTail(logs.Stdout + "\n" + logs.Stderr);
+            return state + "\n" + tail;
         }
         catch (Exception exception)
         {
-            // Diagnostics must not hide the original startup or assertion failure.
-            return $"Container logs unavailable ({exception.GetType().Name}).";
+            // Exception messages can contain Docker addresses or credentials; retain only the failure type.
+            return $"{state}; container logs unavailable ({exception.GetType().Name}).";
         }
+    }
+
+    private static string SanitizedTail(string logs)
+    {
+        var lines = logs.Split('\n').TakeLast(MaximumContainerLogLines).Select(line =>
+            Regex.IsMatch(line, SensitiveContent, RegexOptions.None, TimeSpan.FromMilliseconds(100))
+                ? "[redacted credential-bearing log line]"
+                : line
+        );
+        var tail = string.Join('\n', lines);
+        // Sanitize before truncating so a marker outside the retained characters cannot expose its value.
+        return tail.Length > MaximumContainerLogCharacters ? tail[^MaximumContainerLogCharacters..] : tail;
     }
 }
