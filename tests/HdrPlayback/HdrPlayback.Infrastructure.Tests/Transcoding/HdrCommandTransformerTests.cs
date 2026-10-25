@@ -47,6 +47,38 @@ public sealed class HdrCommandTransformerTests
     }
 
     [Theory, AutoMoqData]
+    internal void Should_ConvertUnlabelledNativeSubtitleOutput(string input, HdrCommandTransformer sut)
+    {
+        // Arrange
+        var graph = $"alphasrc=s=1280x720,subtitles=f='{input}.srt',hwupload=derive_device=vulkan[sub];" +
+                    "[0:0]hwmap=derive_device=drm,format=drm_prime,libplacebo=w=1280:h=720,format=vulkan[main];" +
+                    "[main][sub]overlay_vulkan=eof_action=pass:repeatlast=0,hwmap=derive_device=vaapi,format=vaapi,scale_vaapi=format=nv12:out_range=tv";
+        var native = FfmpegArguments.Format(["-i", input, "-map", "0:0", "-map", "0:1", "-map", "-0:0", "-codec:v:0", "hevc_vaapi",
+            "-filter_complex", graph, "-codec:a:0", "aac", "output.m3u8"]);
+
+        // Act
+        var result = FfmpegArguments.Parse(sut.Transform(native));
+
+        // Assert
+        result[result.IndexOf("-filter_complex") + 1].Should().Be(graph + "," + HdrCommandTransformer.ConversionFilter);
+        result.Where((_, index) => index > 0 && result[index - 1] == "-map").Should().Equal("0:0", "0:1", "-0:0");
+        result[result.IndexOf("-codec:a:0") + 1].Should().Be("aac");
+    }
+
+    [Theory, AutoMoqData]
+    internal void Should_RejectUnlabelledNonVideoOutput(string input, HdrCommandTransformer sut)
+    {
+        // Arrange
+        var native = FfmpegArguments.Format(["-i", input, "-codec:v:0", "hevc_vaapi", "-filter_complex", "[0:a]anull", "output.m3u8"]);
+
+        // Act
+        var action = () => sut.Transform(native);
+
+        // Assert
+        action.Should().Throw<NotSupportedException>();
+    }
+
+    [Theory, AutoMoqData]
     internal void Should_RejectUnsupportedEncoderWithoutPretendingToProduceHdr(string input, HdrCommandTransformer sut)
     {
         // Arrange

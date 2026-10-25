@@ -52,7 +52,16 @@ internal sealed class HdrCommandTransformer : IHdrCommandTransformer
         var mappings = Enumerable.Range(0, tokens.Count - 1)
             .Where(index => tokens[index] == "-map" && tokens[index + 1].StartsWith('[') && tokens[index + 1].EndsWith(']'))
             .ToArray();
-        if (mappings.Length != 1 || tokens[complex + 1].Contains("[hdr_playback]", StringComparison.Ordinal))
+        var graph = tokens[complex + 1];
+        var finalStage = graph[(graph.LastIndexOf(',') + 1)..];
+        if (mappings.Length == 0 && finalStage.StartsWith("scale_vaapi=", StringComparison.Ordinal) && finalStage.IndexOfAny([';', '[', ']']) < 0)
+        {
+            // Jellyfin's Vulkan subtitle compositor leaves its final VA-API video output unlabelled.
+            tokens[complex + 1] += "," + ConversionFilter;
+            return;
+        }
+
+        if (mappings.Length != 1 || graph.Contains("[hdr_playback]", StringComparison.Ordinal))
         {
             throw new NotSupportedException("This subtitle filter layout is not supported for HDR conversion.");
         }
