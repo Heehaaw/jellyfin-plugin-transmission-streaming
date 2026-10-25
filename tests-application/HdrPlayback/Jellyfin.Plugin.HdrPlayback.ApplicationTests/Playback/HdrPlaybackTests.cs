@@ -62,6 +62,19 @@ public sealed class HdrPlaybackTests
     }
 
     [Theory, AutoMoqData]
+    internal async Task Should_ResolveConvertedVersionThroughNativeItemLookup(HdrJellyfinFixture source)
+    {
+        // Arrange
+        var convertedId = "hdr-conversion:" + source.MovieId;
+
+        // Act
+        var item = await source.JsonAsync($"Users/{source.UserId}/Items/{convertedId}");
+
+        // Assert
+        item!["Id"]!.GetValue<string>().Should().Be(source.MovieId);
+    }
+
+    [Theory, AutoMoqData]
     internal async Task Should_RejectHdrWhenServerHardwareIsNotConfigured(HdrJellyfinFixture source)
     {
         // Arrange

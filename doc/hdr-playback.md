@@ -1,7 +1,7 @@
 # HDR Playback
 
 HDR Playback adds **HDR (converted)** to the pre-playback **Video** box beside Audio and Subtitles. The existing video name stays unchanged. The choice uses a transient
-source identity on the same movie or episode, then negotiates a normal Jellyfin transcode against the original file. It creates no library entry or encoded file.
+source identity on the same movie or episode, then negotiates a normal Jellyfin transcode against the original file. It creates no additional library entry or stored movie version.
 Audio and subtitle selections survive switching between the original and converted video. A movie with multiple physical versions keeps its native Version selector.
 
 The bundled web frontend also has an **HDR conversion** toggle beside Quality in player settings. That toggle is hidden when **HDR (converted)** was selected before playback;

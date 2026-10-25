@@ -371,6 +371,31 @@ public sealed class HdrPlaybackFilterTests
         context.ActionArguments["maxStreamingBitrate"].Should().Be(bitrate);
     }
 
+    [Theory, AutoMoqData]
+    internal async Task Should_ResolveSelectedVersionLookupBeforeNativeBinding(
+        Guid source,
+        ResourceExecutingContext context,
+        HdrPlaybackFilter sut)
+    {
+        // Arrange
+        context.HttpContext.Request.Method = "GET";
+        context.RouteData.Values["itemId"] = HdrMediaSourceVariants.Prefix + source.ToString("N");
+        object? bound = null;
+
+        // Act
+        await sut.OnResourceExecutionAsync(
+            context: context,
+            next: () =>
+            {
+                bound = context.RouteData.Values["itemId"];
+                return Task.FromResult(new ResourceExecutedContext(context, context.Filters));
+            }
+        );
+
+        // Assert
+        bound.Should().Be(source);
+    }
+
     internal sealed record PlaybackRequest(
         string MediaSourceId,
         long MaxStreamingBitrate,

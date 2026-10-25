@@ -39,7 +39,8 @@ internal static class PlayerScriptInjector
         var items = quality.Groups["items"].Value;
         var changed = Quality.Replace(
             input: script,
-            evaluator: match => match.Value + $",window.JellyfinHdrPlayback&&!window.JellyfinHdrPlayback.sourceSelected({instance},{player})&&{items}.push(window.JellyfinHdrPlayback.menu({instance},{player}))",
+            evaluator: match => match.Value + $",window.JellyfinHdrPlayback&&!window.JellyfinHdrPlayback.sourceSelected({instance},{player})" +
+                                $"&&{items}.push(window.JellyfinHdrPlayback.menu({instance},{player}))",
             count: 1
         );
         return Selection.Replace(

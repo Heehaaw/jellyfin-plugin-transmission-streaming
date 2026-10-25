@@ -43,6 +43,14 @@ internal sealed class HdrPlaybackFilter(
 
     public async Task OnResourceExecutionAsync(ResourceExecutingContext context, ResourceExecutionDelegate next)
     {
+        if (context.RouteData.Values.TryGetValue("itemId", out var routeId)
+            && HdrMediaSourceVariants.OriginalId(routeId?.ToString()) is { } originalItemId
+            && Guid.TryParse(originalItemId, out var originalItemGuid))
+        {
+            // Native clients fetch the selected version as an item before requesting PlaybackInfo. Keep native access checks on the original item.
+            context.RouteData.Values["itemId"] = originalItemGuid;
+        }
+
         var request = context.HttpContext.Request;
         if (HttpMethods.IsPost(request.Method) && IsPlaybackReport(request.Path.Value ?? ""))
         {
