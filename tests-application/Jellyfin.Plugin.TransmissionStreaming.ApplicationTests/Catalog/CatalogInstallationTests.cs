@@ -5,11 +5,12 @@ using AutoFixture.AutoMoq;
 using FluentAssertions;
 using global::TransmissionStreaming.TestSupport.Testing;
 using Hosting;
+using Ui;
 using System.Security.Cryptography;
 using System.Text.Json.Nodes;
 using Xunit;
 
-public sealed class CatalogInstallationTests(ITestOutputHelper output)
+public sealed class CatalogInstallationTests(HeadlessBrowser browser, ITestOutputHelper output)
 {
     [Theory, AutoMoqData]
     internal async Task Should_InstallFromRepositoryAndLoadAfterRestart(CatalogSource source, CatalogInstallation sut)
@@ -35,6 +36,7 @@ public sealed class CatalogInstallationTests(ITestOutputHelper output)
             var status = await sut.Api.RequestAsync("/TransmissionStreaming/status");
             var plugins = await sut.Api.RequestAsync("/Plugins");
             var loaded = plugins!.AsArray().Single(plugin => PluginId(plugin) == Guid.Parse(sut.Bundle.Id));
+            await browser.VerifySettingsNavigationAsync(sut.Network, sut.Bundle.Name, cancellationToken);
 
             // Assert
             preinstalled!.AsArray().Should().NotContain(plugin => PluginId(plugin) == Guid.Parse(sut.Bundle.Id));
@@ -47,6 +49,7 @@ public sealed class CatalogInstallationTests(ITestOutputHelper output)
                 sut.Bundle.Version.Should().Be(source.ReleaseVersion.ToString(4));
                 await AssertInstalledAssembliesAsync(sut, cancellationToken);
             }
+
             JellyfinApi.Value<string>(loaded, "Status").Should().Be(expectedPluginStatus);
             JellyfinApi.Value<bool>(status, "Enabled").Should().BeFalse("repository installation must retain the safe disabled default");
         }

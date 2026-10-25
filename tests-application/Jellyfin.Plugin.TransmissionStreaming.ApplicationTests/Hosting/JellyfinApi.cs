@@ -47,8 +47,8 @@ internal sealed class JellyfinApi(Uri address) : IDisposable
 
     public async Task<string> AuthenticateAsync()
     {
-        const string username = "application-test-admin";
-        const string password = "Disposable-application-test-only-123!";
+        const string username = JellyfinTestAccount.Username;
+        const string password = JellyfinTestAccount.Password;
         var info = await WaitForAsync(() => RequestAsync("/System/Info/Public"), "Jellyfin public API availability");
         if (!Value<bool>(info, "StartupWizardCompleted"))
         {

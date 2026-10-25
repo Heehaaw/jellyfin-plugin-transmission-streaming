@@ -1,6 +1,7 @@
 namespace Jellyfin.Plugin.TransmissionStreaming.ApplicationTests.Catalog;
 
 using global::TransmissionStreaming.TestSupport.Torrents;
+using DotNet.Testcontainers.Networks;
 using Hosting;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
@@ -19,6 +20,7 @@ internal sealed class CatalogInstallation(DownloadServices containers) : IAsyncD
     public PluginBundle Bundle => catalog?.Bundle ?? PluginBundle.BuildOutput;
     public string InstalledDirectory => Path.Combine(workspace!, "jellyfin", "plugins", Bundle.FolderName);
     public JellyfinApi Api => api!;
+    public INetwork Network => containers.Network;
 
     public string? DebugOutputDirectory { get; private set; }
 
