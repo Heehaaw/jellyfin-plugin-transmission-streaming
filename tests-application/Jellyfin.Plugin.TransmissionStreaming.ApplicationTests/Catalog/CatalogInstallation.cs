@@ -20,11 +20,7 @@ internal sealed class CatalogInstallation(DownloadServices containers) : IAsyncD
     public string InstalledDirectory => Path.Combine(workspace!, "jellyfin", "plugins", Bundle.FolderName);
     public JellyfinApi Api => api!;
 
-    public string? DebugOutputDirectory
-    {
-        get;
-        private set;
-    }
+    public string? DebugOutputDirectory { get; private set; }
 
     public async Task StartAsync(CatalogSource source, CancellationToken cancellationToken, bool corruptChecksum = false, Uri? repository = null)
     {
@@ -129,8 +125,7 @@ internal sealed class CatalogInstallation(DownloadServices containers) : IAsyncD
         return api!.RequestAsync(
             path: path,
             body: new
-            {
-            }
+                { }
         ).WaitAsync(cancellationToken);
     }
 

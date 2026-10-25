@@ -17,17 +17,9 @@ public sealed class JellyfinTestServer(DownloadServices containers, JellyfinBase
     private StreamingScenario downloads = null!;
     private string administrator = "";
 
-    internal TorrentScenario Swarm
-    {
-        get;
-        private set;
-    } = null!;
+    internal TorrentScenario Swarm { get; private set; } = null!;
 
-    internal ArrStub Arr
-    {
-        get;
-        private set;
-    } = null!;
+    internal ArrStub Arr { get; private set; } = null!;
 
     internal byte[] ExpectedBytes => Swarm.ExpectedBytes;
     internal string Workspace => workspace;

@@ -5,10 +5,7 @@ using System.Text.Json.Nodes;
 /// <summary>Reads the built descriptor so tests use the same identity and assembly list as installation.</summary>
 internal sealed record PluginBundle(string Id, string Name, string Version, string Directory, IReadOnlyList<string> Assemblies)
 {
-    public static PluginBundle BuildOutput
-    {
-        get;
-    } = Read(Path.Combine(AppContext.BaseDirectory, "Plugin"));
+    public static PluginBundle BuildOutput { get; } = Read(Path.Combine(AppContext.BaseDirectory, "Plugin"));
 
     public string FolderName => $"{Name}_{Version}";
 

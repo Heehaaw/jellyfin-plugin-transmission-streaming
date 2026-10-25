@@ -5,33 +5,18 @@ internal sealed class TorrentScenario(DownloadServices services, string workspac
 {
     private int disposed;
 
-    public string Workspace
-    {
-        get;
-    } = workspace;
+    public string Workspace { get; } = workspace;
 
     public string MediaRoot => services.Workspace;
     public string RemoteRoot => services.RemotePath(Workspace);
 
-    public string Hash
-    {
-        get;
-        private set;
-    } = "";
+    public string Hash { get; private set; } = "";
 
-    public string FileName
-    {
-        get;
-        private set;
-    } = "";
+    public string FileName { get; private set; } = "";
 
     public string Title => Path.GetFileNameWithoutExtension(FileName);
 
-    public byte[] ExpectedBytes
-    {
-        get;
-        private set;
-    } = [];
+    public byte[] ExpectedBytes { get; private set; } = [];
 
     public int PieceSize => SwarmSettings.PieceSize;
     public Uri RpcUrl => services.RpcUrl;
@@ -84,8 +69,7 @@ internal sealed class TorrentScenario(DownloadServices services, string workspac
         await ControlAsync(
             operation: "first",
             value: new
-            {
-            },
+                { },
             cancellationToken: cancellationToken
         );
         await Poll.UntilAsync(
@@ -101,8 +85,7 @@ internal sealed class TorrentScenario(DownloadServices services, string workspac
         await ControlAsync(
             operation: "all",
             value: new
-            {
-            },
+                { },
             cancellationToken: cancellationToken
         );
         await Poll.UntilAsync(

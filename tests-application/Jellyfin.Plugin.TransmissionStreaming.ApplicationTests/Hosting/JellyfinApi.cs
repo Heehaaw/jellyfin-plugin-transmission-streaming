@@ -82,8 +82,7 @@ internal sealed class JellyfinApi(Uri address) : IDisposable
             await RequestAsync(
                 path: "/Startup/Complete",
                 body: new
-                {
-                }
+                    { }
             );
         }
 

@@ -27,8 +27,7 @@ internal sealed class JellyfinLibraryScan(JellyfinApi api)
             await api.RequestAsync(
                 path: $"/ScheduledTasks/Running/{idle!.Id}",
                 body: new
-                {
-                }
+                    { }
             );
         }
         catch (HttpRequestException exception) when (exception.StatusCode == HttpStatusCode.Conflict)

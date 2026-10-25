@@ -19,8 +19,7 @@ internal sealed class ConfigureStreamingOptions(IPluginSettings plugin) : IConfi
         target.SonarrUrl = config.SonarrUrl;
         target.SonarrApiKey = config.SonarrApiKey;
         target.PathMappings = config.PathMappings.Select(mapping => mapping with
-            {
-            }
+            { }
         ).ToArray();
         target.RemoteMediaRoot = config.RemoteMediaRoot;
         target.LocalMediaRoot = config.LocalMediaRoot;

@@ -68,8 +68,7 @@ public sealed class DuplicateReconciliationTests(JellyfinTestServer sut, ITestOu
             await sut.Api.RequestAsync(
                 path: "/Library/Refresh",
                 body: new
-                {
-                }
+                    { }
             );
             var restartedId = await sut.WaitForItemAsync();
             var persisted = new Dictionary<string, JsonNode?>();

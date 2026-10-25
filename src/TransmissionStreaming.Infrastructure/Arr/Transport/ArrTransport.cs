@@ -57,5 +57,4 @@ internal sealed class ArrTransport(HttpClient http) : IArrTransport
 }
 
 internal sealed class ArrNotFoundException : Exception
-{
-}
+{ }

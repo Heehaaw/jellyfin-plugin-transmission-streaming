@@ -253,45 +253,17 @@ public sealed class PlaybackFlowTests(JellyfinTestServer sut, ITestOutputHelper 
 
 public sealed record WatchState
 {
-    public bool Played
-    {
-        get;
-        set;
-    }
+    public bool Played { get; set; }
 
-    public long PlaybackPositionTicks
-    {
-        get;
-        set;
-    }
+    public long PlaybackPositionTicks { get; set; }
 
-    public int PlayCount
-    {
-        get;
-        set;
-    }
+    public int PlayCount { get; set; }
 
-    public bool IsFavorite
-    {
-        get;
-        set;
-    }
+    public bool IsFavorite { get; set; }
 
-    public DateTime? LastPlayedDate
-    {
-        get;
-        set;
-    }
+    public DateTime? LastPlayedDate { get; set; }
 
-    public double? Rating
-    {
-        get;
-        set;
-    }
+    public double? Rating { get; set; }
 
-    public bool? Likes
-    {
-        get;
-        set;
-    }
+    public bool? Likes { get; set; }
 }

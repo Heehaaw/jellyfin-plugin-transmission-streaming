@@ -8,39 +8,19 @@ using ProjectionEntry = Projection.Projection;
 public sealed record PlaybackSession(ProjectionEntry Entry)
 {
     /// <summary>The most recently available torrent metadata, retained when the torrent is later removed.</summary>
-    public TorrentSnapshot? Torrent
-    {
-        get;
-        set;
-    }
+    public TorrentSnapshot? Torrent { get; set; }
 
     /// <summary>The session settings returned alongside the cached torrent metadata.</summary>
-    public TransmissionSessionSnapshot? Transmission
-    {
-        get;
-        set;
-    }
+    public TransmissionSessionSnapshot? Transmission { get; set; }
 
     /// <summary>The monotonic timestamp of the last upstream refresh, or null before the first lookup.</summary>
-    public long? RefreshedAt
-    {
-        get;
-        set;
-    }
+    public long? RefreshedAt { get; set; }
 
     /// <summary>The monotonic timestamp of the last persisted import lookup, or null before the first lookup.</summary>
-    public long? CompletionCheckedAt
-    {
-        get;
-        set;
-    }
+    public long? CompletionCheckedAt { get; set; }
 
     /// <summary>The imported backing path after validation against the service's local mapping.</summary>
-    public string? ImportedPath
-    {
-        get;
-        set;
-    }
+    public string? ImportedPath { get; set; }
 
     public override string ToString()
     {

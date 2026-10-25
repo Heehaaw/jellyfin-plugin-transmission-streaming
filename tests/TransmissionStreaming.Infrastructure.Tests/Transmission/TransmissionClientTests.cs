@@ -184,8 +184,7 @@ public sealed class TransmissionClientTests
             parameters = payload.RootElement.GetProperty("params").Clone();
             return RpcResponse(
                 new
-                {
-                }
+                    { }
             );
         };
 
@@ -215,8 +214,7 @@ public sealed class TransmissionClientTests
             parameters = payload.RootElement.GetProperty("params").Clone();
             return RpcResponse(
                 new
-                {
-                }
+                    { }
             );
         };
 

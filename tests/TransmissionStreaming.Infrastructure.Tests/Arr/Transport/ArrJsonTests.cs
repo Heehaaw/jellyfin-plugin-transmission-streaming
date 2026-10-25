@@ -73,11 +73,7 @@ public sealed class ArrJsonTests
 
     internal sealed record JsonRecord<T>(string Name, int Id, Dictionary<string, T> Data)
     {
-        public long Size
-        {
-            get;
-            set;
-        }
+        public long Size { get; set; }
     }
 
     private static JsonElement Serialize<T>(T source)

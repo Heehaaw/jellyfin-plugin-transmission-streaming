@@ -21,10 +21,12 @@ public sealed class DownloadServices : IAsyncLifetime
     private IContainer? transmission;
     private TransmissionRpcClient rpc = null!;
 
-    internal string Workspace
-    {
-        get;
-    } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".cache", "transmission-streaming-tests", "assembly-" + Guid.NewGuid().ToString("N"));
+    internal string Workspace { get; } = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+        ".cache",
+        "transmission-streaming-tests",
+        "assembly-" + Guid.NewGuid().ToString("N")
+    );
 
     internal INetwork Network => network;
     internal Uri RpcUrl => new UriBuilder("http", transmission!.Hostname, transmission.GetMappedPublicPort(SwarmSettings.RpcPort), SwarmSettings.RpcPath).Uri;
@@ -124,8 +126,7 @@ public sealed class DownloadServices : IAsyncLifetime
                     await ControlAsync(
                         operation: "end",
                         value: new
-                        {
-                        },
+                            { },
                         cancellationToken: deadline.Token
                     );
                 }

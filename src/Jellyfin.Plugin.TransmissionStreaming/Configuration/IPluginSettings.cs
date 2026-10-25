@@ -8,15 +8,9 @@ internal interface IPluginSettings
     /// <summary>Notifies listeners after Jellyfin has persisted a configuration update.</summary>
     event EventHandler<BasePluginConfiguration>? ConfigurationChanged;
 
-    PluginConfiguration Configuration
-    {
-        get;
-    }
+    PluginConfiguration Configuration { get; }
 
-    string StateDirectory
-    {
-        get;
-    }
+    string StateDirectory { get; }
 
     /// <summary>Persists updated host settings through Jellyfin's configuration lifecycle.</summary>
     void UpdateConfiguration(PluginConfiguration configuration);

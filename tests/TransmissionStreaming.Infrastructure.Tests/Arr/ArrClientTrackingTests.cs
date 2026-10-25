@@ -212,29 +212,13 @@ public sealed class ArrClientTrackingTests
 
     internal sealed record TrackedMedia
     {
-        public int Id
-        {
-            get;
-            set;
-        }
+        public int Id { get; set; }
 
-        public int TmdbId
-        {
-            get;
-            set;
-        }
+        public int TmdbId { get; set; }
 
-        public int TvdbId
-        {
-            get;
-            set;
-        }
+        public int TvdbId { get; set; }
 
-        public string ImdbId
-        {
-            get;
-            set;
-        } = "";
+        public string ImdbId { get; set; } = "";
     }
 
     private sealed class AutoMoqDataAttribute() : AutoDataAttribute(() =>

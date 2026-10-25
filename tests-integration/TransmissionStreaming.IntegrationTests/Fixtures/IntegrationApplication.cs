@@ -24,11 +24,7 @@ internal sealed class IntegrationApplication(DownloadServices containers) : IAsy
 
     public TorrentScenario Swarm => _swarm ?? throw new InvalidOperationException("Start the fixture first.");
 
-    public ArrStub Arr
-    {
-        get;
-        private set;
-    } = null!;
+    public ArrStub Arr { get; private set; } = null!;
 
     public IProjectionStore Store => _provider!.GetRequiredService<IProjectionStore>();
     public string Workspace => _workspace!;
@@ -205,11 +201,7 @@ internal sealed class IntegrationApplication(DownloadServices containers) : IAsy
     /// <summary>The fixture changes current settings directly; production notifications use the framework monitor.</summary>
     private sealed class MutableOptionsMonitor(StreamingOptions value) : IOptionsMonitor<StreamingOptions>
     {
-        public StreamingOptions CurrentValue
-        {
-            get;
-            set;
-        } = value;
+        public StreamingOptions CurrentValue { get; set; } = value;
 
         public StreamingOptions Get(string? name)
         {
@@ -232,17 +224,9 @@ internal sealed class IntegrationApplication(DownloadServices containers) : IAsy
 
     private sealed class NoopLibrary : IProjectionLibrary, IMediaLibraryLocations
     {
-        public string? NativePath
-        {
-            get;
-            set;
-        }
+        public string? NativePath { get; set; }
 
-        public LibraryItem? NativeItem
-        {
-            get;
-            set;
-        }
+        public LibraryItem? NativeItem { get; set; }
 
         public LibraryItem? Find(string path)
         {
@@ -265,12 +249,10 @@ internal sealed class IntegrationApplication(DownloadServices containers) : IAsy
         }
 
         public void SaveUserState(string userId, string itemId, LibraryWatchState state)
-        {
-        }
+        { }
 
         public void Remove(string itemId)
-        {
-        }
+        { }
 
         public IReadOnlyList<string> GetServicePaths(MediaService service)
         {

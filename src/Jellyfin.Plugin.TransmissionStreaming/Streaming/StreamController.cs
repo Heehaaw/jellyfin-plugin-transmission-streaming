@@ -18,8 +18,7 @@ public sealed class StreamController(IMediator mediator, ILogger<StreamControlle
     [Authorize(Policy = StreamingConstants.RequiresAdministrator)]
     public async Task<ActionResult<StreamingStatus>> Status(CancellationToken cancellationToken)
     {
-        var query = new GetStatus.Query();
-        return await mediator.Send(query, cancellationToken).ConfigureAwait(false);
+        return await mediator.Send(new GetStatus.Query(), cancellationToken).ConfigureAwait(false);
     }
 
     [HttpGet("streams/{id}")]
@@ -27,8 +26,7 @@ public sealed class StreamController(IMediator mediator, ILogger<StreamControlle
     [AllowAnonymous]
     public async Task<IActionResult> Stream(string id, [FromQuery] string? key, CancellationToken cancellationToken)
     {
-        var query = new GetStream.Query(id, key);
-        var entry = await mediator.Send(query, cancellationToken).ConfigureAwait(false);
+        var entry = await mediator.Send(new GetStream.Query(id, key), cancellationToken).ConfigureAwait(false);
         if (entry is null)
         {
             return NotFound();

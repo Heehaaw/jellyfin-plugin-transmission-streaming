@@ -25,8 +25,7 @@ public sealed class ConfigurationController(IMediator mediator) : ControllerBase
 
         try
         {
-            var query = new DiscoverServicePaths.Query(service, connection);
-            return await mediator.Send(query, cancellationToken).ConfigureAwait(false);
+            return await mediator.Send(new DiscoverServicePaths.Query(service, connection), cancellationToken).ConfigureAwait(false);
         }
         catch (Exception exception) when (exception is HttpRequestException or JsonException or InvalidOperationException or ArgumentException)
         {
@@ -39,7 +38,6 @@ public sealed class ConfigurationController(IMediator mediator) : ControllerBase
     [HttpGet("defaults")]
     public async Task<ActionResult<ConfigurationDefaults>> Defaults(CancellationToken cancellationToken)
     {
-        var query = new GetConfigurationDefaults.Query();
-        return await mediator.Send(query, cancellationToken).ConfigureAwait(false);
+        return await mediator.Send(new GetConfigurationDefaults.Query(), cancellationToken).ConfigureAwait(false);
     }
 }
