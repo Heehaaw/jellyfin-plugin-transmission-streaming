@@ -59,7 +59,9 @@ The permanent Jellyfin entry remains the owner of watch history. Native duplicat
 ## Application boundaries
 
 The domain defines media identities, playback state, and external-service contracts. Application requests coordinate discovery, authorization, streaming, and completion through
-source-generated Mediator handlers. Root inference, service-mapping precedence, verified-piece gating, prioritization, and stall deadlines belong to application policy.\nInfrastructure supplies HTTP clients, physical path confinement, offset reads, and SQLite persistence. Copying reads through a filesystem contract so the application tests its\nwaiting and cancellation rules without disk access. The plugin composes these layers
+source-generated Mediator handlers. Root inference, service-mapping precedence, verified-piece gating, prioritization, and stall deadlines belong to application policy.
+Infrastructure supplies HTTP clients, physical path confinement, offset reads, and SQLite persistence. Copying reads through a filesystem contract so the application tests its
+waiting and cancellation rules without disk access. The plugin composes these layers
 and adapts them to Jellyfin's configuration, HTTP endpoints, indexing, and user metadata.
 
 Each layer uses feature folders. Infrastructure and the plugin compose their adapters through feature bootstrappers. Logic contains Mediator queries and commands; generated
@@ -72,6 +74,22 @@ Handlers receive the client, store, filesystem, options, clock, and Mediator thr
 The settings UI uses focused browser modules for draft configuration, folder mappings, activity, and contextual help. Jellyfin serves the embedded page, stylesheet, and modules
 from the plugin; there is no separate frontend server or build pipeline. Each page instance owns its draft and polling lifecycle. Tooltips explain the controls, and faint dashed
 underlines mark explanatory text with help. Buttons keep their normal cursor and plain text. Hover or keyboard focus shows help after 150 ms; leaving the control, scrolling, or interacting dismisses it. Responsive layout uses the same field and action-button heights throughout.
+
+The Jellyfin adapter also appends an owned activity-link section to each projected description, retaining the synopsis and unrelated links. Reconciliation replaces only that
+section when the public server address changes and avoids duplicate links on subsequent polls. The link uses the configured public origin and reverse-proxy base path to reach
+the existing administrator activity page, so it also works from another device.
+
+## Cancelled downloads
+
+A missing torrent can mean that arr is still importing it, so download disappearance alone does not revoke its permanent entry. Discovery first attempts the normal import handoff.
+When no torrent and no existing imported backing file remain, cleanup checks the owning arr service's movie or series library. Only a successful, valid collection response proving
+that the title is absent permits removal. A disabled or unconfigured connection, authentication error, outage, or malformed response retains the entry. Matching provider identifiers
+also retain an entry if arr has re-added the same title with another internal ID.
+
+Open stream readers or a Jellyfin playback session defer cleanup. Once removal is allowed, the host entry is removed without deleting media, followed by only the plugin-owned
+stream link, its metadata sidecar, and temporary versions of those files. Physical path and ownership checks keep cleanup inside the dedicated projection root. Shared series
+metadata and unrelated files remain. The tracking record is removed last, allowing partial failures to retry. Subsequent polls and restarts cannot recreate a removed entry, and
+its old playback capability returns not found.
 
 ## Resource use
 

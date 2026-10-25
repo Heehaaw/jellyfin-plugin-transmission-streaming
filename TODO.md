@@ -62,3 +62,12 @@
 - [x] Verify the final split UI in the installed local Jellyfin, including 150 ms tooltips, faint label hints, plain button cursors/text, uniform control heights, and preserved settings.
 - [x] Move real options-monitor and DI-composition checks from unit tests into a separate in-process plugin integration project.
 - [x] Pass all 254 tests on main, publish v0.1.3 from that commit, and reinstall through the configured Jellyfin repository. Verify the plugin is active, saved configuration and library identities are preserved, and the desktop UI loads without errors.
+
+## Cancelled-download cleanup
+
+- [x] Distinguish a deleted arr title from a missing torrent awaiting import.
+- [x] Add guarded removal of generated files, Jellyfin metadata, and durable tracking.
+- [x] Verify happy paths, playback/import retention, upstream failures, and cleanup across restart in 289 unit, integration, and real-Jellyfin tests.
+- [x] Add an idempotent description link to the administrator activity page, preserving the synopsis and reverse-proxy base path.
+- [x] Verify the description link through download, import, and restart in the real Jellyfin playback test.
+- [ ] Publish v0.1.4 after main CI, install through the Jellyfin repository, and verify The Cycle stays removed.

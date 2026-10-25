@@ -83,7 +83,15 @@ progressive playback when neither condition holds. The plugin does not change th
 ## Status and buffering
 
 With status display enabled, downloading items receive a temporary title suffix such as `[Downloading 23%]`. Other states include waiting for import, an unavailable download, and a
-download error. Completion removes the suffix while retaining the entry.
+download error. Completion removes the suffix while retaining the entry. The item description includes a **View download status** link to the plugin activity page. This preserves
+the synopsis and remains available after import; opening the activity page requires a Jellyfin administrator account.
+
+The standard Jellyfin Movies grid uses cached lists and batched library notifications. New items and updated title suffixes may take longer to appear there; it is not a live
+download dashboard. The plugin activity page polls its own status independently.
+
+If you cancel a download and remove its movie or series from arr, the plugin removes its unfinished streaming entry after the next successful scan. Removing only the torrent
+keeps the entry available for a late import. Existing imported media and active playback prevent cleanup. Connection errors never count as deletion; cleanup removes only the
+plugin-generated link and metadata, without deleting downloaded or imported media files.
 
 The settings page groups each remote folder and its Jellyfin folder into one translation row. Discover folders sits beside the service URL; Add mapping and Remove affect
 translations only. Unsaved edits are marked explicitly, and Save reports success or failure without discarding the draft. Credentials stay collapsed until needed.

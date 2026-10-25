@@ -68,7 +68,8 @@ The suites divide responsibilities so failures point to a specific behavior:
 | Jellyfin application | Actual plugin loading and DI, indexing unfinished media, HTTP delivery and video decoding, duplicate reconciliation, per-user history, server restart, and installation. |
 
 Integration scenarios cover competing releases for one title, a removed torrent followed by a late import, completed bytes awaiting import, recovery after an arr outage, and
-rejection of samples and ambiguous episode payloads. A completed import reports full progress even when its torrent has already disappeared.
+rejection of samples and ambiguous episode payloads. Orphan scenarios remove the arr title and torrent, then verify that the tracking row and generated files stay absent across
+restart. An arr outage must retain them until an authoritative library response becomes available. A completed import reports full progress even when its torrent has already disappeared.
 
 Tests use generated inputs and inject concrete subjects with frozen collaborator mocks. Each test states one behavior, with scenario-specific setup kept in its Arrange block.
 Small helpers own external setup or protocol details when that makes the flow easier to read; short arrangements remain inline. Records and interfaces are exercised through
@@ -76,6 +77,10 @@ mapping, persistence, authorization, and service composition rather than tests t
 
 Each behavior-bearing unit gets a happy-path call plus tests for meaningful branches, loops, main failures, and obvious edge cases. Property defaults and metadata declarations
 do not need separate assertion-only tests. Integration and application tests establish whether the assembled plugin performs its intended work; coverage percentages are not a target.
+
+The playback flow verifies the description activity link while downloading, after import, and across restart, including duplicate-link prevention.
+
+The cancellation application case also verifies that the actual Jellyfin item disappears, its old playback URL returns not found, and restart does not recreate it.
 
 The container application suites verify server behavior through HTTP, not the web client's component lifecycle. Local installation also needs a browser check: load saved settings,
 discover paths for each service, edit a mapping, rediscover without losing that edit, save, and reload. Jellyfin's bundled component polyfill requires its own dynamic-element
