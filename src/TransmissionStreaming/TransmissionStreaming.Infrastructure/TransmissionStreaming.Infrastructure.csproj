@@ -7,5 +7,6 @@
     </ItemGroup>
     <ItemGroup>
         <InternalsVisibleTo Include="TransmissionStreaming.Infrastructure.Tests" />
+        <InternalsVisibleTo Include="TransmissionStreaming.IntegrationTests" />
     </ItemGroup>
 </Project>

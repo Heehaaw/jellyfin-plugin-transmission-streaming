@@ -21,9 +21,8 @@ public sealed class ResolveImportedFileTests
     internal async Task Should_KeepCompletedBackingPath(
         ImportScenario source,
         [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
-        [Frozen] Mock<IMediator> paths,
         [Frozen] Mock<IMediaFiles> media,
-        [Frozen] Mock<IArrClient> arr,
+        [Frozen] Mock<IMediator> paths,
         ResolveImportedFile.Handler sut
     )
     {
@@ -40,16 +39,15 @@ public sealed class ResolveImportedFileTests
 
         // Assert
         result.Should().Be(source.LocalPath);
-        arr.Verify(value => value.FindImportedFileAsync(It.IsAny<ArrConnection>(), It.IsAny<MediaIdentity>(), It.IsAny<long>(), It.IsAny<CancellationToken>()), Times.Never);
+        paths.Verify(value => value.Send(It.Is<FindArrImportedFile.Query>(query => true), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Theory, AutoMoqData]
     internal async Task Should_MapVerifiedImport(
         ImportScenario source,
         [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
-        [Frozen] Mock<IMediator> paths,
         [Frozen] Mock<IMediaFiles> media,
-        [Frozen] Mock<IArrClient> arr,
+        [Frozen] Mock<IMediator> paths,
         ResolveImportedFile.Handler sut
     )
     {
@@ -58,10 +56,10 @@ public sealed class ResolveImportedFileTests
         entry.CompletedPath = null;
         entry.Identity.Kind = MediaKind.Movie;
         options.SetupGet(value => value.CurrentValue).Returns(source.Options);
-        arr.Setup(value => value.FindImportedFileAsync(
-                connection: It.Is<ArrConnection>(connection => connection.Url == source.Options.RadarrUrl),
-                identity: entry.Identity,
-                expectedSize: entry.Length,
+        paths.Setup(value => value.Send(
+                query: It.Is<FindArrImportedFile.Query>(query =>
+                    (query.Connection.Url == source.Options.RadarrUrl) && (query.Identity == entry.Identity) && (query.ExpectedSize == entry.Length)
+                ),
                 cancellationToken: It.IsAny<CancellationToken>()
             )
         ).ReturnsAsync(source.RemotePath);
@@ -107,9 +105,8 @@ public sealed class ResolveImportedFileTests
     internal async Task Should_ResolveEpisodesThroughSonarr(
         ImportScenario source,
         [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
-        [Frozen] Mock<IMediator> paths,
         [Frozen] Mock<IMediaFiles> media,
-        [Frozen] Mock<IArrClient> arr,
+        [Frozen] Mock<IMediator> paths,
         ResolveImportedFile.Handler sut
     )
     {
@@ -118,10 +115,11 @@ public sealed class ResolveImportedFileTests
         entry.CompletedPath = null;
         entry.Identity.Kind = MediaKind.Episode;
         options.SetupGet(value => value.CurrentValue).Returns(source.Options);
-        arr.Setup(value => value.FindImportedFileAsync(
-                connection: It.Is<ArrConnection>(connection => connection.Url == source.Options.SonarrUrl && connection.ApiKey == source.Options.SonarrApiKey),
-                identity: entry.Identity,
-                expectedSize: entry.Length,
+        paths.Setup(value => value.Send(
+                query: It.Is<FindArrImportedFile.Query>(query =>
+                    (query.Connection.Url == source.Options.SonarrUrl && query.Connection.ApiKey == source.Options.SonarrApiKey) && (query.Identity == entry.Identity) &&
+                    (query.ExpectedSize == entry.Length)
+                ),
                 cancellationToken: It.IsAny<CancellationToken>()
             )
         ).ReturnsAsync(source.RemotePath);
@@ -143,9 +141,8 @@ public sealed class ResolveImportedFileTests
     internal async Task Should_RejectAnImportWithDifferentLength(
         ImportScenario source,
         [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
-        [Frozen] Mock<IMediator> paths,
         [Frozen] Mock<IMediaFiles> media,
-        [Frozen] Mock<IArrClient> arr,
+        [Frozen] Mock<IMediator> paths,
         ResolveImportedFile.Handler sut
     )
     {
@@ -153,7 +150,11 @@ public sealed class ResolveImportedFileTests
         var entry = source.Query.Projection;
         entry.CompletedPath = null;
         options.SetupGet(value => value.CurrentValue).Returns(source.Options);
-        arr.Setup(value => value.FindImportedFileAsync(It.IsAny<ArrConnection>(), entry.Identity, entry.Length, It.IsAny<CancellationToken>())).ReturnsAsync(source.RemotePath);
+        paths.Setup(value => value.Send(
+                query: It.Is<FindArrImportedFile.Query>(query => (query.Identity == entry.Identity) && (query.ExpectedSize == entry.Length)),
+                cancellationToken: It.IsAny<CancellationToken>()
+            )
+        ).ReturnsAsync(source.RemotePath);
         paths.Setup(value => value.Send(It.Is<MapServicePath.Query>(request => request.Path == source.RemotePath), It.IsAny<CancellationToken>()))
             .Returns(ValueTask.FromResult<string?>(source.LocalPath));
         media.Setup(value => value.HasLength(source.LocalPath, entry.Length)).Returns(false);
@@ -169,7 +170,7 @@ public sealed class ResolveImportedFileTests
     internal async Task Should_NotCallAnUnconfiguredArr(
         ImportScenario source,
         [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
-        [Frozen] Mock<IArrClient> arr,
+        [Frozen] Mock<IMediator> paths,
         ResolveImportedFile.Handler sut
     )
     {
@@ -188,7 +189,7 @@ public sealed class ResolveImportedFileTests
 
         // Assert
         result.Should().BeNull();
-        arr.Verify(value => value.FindImportedFileAsync(It.IsAny<ArrConnection>(), It.IsAny<MediaIdentity>(), It.IsAny<long>(), It.IsAny<CancellationToken>()), Times.Never);
+        paths.Verify(value => value.Send(It.Is<FindArrImportedFile.Query>(query => true), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     private sealed class AutoMoqDataAttribute() : AutoDataAttribute(() =>

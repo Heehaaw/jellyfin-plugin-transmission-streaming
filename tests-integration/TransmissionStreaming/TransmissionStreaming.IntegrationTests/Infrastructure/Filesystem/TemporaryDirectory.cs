@@ -1,4 +1,4 @@
-namespace TransmissionStreaming.Infrastructure.Tests.Filesystem;
+namespace TransmissionStreaming.IntegrationTests.Infrastructure.Filesystem;
 
 public sealed class TemporaryDirectory : IDisposable
 {
@@ -8,7 +8,10 @@ public sealed class TemporaryDirectory : IDisposable
         Directory.CreateDirectory(Path);
     }
 
-    public string Path { get; }
+    public string Path
+    {
+        get;
+    }
 
     public void Dispose()
     {

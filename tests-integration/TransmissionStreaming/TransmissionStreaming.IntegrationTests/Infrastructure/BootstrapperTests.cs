@@ -1,8 +1,8 @@
-namespace TransmissionStreaming.Infrastructure.Tests;
+namespace TransmissionStreaming.IntegrationTests.Infrastructure;
 
 using AutoFixture;
 using AutoFixture.AutoMoq;
-using AutoFixture.Xunit2;
+using global::TransmissionStreaming.TestSupport.Testing;
 using Filesystem;
 using FluentAssertions;
 using global::TransmissionStreaming.Core.Arr;
@@ -24,7 +24,7 @@ public sealed class BootstrapperTests
     internal void Should_ComposeEveryInfrastructureFeature(
         StreamingOptions source,
         TemporaryDirectory directory,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        Mock<IOptionsMonitor<StreamingOptions>> options,
         ServiceCollection services
     )
     {
@@ -47,7 +47,7 @@ public sealed class BootstrapperTests
         );
         Type[] contracts =
         [
-            typeof(IArrClient), typeof(ITransmissionClient), typeof(IServicePathDiscovery), typeof(IProjectionPaths), typeof(IMediaPathMapper), typeof(IMediaFiles),
+            typeof(IArrClient), typeof(ITransmissionClient), typeof(IServicePathDiscovery), typeof(IMediaPathMapper), typeof(IMediaFiles),
             typeof(IProjectionFiles),
             typeof(IProjectionStore), typeof(IStreamActivity), typeof(IDiscoveryStatus)
         ];
@@ -62,7 +62,7 @@ public sealed class BootstrapperTests
     }
 
     [Theory, AutoMoqData]
-    internal void Should_PreserveAHostClockOverride([Frozen] Mock<TimeProvider> clock, ServiceCollection services)
+    internal void Should_PreserveAHostClockOverride(Mock<TimeProvider> clock, ServiceCollection services)
     {
         // Arrange
         services.AddSingleton(clock.Object);
@@ -89,6 +89,8 @@ public sealed class BootstrapperTests
                 }
             );
             fixture.Register(() => new ServiceCollection());
+            fixture.Freeze<Mock<IOptionsMonitor<StreamingOptions>>>();
+            fixture.Freeze<Mock<TimeProvider>>();
             return fixture;
         }
     );

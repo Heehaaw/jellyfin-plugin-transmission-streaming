@@ -15,6 +15,7 @@ using TransmissionStreaming.Logic.Discovery;
 using TransmissionStreaming.Logic.Imports;
 using TransmissionStreaming.Logic.Library;
 using Xunit;
+using TransmissionStreaming.Logic.Projection;
 
 public sealed class DiscoverDownloadsTests
 {
@@ -22,11 +23,10 @@ public sealed class DiscoverDownloadsTests
     internal async Task Should_CreateOnlyThePrimaryMovie(
         DiscoveryScenario source,
         SelectVideoFiles.Result selection,
+        BuildProjectionPaths.Result projectionPaths,
         [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
         [Frozen] Mock<ITransmissionClient> transmission,
-        [Frozen] Mock<IArrClient> arr,
         [Frozen] Mock<IProjectionStore> store,
-        [Frozen] Mock<IProjectionPaths> paths,
         [Frozen] Mock<IProjectionFiles> files,
         [Frozen] Mock<IProjectionLibrary> library,
         [Frozen] Mock<IMediator> mediator,
@@ -47,17 +47,13 @@ public sealed class DiscoverDownloadsTests
             }
         );
         transmission.Setup(value => value.GetTorrentsAsync(It.IsAny<TransmissionConnection>(), It.IsAny<CancellationToken>())).ReturnsAsync([source.Torrent]);
-        arr.Setup(value => value.FindDownloadAsync(
-                connection: It.IsAny<ArrConnection>(),
-                kind: MediaKind.Movie,
-                hash: source.Torrent.Hash,
-                filename: It.IsAny<string>(),
+        mediator.Setup(value => value.Send(
+                query: It.Is<FindArrDownload.Query>(query => (query.Kind == MediaKind.Movie) && (query.Hash == source.Torrent.Hash)),
                 cancellationToken: It.IsAny<CancellationToken>()
             )
         ).ReturnsAsync(source.Identity);
         store.Setup(value => value.All()).Returns([]);
-        paths.Setup(value => value.Id(source.Identity)).Returns(source.Existing.Id);
-        paths.Setup(value => value.StreamPath(It.IsAny<string>(), source.Identity)).Returns(source.Existing.StreamPath);
+        mediator.Setup(value => value.Send(It.IsAny<BuildProjectionPaths.Query>(), It.IsAny<CancellationToken>())).Returns(ValueTask.FromResult(projectionPaths));
         mediator.Setup(value => value.Send(It.IsAny<IQuery<string?>>(), It.IsAny<CancellationToken>())).Returns(ValueTask.FromResult<string?>(null));
         library.Setup(value => value.RefreshAsync(It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
         var selected = selection with
@@ -102,8 +98,8 @@ public sealed class DiscoverDownloadsTests
         );
         transmission.Setup(value => value.GetTorrentsAsync(It.IsAny<TransmissionConnection>(), It.IsAny<CancellationToken>())).ReturnsAsync([]);
         store.Setup(value => value.All()).Returns([source.Existing]);
-        mediator.Setup(value => value.Send(It.Is<IQuery<string?>>(query => query is ResolveImportedFile.Query), It.IsAny<CancellationToken>())
-        ).Returns(ValueTask.FromResult<string?>(source.ImportedPath));
+        mediator.Setup(value => value.Send(It.Is<IQuery<string?>>(query => query is ResolveImportedFile.Query), It.IsAny<CancellationToken>()))
+            .Returns(ValueTask.FromResult<string?>(source.ImportedPath));
 
         // Act
         await sut.Handle(source.Command, CancellationToken.None);
@@ -213,9 +209,9 @@ public sealed class DiscoverDownloadsTests
     internal async Task Should_IgnoreDownloadsWithoutArrOwnership(
         DiscoveryScenario source,
         SelectVideoFiles.Result selection,
+        BuildProjectionPaths.Result projectionPaths,
         [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
         [Frozen] Mock<ITransmissionClient> transmission,
-        [Frozen] Mock<IArrClient> arr,
         [Frozen] Mock<IProjectionStore> store,
         [Frozen] Mock<IProjectionFiles> files,
         [Frozen] Mock<IMediator> mediator,
@@ -236,18 +232,16 @@ public sealed class DiscoverDownloadsTests
         );
         transmission.Setup(value => value.GetTorrentsAsync(It.IsAny<TransmissionConnection>(), It.IsAny<CancellationToken>())).ReturnsAsync([source.Torrent]);
         store.Setup(value => value.All()).Returns([]);
-        arr.Setup(value => value.FindDownloadAsync(It.IsAny<ArrConnection>(), It.IsAny<MediaKind>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((MediaIdentity?)null);
+        mediator.Setup(value => value.Send(It.Is<FindArrDownload.Query>(query => true), It.IsAny<CancellationToken>())).ReturnsAsync((MediaIdentity?)null);
 
-        mediator.Setup(value => value.Send(It.IsAny<SelectVideoFiles.Query>(), It.IsAny<CancellationToken>()))
-            .Returns(
-                ValueTask.FromResult(
-                    selection with
-                    {
-                        PlayableIndexes = Enumerable.Range(0, source.Torrent.Files.Count).ToArray()
-                    }
-                )
-            );
+        mediator.Setup(value => value.Send(It.IsAny<SelectVideoFiles.Query>(), It.IsAny<CancellationToken>())).Returns(
+            ValueTask.FromResult(
+                selection with
+                {
+                    PlayableIndexes = Enumerable.Range(0, source.Torrent.Files.Count).ToArray()
+                }
+            )
+        );
 
         // Act
         await sut.Handle(source.Command, CancellationToken.None);

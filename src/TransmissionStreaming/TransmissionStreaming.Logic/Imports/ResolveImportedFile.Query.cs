@@ -17,7 +17,6 @@ public static class ResolveImportedFile
     /// <summary>Accepts only an arr-confirmed import within the mapped media root and expected byte length.</summary>
     internal sealed class Handler(
         IOptionsMonitor<StreamingOptions> options,
-        IArrClient arr,
         IMediator mediator,
         IMediaFiles media
     ) : IQueryHandler<Query, string?>
@@ -47,7 +46,7 @@ public static class ResolveImportedFile
                 Url = url,
                 ApiKey = key
             };
-            var remote = await arr.FindImportedFileAsync(connection, entry.Identity, entry.Length, cancellationToken).ConfigureAwait(false);
+            var remote = await mediator.Send(new FindArrImportedFile.Query(connection, entry.Identity, entry.Length), cancellationToken).ConfigureAwait(false);
             if (remote is null)
             {
                 return null;

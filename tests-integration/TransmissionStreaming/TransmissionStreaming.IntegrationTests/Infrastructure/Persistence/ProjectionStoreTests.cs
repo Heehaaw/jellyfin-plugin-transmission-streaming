@@ -1,8 +1,8 @@
-namespace TransmissionStreaming.Infrastructure.Tests.Persistence;
+namespace TransmissionStreaming.IntegrationTests.Infrastructure.Persistence;
 
 using AutoFixture;
 using AutoFixture.AutoMoq;
-using AutoFixture.Xunit2;
+using global::TransmissionStreaming.TestSupport.Testing;
 using Filesystem;
 using FluentAssertions;
 using global::TransmissionStreaming.Core.Configuration;
@@ -22,7 +22,7 @@ public sealed class ProjectionStoreTests
     internal void Should_RestoreTheCompleteProjectionAcrossStoreInstances(
         ProjectionEntry source,
         TemporaryDirectory directory,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        Mock<IOptionsMonitor<StreamingOptions>> options,
         ProjectionStore sut
     )
     {
@@ -140,7 +140,7 @@ public sealed class ProjectionStoreTests
     internal void Should_RestoreCompletionHistoryAfterReopening(
         CompletedProjection source,
         TemporaryDirectory directory,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        Mock<IOptionsMonitor<StreamingOptions>> options,
         ProjectionStore sut
     )
     {
@@ -187,9 +187,9 @@ public sealed class ProjectionStoreTests
         using var root = directory;
         var entries = source.Take(HistoryLimit + 3)
             .Select((entry, index) => entry with
-                {
-                    CompletedAt = entry.CompletedAt.ToOffset(TimeSpan.FromHours(index % 2 == 0 ? 13 : -11))
-                }
+            {
+                CompletedAt = entry.CompletedAt.ToOffset(TimeSpan.FromHours(index % 2 == 0 ? 13 : -11))
+            }
             ).ToArray();
         var expected = entries.OrderByDescending(entry => entry.CompletedAt)
             .ThenByDescending(entry => entry.Id, StringComparer.Ordinal).Take(HistoryLimit).ToArray();
@@ -261,6 +261,7 @@ public sealed class ProjectionStoreTests
                     mock.SetupGet(value => value.CurrentValue).Returns(fixture.Create<StreamingOptions>())
                 )
             );
+            fixture.Freeze<Mock<IOptionsMonitor<StreamingOptions>>>();
             return fixture;
         }
     );

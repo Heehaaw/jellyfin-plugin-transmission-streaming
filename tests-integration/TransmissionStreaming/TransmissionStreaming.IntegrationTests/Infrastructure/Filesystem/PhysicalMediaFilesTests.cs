@@ -1,8 +1,11 @@
-namespace TransmissionStreaming.Infrastructure.Tests.Filesystem;
+namespace TransmissionStreaming.IntegrationTests.Infrastructure.Filesystem;
 
 using FluentAssertions;
 using global::TransmissionStreaming.Infrastructure.Filesystem;
 using Xunit;
+using AutoFixture;
+using AutoFixture.AutoMoq;
+using global::TransmissionStreaming.TestSupport.Testing;
 
 public sealed class PhysicalMediaFilesTests
 {
@@ -37,10 +40,10 @@ public sealed class PhysicalMediaFilesTests
         var payload = source.Concat(source).ToArray();
         var offset = source.Length;
         var buffer = new byte[source.Length];
-        await File.WriteAllBytesAsync(path, payload);
+        await File.WriteAllBytesAsync(path, payload, TestContext.Current.CancellationToken);
 
         // Act
-        var count = await sut.ReadAsync(path, buffer, offset, CancellationToken.None);
+        var count = await sut.ReadAsync(path, buffer, offset, TestContext.Current.CancellationToken);
 
         // Assert
         count.Should().Be(source.Length);
@@ -57,8 +60,8 @@ public sealed class PhysicalMediaFilesTests
         var buffer = new byte[4096];
 
         // Act
-        var absentFile = await sut.ReadAsync(missingFile, buffer, 0, CancellationToken.None);
-        var absentDirectory = await sut.ReadAsync(missingDirectory, buffer, 0, CancellationToken.None);
+        var absentFile = await sut.ReadAsync(missingFile, buffer, 0, TestContext.Current.CancellationToken);
+        var absentDirectory = await sut.ReadAsync(missingDirectory, buffer, 0, TestContext.Current.CancellationToken);
 
         // Assert
         absentFile.Should().Be(0);
@@ -99,4 +102,10 @@ public sealed class PhysicalMediaFilesTests
         directoryExistsAsFile.Should().BeFalse();
         removed.Should().BeFalse();
     }
+    private sealed class AutoMoqDataAttribute() : AutoDataAttribute(() =>
+    {
+        var fixture = new Fixture { RepeatCount = 1 };
+        fixture.Customize(new AutoMoqCustomization { ConfigureMembers = true, GenerateDelegates = true });
+        return fixture;
+    });
 }

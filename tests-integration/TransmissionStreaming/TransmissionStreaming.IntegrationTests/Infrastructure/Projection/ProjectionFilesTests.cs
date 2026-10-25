@@ -1,6 +1,5 @@
-namespace TransmissionStreaming.Infrastructure.Tests.Projection;
+namespace TransmissionStreaming.IntegrationTests.Infrastructure.Projection;
 
-using AutoFixture.Xunit2;
 using Filesystem;
 using FluentAssertions;
 using global::TransmissionStreaming.Core.Arr;
@@ -10,6 +9,9 @@ using Microsoft.Extensions.Options;
 using Moq;
 using System.Xml.Linq;
 using Xunit;
+using AutoFixture;
+using AutoFixture.AutoMoq;
+using global::TransmissionStreaming.TestSupport.Testing;
 using ProjectionEntry = global::TransmissionStreaming.Core.Projection.Projection;
 
 public sealed class ProjectionFilesTests
@@ -19,7 +21,7 @@ public sealed class ProjectionFilesTests
         string markerValue,
         StreamingOptions configuration,
         TemporaryDirectory directory,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        Mock<IOptionsMonitor<StreamingOptions>> options,
         ProjectionFiles sut
     )
     {
@@ -48,7 +50,7 @@ public sealed class ProjectionFilesTests
         string name,
         StreamingOptions configuration,
         TemporaryDirectory directory,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        Mock<IOptionsMonitor<StreamingOptions>> options,
         ProjectionFiles sut
     )
     {
@@ -76,7 +78,7 @@ public sealed class ProjectionFilesTests
     internal void Should_ClaimAndReuseADedicatedEmptyDirectory(
         StreamingOptions configuration,
         TemporaryDirectory directory,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        Mock<IOptionsMonitor<StreamingOptions>> options,
         ProjectionFiles sut
     )
     {
@@ -103,7 +105,7 @@ public sealed class ProjectionFilesTests
     internal void Should_RejectTheFilesystemRoot(
         StreamingOptions configuration,
         TemporaryDirectory directory,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        Mock<IOptionsMonitor<StreamingOptions>> options,
         ProjectionFiles sut
     )
     {
@@ -128,7 +130,7 @@ public sealed class ProjectionFilesTests
         ProjectionEntry entry,
         StreamingOptions configuration,
         TemporaryDirectory directory,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        Mock<IOptionsMonitor<StreamingOptions>> options,
         ProjectionFiles sut
     )
     {
@@ -166,7 +168,7 @@ public sealed class ProjectionFilesTests
         ProjectionEntry entry,
         StreamingOptions configuration,
         TemporaryDirectory directory,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        Mock<IOptionsMonitor<StreamingOptions>> options,
         ProjectionFiles sut
     )
     {
@@ -199,7 +201,7 @@ public sealed class ProjectionFilesTests
         ProjectionEntry entry,
         StreamingOptions configuration,
         TemporaryDirectory directory,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        Mock<IOptionsMonitor<StreamingOptions>> options,
         ProjectionFiles sut
     )
     {
@@ -229,7 +231,7 @@ public sealed class ProjectionFilesTests
     internal void Should_RejectNonHttpPlaybackUrls(
         ProjectionEntry entry,
         StreamingOptions configuration,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        Mock<IOptionsMonitor<StreamingOptions>> options,
         ProjectionFiles sut
     )
     {
@@ -252,7 +254,7 @@ public sealed class ProjectionFilesTests
     internal void Should_RejectCredentialsEmbeddedInPlaybackUrls(
         ProjectionEntry entry,
         StreamingOptions configuration,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        Mock<IOptionsMonitor<StreamingOptions>> options,
         ProjectionFiles sut
     )
     {
@@ -277,7 +279,7 @@ public sealed class ProjectionFilesTests
         ProjectionEntry entry,
         StreamingOptions configuration,
         TemporaryDirectory directory,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        Mock<IOptionsMonitor<StreamingOptions>> options,
         ProjectionFiles sut
     )
     {
@@ -302,4 +304,11 @@ public sealed class ProjectionFilesTests
         // Assert
         metadata.Elements("uniqueid").Should().BeEmpty("zero identifiers must not merge unrelated Jellyfin entries");
     }
+    private sealed class AutoMoqDataAttribute() : AutoDataAttribute(() =>
+    {
+        var fixture = new Fixture { RepeatCount = 1 };
+        fixture.Customize(new AutoMoqCustomization { ConfigureMembers = true, GenerateDelegates = true });
+        fixture.Freeze<Mock<IOptionsMonitor<StreamingOptions>>>();
+        return fixture;
+    });
 }

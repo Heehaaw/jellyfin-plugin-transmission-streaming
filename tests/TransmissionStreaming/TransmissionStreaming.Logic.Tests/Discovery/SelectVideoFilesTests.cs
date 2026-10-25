@@ -16,7 +16,7 @@ public sealed class SelectVideoFilesTests
         var extra = source.Files[0];
         var feature = source.Files[1];
         extra.Name += ".mkv";
-        feature.Name += ".mkv";
+        feature.Name += ".mov";
         feature.Length += extra.Length;
         var expectedIndex = source.Files.ToList().IndexOf(feature);
 

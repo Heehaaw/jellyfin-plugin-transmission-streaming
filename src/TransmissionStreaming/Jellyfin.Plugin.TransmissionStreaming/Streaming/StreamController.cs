@@ -1,5 +1,6 @@
 namespace Jellyfin.Plugin.TransmissionStreaming.Streaming;
 
+using Jellyfin.Plugin.TransmissionStreaming.Http;
 using global::TransmissionStreaming.Core.Streaming;
 using global::TransmissionStreaming.Logic.Status;
 using global::TransmissionStreaming.Logic.Streaming;
@@ -32,7 +33,7 @@ public sealed class StreamController(IMediator mediator, ILogger<StreamControlle
             return NotFound();
         }
 
-        if (!ByteRange.TryParse(Request.Headers.Range.ToString(), entry.Length, out var range))
+        if (!HttpByteRange.TryParse(Request.Headers.Range.ToString(), entry.Length, out var range))
         {
             Response.Headers.ContentRange = $"bytes */{entry.Length}";
             return StatusCode(StatusCodes.Status416RangeNotSatisfiable);

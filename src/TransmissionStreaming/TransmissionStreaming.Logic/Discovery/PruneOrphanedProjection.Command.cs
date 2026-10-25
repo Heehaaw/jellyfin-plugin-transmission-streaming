@@ -16,7 +16,7 @@ public static class PruneOrphanedProjection
 
     internal sealed class Handler(
         IOptionsMonitor<StreamingOptions> options,
-        IArrClient arr,
+        IMediator mediator,
         IMediaFiles media,
         IStreamActivity activity,
         IProjectionLibrary library,
@@ -56,7 +56,7 @@ public static class PruneOrphanedProjection
 
             // A missing torrent alone can mean a late import. Require an authoritative
             // arr library response; connection failures propagate without deleting anything.
-            if (await arr.IsMediaTrackedAsync(connection, entry.Identity, cancellationToken).ConfigureAwait(false))
+            if (await mediator.Send(new IsArrMediaTracked.Query(connection, entry.Identity), cancellationToken).ConfigureAwait(false))
             {
                 return false;
             }

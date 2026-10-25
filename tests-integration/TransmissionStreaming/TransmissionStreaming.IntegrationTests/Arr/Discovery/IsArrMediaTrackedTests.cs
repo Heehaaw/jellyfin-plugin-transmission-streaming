@@ -1,23 +1,22 @@
-namespace TransmissionStreaming.Infrastructure.Tests.Arr;
+namespace TransmissionStreaming.IntegrationTests.Arr.Discovery;
 
 using AutoFixture;
 using AutoFixture.AutoMoq;
-using AutoFixture.Xunit2;
+using global::TransmissionStreaming.TestSupport.Testing;
 using FluentAssertions;
 using global::TransmissionStreaming.Core.Arr;
 using global::TransmissionStreaming.Infrastructure.Arr;
 using global::TransmissionStreaming.Infrastructure.Arr.Transport;
-using global::TransmissionStreaming.Infrastructure.Arr.Discovery;
-using global::TransmissionStreaming.Infrastructure.Arr.Imports;
+using global::TransmissionStreaming.Logic.Discovery;
 using System.Net;
 using System.Text;
 using System.Text.Json;
 using Xunit;
 
-public sealed class ArrClientTrackingTests
+public sealed class IsArrMediaTrackedTests
 {
     [Theory, AutoMoqData]
-    internal async Task Should_CheckTheMovieLibraryRatherThanTheQueue(TrackingScenario source, [Frozen] TestHttpHandler handler, ArrClient sut)
+    internal async Task Should_CheckTheMovieLibraryRatherThanTheQueue(TrackingScenario source, TestHttpHandler handler, IsArrMediaTracked.Handler sut)
     {
         // Arrange
         source.Identity.Kind = MediaKind.Movie;
@@ -25,7 +24,7 @@ public sealed class ArrClientTrackingTests
         handler.Respond = _ => Response(Library(source).GetRawText());
 
         // Act
-        var result = await sut.IsMediaTrackedAsync(source.Connection, source.Identity, CancellationToken.None);
+        var result = await sut.Handle(new IsArrMediaTracked.Query(source.Connection, source.Identity), TestContext.Current.CancellationToken);
 
         // Assert
         result.Should().BeTrue();
@@ -33,7 +32,7 @@ public sealed class ArrClientTrackingTests
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_PreserveEpisodesWhileTheirSeriesRemainsTracked(TrackingScenario source, [Frozen] TestHttpHandler handler, ArrClient sut)
+    internal async Task Should_PreserveEpisodesWhileTheirSeriesRemainsTracked(TrackingScenario source, TestHttpHandler handler, IsArrMediaTracked.Handler sut)
     {
         // Arrange
         source.Identity.Kind = MediaKind.Episode;
@@ -41,7 +40,7 @@ public sealed class ArrClientTrackingTests
         handler.Respond = _ => Response(Library(source).GetRawText());
 
         // Act
-        var result = await sut.IsMediaTrackedAsync(source.Connection, source.Identity, CancellationToken.None);
+        var result = await sut.Handle(new IsArrMediaTracked.Query(source.Connection, source.Identity), TestContext.Current.CancellationToken);
 
         // Assert
         result.Should().BeTrue();
@@ -49,7 +48,7 @@ public sealed class ArrClientTrackingTests
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_MatchAReaddedMovieByTmdbIdentity(TrackingScenario source, [Frozen] TestHttpHandler handler, ArrClient sut)
+    internal async Task Should_MatchAReaddedMovieByTmdbIdentity(TrackingScenario source, TestHttpHandler handler, IsArrMediaTracked.Handler sut)
     {
         // Arrange
         source.Identity.Kind = MediaKind.Movie;
@@ -61,14 +60,14 @@ public sealed class ArrClientTrackingTests
         handler.Respond = _ => Response(Library(source).GetRawText());
 
         // Act
-        var result = await sut.IsMediaTrackedAsync(source.Connection, source.Identity, CancellationToken.None);
+        var result = await sut.Handle(new IsArrMediaTracked.Query(source.Connection, source.Identity), TestContext.Current.CancellationToken);
 
         // Assert
         result.Should().BeTrue();
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_MatchAReaddedSeriesByTvdbIdentity(TrackingScenario source, [Frozen] TestHttpHandler handler, ArrClient sut)
+    internal async Task Should_MatchAReaddedSeriesByTvdbIdentity(TrackingScenario source, TestHttpHandler handler, IsArrMediaTracked.Handler sut)
     {
         // Arrange
         source.Identity.Kind = MediaKind.Episode;
@@ -80,14 +79,14 @@ public sealed class ArrClientTrackingTests
         handler.Respond = _ => Response(Library(source).GetRawText());
 
         // Act
-        var result = await sut.IsMediaTrackedAsync(source.Connection, source.Identity, CancellationToken.None);
+        var result = await sut.Handle(new IsArrMediaTracked.Query(source.Connection, source.Identity), TestContext.Current.CancellationToken);
 
         // Assert
         result.Should().BeTrue();
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_MatchAReaddedTitleByPositiveImdbIdentity(TrackingScenario source, [Frozen] TestHttpHandler handler, ArrClient sut)
+    internal async Task Should_MatchAReaddedTitleByPositiveImdbIdentity(TrackingScenario source, TestHttpHandler handler, IsArrMediaTracked.Handler sut)
     {
         // Arrange
         source.Identity.Kind = MediaKind.Movie;
@@ -100,14 +99,14 @@ public sealed class ArrClientTrackingTests
         handler.Respond = _ => Response(Library(source).GetRawText());
 
         // Act
-        var result = await sut.IsMediaTrackedAsync(source.Connection, source.Identity, CancellationToken.None);
+        var result = await sut.Handle(new IsArrMediaTracked.Query(source.Connection, source.Identity), TestContext.Current.CancellationToken);
 
         // Assert
         result.Should().BeTrue();
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_ReportAbsenceOnlyFromAnAuthoritativeCollection(TrackingScenario source, [Frozen] TestHttpHandler handler, ArrClient sut)
+    internal async Task Should_ReportAbsenceOnlyFromAnAuthoritativeCollection(TrackingScenario source, TestHttpHandler handler, IsArrMediaTracked.Handler sut)
     {
         // Arrange
         source.Identity.Kind = MediaKind.Movie;
@@ -115,14 +114,14 @@ public sealed class ArrClientTrackingTests
         handler.Respond = _ => Response(Library(source).GetRawText());
 
         // Act
-        var result = await sut.IsMediaTrackedAsync(source.Connection, source.Identity, CancellationToken.None);
+        var result = await sut.Handle(new IsArrMediaTracked.Query(source.Connection, source.Identity), TestContext.Current.CancellationToken);
 
         // Assert
         result.Should().BeFalse();
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_PreserveUnknownOrUnidentifiableMediaWithoutARequest(TrackingScenario source, [Frozen] TestHttpHandler handler, ArrClient sut)
+    internal async Task Should_PreserveUnknownOrUnidentifiableMediaWithoutARequest(TrackingScenario source, TestHttpHandler handler, IsArrMediaTracked.Handler sut)
     {
         // Arrange
         var unknown = source.Identity with
@@ -139,8 +138,8 @@ public sealed class ArrClientTrackingTests
         };
 
         // Act
-        var unknownRemains = await sut.IsMediaTrackedAsync(source.Connection, unknown, CancellationToken.None);
-        var unidentifiedRemains = await sut.IsMediaTrackedAsync(source.Connection, unidentified, CancellationToken.None);
+        var unknownRemains = await sut.Handle(new IsArrMediaTracked.Query(source.Connection, unknown), TestContext.Current.CancellationToken);
+        var unidentifiedRemains = await sut.Handle(new IsArrMediaTracked.Query(source.Connection, unidentified), TestContext.Current.CancellationToken);
 
         // Assert
         unknownRemains.Should().BeTrue();
@@ -149,7 +148,7 @@ public sealed class ArrClientTrackingTests
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_RejectMalformedLibraryShapes(TrackingScenario source, [Frozen] TestHttpHandler handler, ArrClient sut)
+    internal async Task Should_RejectMalformedLibraryShapes(TrackingScenario source, TestHttpHandler handler, IsArrMediaTracked.Handler sut)
     {
         // Arrange
         source.Identity.Kind = MediaKind.Movie;
@@ -160,7 +159,7 @@ public sealed class ArrClientTrackingTests
             handler.Respond = _ => Response(payload);
 
             // Act
-            var action = () => sut.IsMediaTrackedAsync(source.Connection, source.Identity, CancellationToken.None);
+            var action = async () => await sut.Handle(new IsArrMediaTracked.Query(source.Connection, source.Identity), TestContext.Current.CancellationToken);
 
             // Assert
             await action.Should().ThrowAsync<JsonException>();
@@ -168,28 +167,28 @@ public sealed class ArrClientTrackingTests
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_PropagateAnUnavailableLibrary(TrackingScenario source, [Frozen] TestHttpHandler handler, ArrClient sut)
+    internal async Task Should_PropagateAnUnavailableLibrary(TrackingScenario source, TestHttpHandler handler, IsArrMediaTracked.Handler sut)
     {
         // Arrange
         source.Identity.Kind = MediaKind.Movie;
         handler.Respond = _ => new HttpResponseMessage(HttpStatusCode.ServiceUnavailable);
 
         // Act
-        var action = () => sut.IsMediaTrackedAsync(source.Connection, source.Identity, CancellationToken.None);
+        var action = async () => await sut.Handle(new IsArrMediaTracked.Query(source.Connection, source.Identity), TestContext.Current.CancellationToken);
 
         // Assert
         await action.Should().ThrowAsync<HttpRequestException>();
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_NotTreatAnEndpoint404AsADeletedTitle(TrackingScenario source, [Frozen] TestHttpHandler handler, ArrClient sut)
+    internal async Task Should_NotTreatAnEndpoint404AsADeletedTitle(TrackingScenario source, TestHttpHandler handler, IsArrMediaTracked.Handler sut)
     {
         // Arrange
         source.Identity.Kind = MediaKind.Movie;
         handler.Respond = _ => new HttpResponseMessage(HttpStatusCode.NotFound);
 
         // Act
-        var action = () => sut.IsMediaTrackedAsync(source.Connection, source.Identity, CancellationToken.None);
+        var action = async () => await sut.Handle(new IsArrMediaTracked.Query(source.Connection, source.Identity), TestContext.Current.CancellationToken);
 
         // Assert
         await action.Should().ThrowAsync<ArrNotFoundException>();
@@ -235,10 +234,11 @@ public sealed class ArrClientTrackingTests
                 }
             );
             fixture.Register<IArrTransport>(() => fixture.Create<ArrTransport>());
-            fixture.Register<IArrDownloadDiscovery>(() => fixture.Create<ArrDownloadDiscovery>());
-            fixture.Register<IArrImportResolver>(() => fixture.Create<ArrImportResolver>());
+            fixture.Register<IArrClient>(() => fixture.Create<ArrClient>());
+
             fixture.Customize<ArrConnection>(composer => composer.With(connection => connection.Url, "http://arr.invalid/"));
             fixture.Register(() => new HttpClient(fixture.Create<TestHttpHandler>()));
+            fixture.Freeze<TestHttpHandler>();
             return fixture;
         }
     );

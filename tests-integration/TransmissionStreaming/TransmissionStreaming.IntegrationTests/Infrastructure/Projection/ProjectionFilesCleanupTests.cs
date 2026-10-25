@@ -1,8 +1,8 @@
-namespace TransmissionStreaming.Infrastructure.Tests.Projection;
+namespace TransmissionStreaming.IntegrationTests.Infrastructure.Projection;
 
 using AutoFixture;
 using AutoFixture.AutoMoq;
-using AutoFixture.Xunit2;
+using global::TransmissionStreaming.TestSupport.Testing;
 using Filesystem;
 using FluentAssertions;
 using global::TransmissionStreaming.Core.Arr;
@@ -22,7 +22,7 @@ public sealed class ProjectionFilesCleanupTests
         ProjectionEntry source,
         StreamingOptions configuration,
         TemporaryDirectory directory,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        Mock<IOptionsMonitor<StreamingOptions>> options,
         ProjectionFiles sut
     )
     {
@@ -65,7 +65,7 @@ public sealed class ProjectionFilesCleanupTests
         ProjectionEntry source,
         StreamingOptions configuration,
         TemporaryDirectory directory,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        Mock<IOptionsMonitor<StreamingOptions>> options,
         ProjectionFiles sut
     )
     {
@@ -92,7 +92,7 @@ public sealed class ProjectionFilesCleanupTests
         ProjectionEntry source,
         StreamingOptions configuration,
         TemporaryDirectory directory,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        Mock<IOptionsMonitor<StreamingOptions>> options,
         ProjectionFiles sut
     )
     {
@@ -121,7 +121,7 @@ public sealed class ProjectionFilesCleanupTests
         StreamingOptions configuration,
         TemporaryDirectory directory,
         TemporaryDirectory outside,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        Mock<IOptionsMonitor<StreamingOptions>> options,
         ProjectionFiles sut
     )
     {
@@ -162,7 +162,7 @@ public sealed class ProjectionFilesCleanupTests
         StreamingOptions configuration,
         TemporaryDirectory directory,
         TemporaryDirectory outside,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        Mock<IOptionsMonitor<StreamingOptions>> options,
         ProjectionFiles sut
     )
     {
@@ -196,7 +196,7 @@ public sealed class ProjectionFilesCleanupTests
         StreamingOptions configuration,
         TemporaryDirectory directory,
         TemporaryDirectory outside,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        Mock<IOptionsMonitor<StreamingOptions>> options,
         ProjectionFiles sut
     )
     {
@@ -234,7 +234,7 @@ public sealed class ProjectionFilesCleanupTests
         StreamingOptions configuration,
         TemporaryDirectory directory,
         TemporaryDirectory outside,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        Mock<IOptionsMonitor<StreamingOptions>> options,
         ProjectionFiles sut
     )
     {
@@ -273,7 +273,7 @@ public sealed class ProjectionFilesCleanupTests
         ProjectionEntry source,
         StreamingOptions configuration,
         TemporaryDirectory directory,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        Mock<IOptionsMonitor<StreamingOptions>> options,
         ProjectionFiles sut
     )
     {
@@ -311,6 +311,7 @@ public sealed class ProjectionFilesCleanupTests
                 }
             );
             fixture.Register<IMediaPathMapper>(() => fixture.Create<PhysicalMediaPathMapper>());
+            fixture.Freeze<Mock<IOptionsMonitor<StreamingOptions>>>();
             return fixture;
         }
     );

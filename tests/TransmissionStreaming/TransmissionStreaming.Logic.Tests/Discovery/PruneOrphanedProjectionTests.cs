@@ -6,6 +6,7 @@ using AutoFixture.Xunit2;
 using FluentAssertions;
 using Microsoft.Extensions.Options;
 using Moq;
+using Mediator;
 using TransmissionStreaming.Core.Arr;
 using TransmissionStreaming.Core.Configuration;
 using TransmissionStreaming.Core.Filesystem;
@@ -19,7 +20,7 @@ public sealed class PruneOrphanedProjectionTests
     [Theory, AutoMoqData]
     internal async Task Should_PreserveAnExistingTorrent(
         PruneOrphanedProjection.Command source,
-        [Frozen] Mock<IArrClient> arr,
+        [Frozen] Mock<IMediator> mediator,
         [Frozen] Mock<IProjectionFiles> files,
         PruneOrphanedProjection.Handler sut
     )
@@ -35,7 +36,7 @@ public sealed class PruneOrphanedProjectionTests
 
         // Assert
         removed.Should().BeFalse();
-        arr.Verify(value => value.IsMediaTrackedAsync(It.IsAny<ArrConnection>(), It.IsAny<MediaIdentity>(), It.IsAny<CancellationToken>()), Times.Never);
+        mediator.Verify(value => value.Send(It.Is<IsArrMediaTracked.Query>(query => true), It.IsAny<CancellationToken>()), Times.Never);
         files.Verify(value => value.RemoveFiles(It.IsAny<Projection>()), Times.Never);
     }
 
@@ -43,7 +44,7 @@ public sealed class PruneOrphanedProjectionTests
     internal async Task Should_PreserveAnActiveReader(
         PruneOrphanedProjection.Command source,
         [Frozen] Mock<IStreamActivity> activity,
-        [Frozen] Mock<IArrClient> arr,
+        [Frozen] Mock<IMediator> mediator,
         PruneOrphanedProjection.Handler sut
     )
     {
@@ -59,7 +60,7 @@ public sealed class PruneOrphanedProjectionTests
 
         // Assert
         removed.Should().BeFalse();
-        arr.Verify(value => value.IsMediaTrackedAsync(It.IsAny<ArrConnection>(), It.IsAny<MediaIdentity>(), It.IsAny<CancellationToken>()), Times.Never);
+        mediator.Verify(value => value.Send(It.Is<IsArrMediaTracked.Query>(query => true), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Theory, AutoMoqData]
@@ -67,7 +68,7 @@ public sealed class PruneOrphanedProjectionTests
         PruneOrphanedProjection.Command source,
         [Frozen] Mock<IStreamActivity> activity,
         [Frozen] Mock<IMediaFiles> media,
-        [Frozen] Mock<IArrClient> arr,
+        [Frozen] Mock<IMediator> mediator,
         PruneOrphanedProjection.Handler sut
     )
     {
@@ -84,7 +85,7 @@ public sealed class PruneOrphanedProjectionTests
 
         // Assert
         removed.Should().BeFalse();
-        arr.Verify(value => value.IsMediaTrackedAsync(It.IsAny<ArrConnection>(), It.IsAny<MediaIdentity>(), It.IsAny<CancellationToken>()), Times.Never);
+        mediator.Verify(value => value.Send(It.Is<IsArrMediaTracked.Query>(query => true), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Theory, AutoMoqData]
@@ -93,7 +94,7 @@ public sealed class PruneOrphanedProjectionTests
         StreamingOptions configuration,
         [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
         [Frozen] Mock<IStreamActivity> activity,
-        [Frozen] Mock<IArrClient> arr,
+        [Frozen] Mock<IMediator> mediator,
         PruneOrphanedProjection.Handler sut
     )
     {
@@ -117,7 +118,7 @@ public sealed class PruneOrphanedProjectionTests
 
         // Assert
         removed.Should().BeFalse();
-        arr.Verify(value => value.IsMediaTrackedAsync(It.IsAny<ArrConnection>(), It.IsAny<MediaIdentity>(), It.IsAny<CancellationToken>()), Times.Never);
+        mediator.Verify(value => value.Send(It.Is<IsArrMediaTracked.Query>(query => true), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Theory, AutoMoqData]
@@ -126,7 +127,7 @@ public sealed class PruneOrphanedProjectionTests
         StreamingOptions configuration,
         [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
         [Frozen] Mock<IStreamActivity> activity,
-        [Frozen] Mock<IArrClient> arr,
+        [Frozen] Mock<IMediator> mediator,
         [Frozen] Mock<IProjectionLibrary> library,
         PruneOrphanedProjection.Handler sut
     )
@@ -140,7 +141,7 @@ public sealed class PruneOrphanedProjectionTests
         };
         activity.Setup(value => value.Count(source.Entry.Id)).Returns(0);
         options.SetupGet(value => value.CurrentValue).Returns(configuration);
-        arr.Setup(value => value.IsMediaTrackedAsync(It.IsAny<ArrConnection>(), source.Entry.Identity, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        mediator.Setup(value => value.Send(It.Is<IsArrMediaTracked.Query>(query => (query.Identity == source.Entry.Identity)), It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
         // Act
         var removed = await sut.Handle(command, CancellationToken.None);
@@ -156,7 +157,7 @@ public sealed class PruneOrphanedProjectionTests
         StreamingOptions configuration,
         [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
         [Frozen] Mock<IStreamActivity> activity,
-        [Frozen] Mock<IArrClient> arr,
+        [Frozen] Mock<IMediator> mediator,
         [Frozen] Mock<IProjectionFiles> files,
         [Frozen] Mock<IProjectionStore> store,
         PruneOrphanedProjection.Handler sut
@@ -171,7 +172,8 @@ public sealed class PruneOrphanedProjectionTests
         };
         activity.Setup(value => value.Count(source.Entry.Id)).Returns(0);
         options.SetupGet(value => value.CurrentValue).Returns(configuration);
-        arr.Setup(value => value.IsMediaTrackedAsync(It.IsAny<ArrConnection>(), source.Entry.Identity, It.IsAny<CancellationToken>())).ThrowsAsync(new HttpRequestException());
+        mediator.Setup(value => value.Send(It.Is<IsArrMediaTracked.Query>(query => (query.Identity == source.Entry.Identity)), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new HttpRequestException());
 
         // Act
         var action = async () => await sut.Handle(command, CancellationToken.None);
@@ -189,7 +191,7 @@ public sealed class PruneOrphanedProjectionTests
         LibraryItem projected,
         [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
         [Frozen] Mock<IStreamActivity> activity,
-        [Frozen] Mock<IArrClient> arr,
+        [Frozen] Mock<IMediator> mediator,
         [Frozen] Mock<IProjectionLibrary> library,
         [Frozen] Mock<IProjectionFiles> files,
         PruneOrphanedProjection.Handler sut
@@ -204,7 +206,7 @@ public sealed class PruneOrphanedProjectionTests
         };
         activity.Setup(value => value.Count(source.Entry.Id)).Returns(0);
         options.SetupGet(value => value.CurrentValue).Returns(configuration);
-        arr.Setup(value => value.IsMediaTrackedAsync(It.IsAny<ArrConnection>(), source.Entry.Identity, It.IsAny<CancellationToken>())).ReturnsAsync(false);
+        mediator.Setup(value => value.Send(It.Is<IsArrMediaTracked.Query>(query => (query.Identity == source.Entry.Identity)), It.IsAny<CancellationToken>())).ReturnsAsync(false);
         library.Setup(value => value.Find(source.Entry.StreamPath)).Returns(
             projected with
             {
@@ -228,7 +230,7 @@ public sealed class PruneOrphanedProjectionTests
         [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
         [Frozen] Mock<IStreamActivity> activity,
         [Frozen] Mock<IMediaFiles> media,
-        [Frozen] Mock<IArrClient> arr,
+        [Frozen] Mock<IMediator> mediator,
         [Frozen] Mock<IProjectionLibrary> library,
         [Frozen] Mock<IProjectionFiles> files,
         [Frozen] Mock<IProjectionStore> store,
@@ -244,13 +246,13 @@ public sealed class PruneOrphanedProjectionTests
         activity.Setup(value => value.Count(source.Entry.Id)).Returns(0);
         media.Setup(value => value.Exists(source.Entry.CompletedPath!)).Returns(false);
         options.SetupGet(value => value.CurrentValue).Returns(configuration);
-        arr.Setup(value => value.IsMediaTrackedAsync(
-                    connection: It.Is<ArrConnection>(connection => connection.Url == configuration.SonarrUrl && connection.ApiKey == configuration.SonarrApiKey),
-                    identity: source.Entry.Identity,
-                    cancellationToken: It.IsAny<CancellationToken>()
-                )
+        mediator.Setup(value => value.Send(
+                query: It.Is<IsArrMediaTracked.Query>(query =>
+                    (query.Connection.Url == configuration.SonarrUrl && query.Connection.ApiKey == configuration.SonarrApiKey) && (query.Identity == source.Entry.Identity)
+                ),
+                cancellationToken: It.IsAny<CancellationToken>()
             )
-            .ReturnsAsync(false);
+        ).ReturnsAsync(false);
         var operations = new List<string>();
         var hostStep = "host";
         var filesStep = "files";
@@ -271,10 +273,11 @@ public sealed class PruneOrphanedProjectionTests
         // Assert
         removed.Should().BeTrue();
         operations.Should().Equal(hostStep, filesStep, storeStep);
-        arr.Verify(
-            expression: value => value.IsMediaTrackedAsync(
-                connection: It.Is<ArrConnection>(connection => connection.Url == configuration.SonarrUrl && connection.ApiKey == configuration.SonarrApiKey),
-                identity: source.Entry.Identity,
+        mediator.Verify(
+            expression: value => value.Send(
+                query: It.Is<IsArrMediaTracked.Query>(query =>
+                    (query.Connection.Url == configuration.SonarrUrl && query.Connection.ApiKey == configuration.SonarrApiKey) && (query.Identity == source.Entry.Identity)
+                ),
                 cancellationToken: It.IsAny<CancellationToken>()
             ),
             times: Times.Once
@@ -288,7 +291,7 @@ public sealed class PruneOrphanedProjectionTests
         LibraryItem projected,
         [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
         [Frozen] Mock<IStreamActivity> activity,
-        [Frozen] Mock<IArrClient> arr,
+        [Frozen] Mock<IMediator> mediator,
         [Frozen] Mock<IProjectionLibrary> library,
         [Frozen] Mock<IProjectionFiles> files,
         [Frozen] Mock<IProjectionStore> store,
@@ -304,7 +307,7 @@ public sealed class PruneOrphanedProjectionTests
         };
         activity.Setup(value => value.Count(source.Entry.Id)).Returns(0);
         options.SetupGet(value => value.CurrentValue).Returns(configuration);
-        arr.Setup(value => value.IsMediaTrackedAsync(It.IsAny<ArrConnection>(), source.Entry.Identity, It.IsAny<CancellationToken>())).ReturnsAsync(false);
+        mediator.Setup(value => value.Send(It.Is<IsArrMediaTracked.Query>(query => (query.Identity == source.Entry.Identity)), It.IsAny<CancellationToken>())).ReturnsAsync(false);
         library.Setup(value => value.Find(source.Entry.StreamPath)).Returns(
             projected with
             {

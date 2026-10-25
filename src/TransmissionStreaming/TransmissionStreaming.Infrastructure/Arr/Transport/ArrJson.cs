@@ -4,11 +4,6 @@ using System.Text.Json;
 
 internal static class ArrJson
 {
-    public static string Basename(string path)
-    {
-        return Path.GetFileName(path.Replace('\\', '/'));
-    }
-
     public static IEnumerable<JsonElement> Array(JsonElement element)
     {
         return element.ValueKind == JsonValueKind.Array ? element.EnumerateArray() : [];

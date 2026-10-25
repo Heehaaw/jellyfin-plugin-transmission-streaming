@@ -9,6 +9,7 @@ using TransmissionStreaming.Core.Projection;
 using TransmissionStreaming.Core.Transmission;
 using TransmissionStreaming.Logic.Imports;
 using TransmissionStreaming.Logic.Library;
+using TransmissionStreaming.Logic.Projection;
 
 /// <summary>Defines the DiscoverDownloads command and its application handler.</summary>
 public static class DiscoverDownloads
@@ -21,8 +22,6 @@ public static class DiscoverDownloads
         IOptionsMonitor<StreamingOptions> options,
         IProjectionStore store,
         ITransmissionClient transmission,
-        IArrClient arr,
-        IProjectionPaths paths,
         IProjectionFiles files,
         IProjectionLibrary library,
         IMediator mediator
@@ -119,7 +118,8 @@ public static class DiscoverDownloads
                 return null;
             }
 
-            var projectionId = paths.Id(identity);
+            var paths = await mediator.Send(new BuildProjectionPaths.Query(files.Root, identity), cancellationToken).ConfigureAwait(false);
+            var projectionId = paths.Id;
             // A completed entry or an active earlier release keeps ownership of its stable identity.
             if (entries.ContainsKey(projectionId))
             {
@@ -136,7 +136,7 @@ public static class DiscoverDownloads
                 SourceName = file.Name,
                 Length = file.Length,
                 Identity = identity,
-                StreamPath = paths.StreamPath(files.Root, identity)
+                StreamPath = paths.StreamPath
             };
         }
 
@@ -160,7 +160,7 @@ public static class DiscoverDownloads
                     Url = serviceUrl,
                     ApiKey = apiKey
                 };
-                var identity = await arr.FindDownloadAsync(connection, kind, hash, filename, cancellationToken).ConfigureAwait(false);
+                var identity = await mediator.Send(new FindArrDownload.Query(connection, kind, hash, filename), cancellationToken).ConfigureAwait(false);
                 if (identity is not null)
                 {
                     return identity;

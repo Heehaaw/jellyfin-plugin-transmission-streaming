@@ -1,8 +1,8 @@
-namespace TransmissionStreaming.Infrastructure.Tests.Filesystem;
+namespace TransmissionStreaming.IntegrationTests.Infrastructure.Filesystem;
 
 using AutoFixture;
 using AutoFixture.AutoMoq;
-using AutoFixture.Xunit2;
+using global::TransmissionStreaming.TestSupport.Testing;
 using FluentAssertions;
 using global::TransmissionStreaming.Infrastructure.Filesystem;
 using Xunit;

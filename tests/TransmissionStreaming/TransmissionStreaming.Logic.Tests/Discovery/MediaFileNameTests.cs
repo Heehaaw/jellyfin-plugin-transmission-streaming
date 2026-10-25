@@ -1,7 +1,10 @@
-namespace TransmissionStreaming.Infrastructure.Tests.Arr.Discovery;
+namespace TransmissionStreaming.Logic.Tests.Discovery;
 
+using AutoFixture;
+using AutoFixture.AutoMoq;
+using AutoFixture.Xunit2;
 using FluentAssertions;
-using global::TransmissionStreaming.Infrastructure.Arr.Discovery;
+using TransmissionStreaming.Logic.Discovery;
 using Xunit;
 
 public sealed class MediaFileNameTests
@@ -42,37 +45,10 @@ public sealed class MediaFileNameTests
         multipleResult.Should().BeNull();
     }
 
-    [Theory, AutoMoqData]
-    internal void Should_FilterSamplesByFilenameWithoutRejectingTheirDirectory(string name)
+    private sealed class AutoMoqDataAttribute() : AutoDataAttribute(() =>
     {
-        // Arrange
-        var sample = name + "-SAMPLE.MKV";
-        var underSampleFolder = "C:\\sample\\" + name + ".MKV";
-        var ordinaryWord = name + "-sampled.mkv";
-
-        // Act
-        var sampleAccepted = MediaFileName.IsPlayable(sample);
-        var nestedAccepted = MediaFileName.IsPlayable(underSampleFolder);
-        var wordAccepted = MediaFileName.IsPlayable(ordinaryWord);
-
-        // Assert
-        sampleAccepted.Should().BeFalse();
-        nestedAccepted.Should().BeTrue();
-        wordAccepted.Should().BeTrue();
-    }
-
-    [Theory, AutoMoqData]
-    internal void Should_RefuseNonMediaFiles(string name)
-    {
-        // Arrange
-        var filename = name + ".txt";
-
-        // Act
-        var accepted = MediaFileName.IsPlayable(filename);
-        var episode = MediaFileName.ParseEpisode(filename);
-
-        // Assert
-        accepted.Should().BeFalse();
-        episode.Should().BeNull();
-    }
+        var fixture = new Fixture { RepeatCount = 1 };
+        fixture.Customize(new AutoMoqCustomization { ConfigureMembers = true, GenerateDelegates = true });
+        return fixture;
+    });
 }

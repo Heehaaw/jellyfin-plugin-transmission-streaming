@@ -14,17 +14,6 @@ public static class SelectVideoFiles
 
     internal sealed class Handler : IQueryHandler<Query, Result>
     {
-        private static readonly HashSet<string> VideoExtensions = new(StringComparer.OrdinalIgnoreCase)
-        {
-            ".mkv",
-            ".mp4",
-            ".m4v",
-            ".avi",
-            ".ts",
-            ".webm",
-            ".mov"
-        };
-
         public ValueTask<Result> Handle(Query query, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -35,7 +24,7 @@ public static class SelectVideoFiles
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var file = query.Files[index];
-                if (file.Length <= 0 || !IsPlayable(file.Name))
+                if (file.Length <= 0 || !MediaFileName.IsPlayable(file.Name))
                 {
                     continue;
                 }
@@ -52,24 +41,5 @@ public static class SelectVideoFiles
             return ValueTask.FromResult(new Result(playable, primary));
         }
 
-        private static bool IsPlayable(string name)
-        {
-            var segments = name.Replace('\\', '/').Split('/', StringSplitOptions.RemoveEmptyEntries);
-            if (segments.Length == 0 || !VideoExtensions.Contains(Path.GetExtension(segments[^1])) || segments[..^1].Any(IsSupplementFolder))
-            {
-                return false;
-            }
-
-            var stem = Path.GetFileNameWithoutExtension(segments[^1]);
-            var tokens = stem.Split(['.', ' ', '_', '-', '[', ']', '(', ')'], StringSplitOptions.RemoveEmptyEntries);
-            return !tokens.Any(token => token.Equals("sample", StringComparison.OrdinalIgnoreCase) || token.Equals("trailer", StringComparison.OrdinalIgnoreCase));
-        }
-
-        private static bool IsSupplementFolder(string name)
-        {
-            return name.Equals("sample", StringComparison.OrdinalIgnoreCase) || name.Equals("samples", StringComparison.OrdinalIgnoreCase)
-                                                                             || name.Equals("trailer", StringComparison.OrdinalIgnoreCase) ||
-                                                                             name.Equals("trailers", StringComparison.OrdinalIgnoreCase);
-        }
     }
 }

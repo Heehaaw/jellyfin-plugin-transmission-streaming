@@ -1,4 +1,4 @@
-namespace TransmissionStreaming.Core.Tests.Streaming;
+namespace Jellyfin.Plugin.TransmissionStreaming.Tests.Http;
 
 using AutoFixture;
 using AutoFixture.AutoMoq;
@@ -6,8 +6,9 @@ using AutoFixture.Xunit2;
 using FluentAssertions;
 using global::TransmissionStreaming.Core.Streaming;
 using Xunit;
+using Jellyfin.Plugin.TransmissionStreaming.Http;
 
-public sealed class ByteRangeTests
+public sealed class HttpByteRangeTests
 {
     private sealed class AutoMoqDataAttribute() : AutoDataAttribute(() =>
         {
@@ -35,7 +36,7 @@ public sealed class ByteRangeTests
         var expectedStart = 0L;
 
         // Act
-        var accepted = ByteRange.TryParse(null, length, out var range);
+        var accepted = HttpByteRange.TryParse(null, length, out var range);
 
         // Assert
         accepted.Should().BeTrue();
@@ -53,7 +54,7 @@ public sealed class ByteRangeTests
         var expectedCount = end - start + 1;
 
         // Act
-        var accepted = ByteRange.TryParse($"bytes={start}-{end}", length, out var range);
+        var accepted = HttpByteRange.TryParse($"bytes={start}-{end}", length, out var range);
 
         // Assert
         accepted.Should().BeTrue();
@@ -70,7 +71,7 @@ public sealed class ByteRangeTests
         var expectedStart = length - count;
 
         // Act
-        var accepted = ByteRange.TryParse($"bytes=-{count}", length, out var range);
+        var accepted = HttpByteRange.TryParse($"bytes=-{count}", length, out var range);
 
         // Assert
         accepted.Should().BeTrue();
@@ -86,7 +87,7 @@ public sealed class ByteRangeTests
         var expectedStart = 0L;
 
         // Act
-        var accepted = ByteRange.TryParse($"bytes=-{count}", length, out var range);
+        var accepted = HttpByteRange.TryParse($"bytes=-{count}", length, out var range);
 
         // Assert
         accepted.Should().BeTrue();
@@ -102,7 +103,7 @@ public sealed class ByteRangeTests
         var expectedCount = length - start;
 
         // Act
-        var accepted = ByteRange.TryParse($"bytes={start}-", length, out var range);
+        var accepted = HttpByteRange.TryParse($"bytes={start}-", length, out var range);
 
         // Assert
         accepted.Should().BeTrue();
@@ -118,7 +119,7 @@ public sealed class ByteRangeTests
         var expectedCount = length - start;
 
         // Act
-        var accepted = ByteRange.TryParse($"bytes={start}-{length + 20}", length, out var range);
+        var accepted = HttpByteRange.TryParse($"bytes={start}-{length + 20}", length, out var range);
 
         // Assert
         accepted.Should().BeTrue();
@@ -133,7 +134,7 @@ public sealed class ByteRangeTests
         var start = length;
 
         // Act
-        var accepted = ByteRange.TryParse($"bytes={start}-", length, out _);
+        var accepted = HttpByteRange.TryParse($"bytes={start}-", length, out _);
 
         // Assert
         accepted.Should().BeFalse();
@@ -147,7 +148,7 @@ public sealed class ByteRangeTests
         var end = start - 1;
 
         // Act
-        var accepted = ByteRange.TryParse($"bytes={start}-{end}", length, out _);
+        var accepted = HttpByteRange.TryParse($"bytes={start}-{end}", length, out _);
 
         // Assert
         accepted.Should().BeFalse();
@@ -160,7 +161,7 @@ public sealed class ByteRangeTests
         var end = length - 1;
 
         // Act
-        var accepted = ByteRange.TryParse($"bytes=0-1,2-{end}", length, out _);
+        var accepted = HttpByteRange.TryParse($"bytes=0-1,2-{end}", length, out _);
 
         // Assert
         accepted.Should().BeFalse();
@@ -173,7 +174,7 @@ public sealed class ByteRangeTests
         var header = $"bytes={invalid}-";
 
         // Act
-        var accepted = ByteRange.TryParse(header, length, out _);
+        var accepted = HttpByteRange.TryParse(header, length, out _);
 
         // Assert
         accepted.Should().BeFalse();

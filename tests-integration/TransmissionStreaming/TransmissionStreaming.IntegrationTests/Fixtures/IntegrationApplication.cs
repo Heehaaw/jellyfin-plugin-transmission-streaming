@@ -3,7 +3,7 @@ namespace TransmissionStreaming.IntegrationTests.Fixtures;
 using Core.Configuration;
 using Core.Projection;
 using Core.Transmission;
-using Infrastructure;
+using global::TransmissionStreaming.Infrastructure;
 using Logic;
 using Logic.Discovery;
 using Logic.Streaming;
@@ -224,9 +224,15 @@ internal sealed class IntegrationApplication(DownloadServices containers) : IAsy
 
     private sealed class NoopLibrary : IProjectionLibrary, IMediaLibraryLocations
     {
-        public string? NativePath { get; set; }
+        public string? NativePath
+        {
+            get; set;
+        }
 
-        public LibraryItem? NativeItem { get; set; }
+        public LibraryItem? NativeItem
+        {
+            get; set;
+        }
 
         public LibraryItem? Find(string path)
         {
@@ -249,10 +255,12 @@ internal sealed class IntegrationApplication(DownloadServices containers) : IAsy
         }
 
         public void SaveUserState(string userId, string itemId, LibraryWatchState state)
-        { }
+        {
+        }
 
         public void Remove(string itemId)
-        { }
+        {
+        }
 
         public IReadOnlyList<string> GetServicePaths(MediaService service)
         {
