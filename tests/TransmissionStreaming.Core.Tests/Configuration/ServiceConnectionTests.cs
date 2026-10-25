@@ -10,7 +10,10 @@ public sealed class ServiceConnectionTests
     public void Should_KeepServiceCredentialsOutOfDiagnosticText(ServiceConnection source)
     {
         // Arrange
-        var credentials = new[] { source.Username, source.Password, source.ApiKey };
+        var credentials = new[]
+        {
+            source.Username, source.Password, source.ApiKey
+        };
 
         // Act
         var display = source.ToString();

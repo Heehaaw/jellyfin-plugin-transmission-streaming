@@ -10,13 +10,22 @@ using Xunit;
 public sealed class DownloadServices : IAsyncLifetime
 {
     private readonly SemaphoreSlim scenarios = new(1, 1);
-    private readonly HttpClient http = new() { Timeout = TimeSpan.FromSeconds(15) };
+
+    private readonly HttpClient http = new()
+    {
+        Timeout = TimeSpan.FromSeconds(15)
+    };
+
     private readonly INetwork network = new NetworkBuilder().Build();
     private IContainer? seed;
     private IContainer? transmission;
     private TransmissionRpcClient rpc = null!;
 
-    internal string Workspace { get; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".cache", "transmission-streaming-tests", "assembly-" + Guid.NewGuid().ToString("N"));
+    internal string Workspace
+    {
+        get;
+    } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".cache", "transmission-streaming-tests", "assembly-" + Guid.NewGuid().ToString("N"));
+
     internal INetwork Network => network;
     internal Uri RpcUrl => new UriBuilder("http", transmission!.Hostname, transmission.GetMappedPublicPort(SwarmSettings.RpcPort), SwarmSettings.RpcPath).Uri;
     internal Uri ControlUrl => new UriBuilder("http", seed!.Hostname, seed.GetMappedPublicPort(SwarmSettings.HttpPort)).Uri;
@@ -83,12 +92,14 @@ public sealed class DownloadServices : IAsyncLifetime
         {
             throw new InvalidOperationException("Scenario paths must stay under the assembly media root.");
         }
+
         return SwarmSettings.RemoteRoot + "/" + relative;
     }
 
     internal async Task ControlAsync(string operation, object value, CancellationToken cancellationToken)
     {
-        using var response = await http.PostAsJsonAsync(new Uri(ControlUrl, "control/" + operation), value, cancellationToken);
+        var address = new Uri(ControlUrl, "control/" + operation);
+        using var response = await http.PostAsJsonAsync(address, value, cancellationToken);
         response.EnsureSuccessStatusCode();
     }
 
@@ -110,7 +121,13 @@ public sealed class DownloadServices : IAsyncLifetime
             {
                 try
                 {
-                    await ControlAsync("end", new { }, deadline.Token);
+                    await ControlAsync(
+                        operation: "end",
+                        value: new
+                        {
+                        },
+                        cancellationToken: deadline.Token
+                    );
                 }
                 finally
                 {
@@ -126,11 +143,30 @@ public sealed class DownloadServices : IAsyncLifetime
 
     private async Task RemoveTorrentsAsync(CancellationToken cancellationToken)
     {
-        var result = await rpc.CallAsync("torrent_get", new { fields = new[] { "hash_string" } }, cancellationToken);
-        var hashes = result.GetProperty("torrents").EnumerateArray().Select(torrent => torrent.GetProperty("hash_string").GetString()!).ToArray();
+        var result = await rpc.CallAsync(
+            method: "torrent_get",
+            parameters: new
+            {
+                fields = new[]
+                {
+                    "hash_string"
+                }
+            },
+            cancellationToken: cancellationToken
+        );
+        var torrents = result.GetProperty("torrents").EnumerateArray();
+        var hashes = torrents.Select(torrent => torrent.GetProperty("hash_string").GetString()!).ToArray();
         if (hashes.Length > 0)
         {
-            await rpc.CallAsync("torrent_remove", new { ids = hashes, delete_local_data = false }, cancellationToken);
+            await rpc.CallAsync(
+                method: "torrent_remove",
+                parameters: new
+                {
+                    ids = hashes,
+                    delete_local_data = false
+                },
+                cancellationToken: cancellationToken
+            );
         }
     }
 
@@ -140,22 +176,39 @@ public sealed class DownloadServices : IAsyncLifetime
         http.Dispose();
         try
         {
-            if (transmission is not null) { await transmission.DisposeAsync(); }
+            await DisposeContainersAsync();
         }
         finally
         {
             try
             {
-                if (seed is not null) { await seed.DisposeAsync(); }
+                await network.DisposeAsync();
             }
             finally
             {
-                try { await network.DisposeAsync(); }
-                finally
+                scenarios.Dispose();
+                if (Directory.Exists(Workspace))
                 {
-                    scenarios.Dispose();
-                    if (Directory.Exists(Workspace)) { Directory.Delete(Workspace, recursive: true); }
+                    Directory.Delete(path: Workspace, recursive: true);
                 }
+            }
+        }
+    }
+
+    private async ValueTask DisposeContainersAsync()
+    {
+        try
+        {
+            if (transmission is not null)
+            {
+                await transmission.DisposeAsync();
+            }
+        }
+        finally
+        {
+            if (seed is not null)
+            {
+                await seed.DisposeAsync();
             }
         }
     }

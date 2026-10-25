@@ -23,14 +23,27 @@ public sealed class DuplicateReconciliationTests(JellyfinTestServer sut, ITestOu
         var maximumResumeSeconds = (long)(JellyfinContainer.MediaDuration.TotalSeconds / 2);
         var resumeSeconds = resumingViewer.PlaybackPositionTicks % maximumResumeSeconds + 1;
         resumingViewer.PlaybackPositionTicks = resumeSeconds * TimeSpan.TicksPerSecond;
-        var states = new[] { playedViewer, resumingViewer };
+        var states = new[]
+        {
+            playedViewer, resumingViewer
+        };
         var permanentUrl = await sut.WaitForStreamAsync();
         await sut.StageImportedFileAsync();
         // Index the physical import before arr publishes its history. This reproduces the scan race.
         await sut.AddLibraryAsync("Native import", sut.ImportedMoviesPath);
         var nativeId = await sut.WaitForItemAsync(false);
-        var viewer = await sut.Api.RequestAsync("/Users/New", new { Name = "native-viewer", Password = "Disposable-native-viewer-only-123!" });
-        var users = new[] { sut.Administrator, JellyfinApi.Value<string>(viewer, "Id") };
+        var viewer = await sut.Api.RequestAsync(
+            path: "/Users/New",
+            body: new
+            {
+                Name = "native-viewer",
+                Password = "Disposable-native-viewer-only-123!"
+            }
+        );
+        var users = new[]
+        {
+            sut.Administrator, JellyfinApi.Value<string>(viewer, "Id")
+        };
         var before = new Dictionary<string, JsonNode?>();
         foreach (var (user, state) in users.Zip(states))
         {
@@ -52,7 +65,12 @@ public sealed class DuplicateReconciliationTests(JellyfinTestServer sut, ITestOu
             }
 
             await sut.RestartAsync();
-            await sut.Api.RequestAsync("/Library/Refresh", new { });
+            await sut.Api.RequestAsync(
+                path: "/Library/Refresh",
+                body: new
+                {
+                }
+            );
             var restartedId = await sut.WaitForItemAsync();
             var persisted = new Dictionary<string, JsonNode?>();
             foreach (var user in users)
@@ -71,7 +89,10 @@ public sealed class DuplicateReconciliationTests(JellyfinTestServer sut, ITestOu
             (await sut.FindItemAsync(false)).Should().BeNull();
             foreach (var user in users)
             {
-                foreach (var field in new[] { "Played", "PlaybackPositionTicks", "PlayCount", "IsFavorite" })
+                foreach (var field in new[]
+                         {
+                             "Played", "PlaybackPositionTicks", "PlayCount", "IsFavorite"
+                         })
                 {
                     var expected = JellyfinApi.Field(before[user], field)?.ToJsonString();
                     var actual = JellyfinApi.Field(after[user], field)?.ToJsonString();
@@ -89,10 +110,11 @@ public sealed class DuplicateReconciliationTests(JellyfinTestServer sut, ITestOu
     }
 
     private sealed class AutoMoqDataAttribute() : AutoDataAttribute(() =>
-    {
-        var fixture = new Fixture();
-        fixture.Customize(new AutoMoqCustomization());
-        fixture.Customize<WatchState>(composer => composer.With(value => value.Rating, () => fixture.Create<int>() % 11d));
-        return fixture;
-    });
+        {
+            var fixture = new Fixture();
+            fixture.Customize(new AutoMoqCustomization());
+            fixture.Customize<WatchState>(composer => composer.With(value => value.Rating, () => fixture.Create<int>() % 11d));
+            return fixture;
+        }
+    );
 }

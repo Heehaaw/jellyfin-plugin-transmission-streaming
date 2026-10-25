@@ -17,11 +17,18 @@ using Xunit;
 public sealed class PruneOrphanedProjectionTests
 {
     [Theory, AutoMoqData]
-    internal async Task Should_PreserveAnExistingTorrent(PruneOrphanedProjection.Command source,
-        [Frozen] Mock<IArrClient> arr, [Frozen] Mock<IProjectionFiles> files, PruneOrphanedProjection.Handler sut)
+    internal async Task Should_PreserveAnExistingTorrent(
+        PruneOrphanedProjection.Command source,
+        [Frozen] Mock<IArrClient> arr,
+        [Frozen] Mock<IProjectionFiles> files,
+        PruneOrphanedProjection.Handler sut
+    )
     {
         // Arrange
-        var command = source with { TorrentPresent = true };
+        var command = source with
+        {
+            TorrentPresent = true
+        };
 
         // Act
         var removed = await sut.Handle(command, CancellationToken.None);
@@ -33,11 +40,18 @@ public sealed class PruneOrphanedProjectionTests
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_PreserveAnActiveReader(PruneOrphanedProjection.Command source,
-        [Frozen] Mock<IStreamActivity> activity, [Frozen] Mock<IArrClient> arr, PruneOrphanedProjection.Handler sut)
+    internal async Task Should_PreserveAnActiveReader(
+        PruneOrphanedProjection.Command source,
+        [Frozen] Mock<IStreamActivity> activity,
+        [Frozen] Mock<IArrClient> arr,
+        PruneOrphanedProjection.Handler sut
+    )
     {
         // Arrange
-        var command = source with { TorrentPresent = false };
+        var command = source with
+        {
+            TorrentPresent = false
+        };
         activity.Setup(value => value.Count(source.Entry.Id)).Returns(1);
 
         // Act
@@ -49,12 +63,19 @@ public sealed class PruneOrphanedProjectionTests
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_PreserveAnExistingImportedFile(PruneOrphanedProjection.Command source,
-        [Frozen] Mock<IStreamActivity> activity, [Frozen] Mock<IMediaFiles> media,
-        [Frozen] Mock<IArrClient> arr, PruneOrphanedProjection.Handler sut)
+    internal async Task Should_PreserveAnExistingImportedFile(
+        PruneOrphanedProjection.Command source,
+        [Frozen] Mock<IStreamActivity> activity,
+        [Frozen] Mock<IMediaFiles> media,
+        [Frozen] Mock<IArrClient> arr,
+        PruneOrphanedProjection.Handler sut
+    )
     {
         // Arrange
-        var command = source with { TorrentPresent = false };
+        var command = source with
+        {
+            TorrentPresent = false
+        };
         activity.Setup(value => value.Count(source.Entry.Id)).Returns(0);
         media.Setup(value => value.Exists(source.Entry.CompletedPath!)).Returns(true);
 
@@ -67,16 +88,29 @@ public sealed class PruneOrphanedProjectionTests
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_PreserveAnEntryWithoutAConfiguredOwner(PruneOrphanedProjection.Command source, StreamingOptions configuration,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options, [Frozen] Mock<IStreamActivity> activity,
-        [Frozen] Mock<IArrClient> arr, PruneOrphanedProjection.Handler sut)
+    internal async Task Should_PreserveAnEntryWithoutAConfiguredOwner(
+        PruneOrphanedProjection.Command source,
+        StreamingOptions configuration,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        [Frozen] Mock<IStreamActivity> activity,
+        [Frozen] Mock<IArrClient> arr,
+        PruneOrphanedProjection.Handler sut
+    )
     {
         // Arrange
         source.Entry.CompletedPath = null;
         source.Entry.Identity.Kind = MediaKind.Movie;
-        var command = source with { TorrentPresent = false };
+        var command = source with
+        {
+            TorrentPresent = false
+        };
         activity.Setup(value => value.Count(source.Entry.Id)).Returns(0);
-        options.SetupGet(value => value.CurrentValue).Returns(configuration with { RadarrUrl = "" });
+        options.SetupGet(value => value.CurrentValue).Returns(
+            configuration with
+            {
+                RadarrUrl = ""
+            }
+        );
 
         // Act
         var removed = await sut.Handle(command, CancellationToken.None);
@@ -87,14 +121,23 @@ public sealed class PruneOrphanedProjectionTests
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_KeepAnArrOwnedEntryForLateImport(PruneOrphanedProjection.Command source, StreamingOptions configuration,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options, [Frozen] Mock<IStreamActivity> activity,
-        [Frozen] Mock<IArrClient> arr, [Frozen] Mock<IProjectionLibrary> library, PruneOrphanedProjection.Handler sut)
+    internal async Task Should_KeepAnArrOwnedEntryForLateImport(
+        PruneOrphanedProjection.Command source,
+        StreamingOptions configuration,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        [Frozen] Mock<IStreamActivity> activity,
+        [Frozen] Mock<IArrClient> arr,
+        [Frozen] Mock<IProjectionLibrary> library,
+        PruneOrphanedProjection.Handler sut
+    )
     {
         // Arrange
         source.Entry.CompletedPath = null;
         source.Entry.Identity.Kind = MediaKind.Movie;
-        var command = source with { TorrentPresent = false };
+        var command = source with
+        {
+            TorrentPresent = false
+        };
         activity.Setup(value => value.Count(source.Entry.Id)).Returns(0);
         options.SetupGet(value => value.CurrentValue).Returns(configuration);
         arr.Setup(value => value.IsMediaTrackedAsync(It.IsAny<ArrConnection>(), source.Entry.Identity, It.IsAny<CancellationToken>())).ReturnsAsync(true);
@@ -108,15 +151,24 @@ public sealed class PruneOrphanedProjectionTests
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_LeaveStateUntouchedWhenArrIsUnavailable(PruneOrphanedProjection.Command source, StreamingOptions configuration,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options, [Frozen] Mock<IStreamActivity> activity,
-        [Frozen] Mock<IArrClient> arr, [Frozen] Mock<IProjectionFiles> files, [Frozen] Mock<IProjectionStore> store,
-        PruneOrphanedProjection.Handler sut)
+    internal async Task Should_LeaveStateUntouchedWhenArrIsUnavailable(
+        PruneOrphanedProjection.Command source,
+        StreamingOptions configuration,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        [Frozen] Mock<IStreamActivity> activity,
+        [Frozen] Mock<IArrClient> arr,
+        [Frozen] Mock<IProjectionFiles> files,
+        [Frozen] Mock<IProjectionStore> store,
+        PruneOrphanedProjection.Handler sut
+    )
     {
         // Arrange
         source.Entry.CompletedPath = null;
         source.Entry.Identity.Kind = MediaKind.Movie;
-        var command = source with { TorrentPresent = false };
+        var command = source with
+        {
+            TorrentPresent = false
+        };
         activity.Setup(value => value.Count(source.Entry.Id)).Returns(0);
         options.SetupGet(value => value.CurrentValue).Returns(configuration);
         arr.Setup(value => value.IsMediaTrackedAsync(It.IsAny<ArrConnection>(), source.Entry.Identity, It.IsAny<CancellationToken>())).ThrowsAsync(new HttpRequestException());
@@ -131,19 +183,34 @@ public sealed class PruneOrphanedProjectionTests
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_DeferCleanupWhileTheHostItemIsPlaying(PruneOrphanedProjection.Command source, StreamingOptions configuration, LibraryItem projected,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options, [Frozen] Mock<IStreamActivity> activity,
-        [Frozen] Mock<IArrClient> arr, [Frozen] Mock<IProjectionLibrary> library, [Frozen] Mock<IProjectionFiles> files,
-        PruneOrphanedProjection.Handler sut)
+    internal async Task Should_DeferCleanupWhileTheHostItemIsPlaying(
+        PruneOrphanedProjection.Command source,
+        StreamingOptions configuration,
+        LibraryItem projected,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        [Frozen] Mock<IStreamActivity> activity,
+        [Frozen] Mock<IArrClient> arr,
+        [Frozen] Mock<IProjectionLibrary> library,
+        [Frozen] Mock<IProjectionFiles> files,
+        PruneOrphanedProjection.Handler sut
+    )
     {
         // Arrange
         source.Entry.CompletedPath = null;
         source.Entry.Identity.Kind = MediaKind.Movie;
-        var command = source with { TorrentPresent = false };
+        var command = source with
+        {
+            TorrentPresent = false
+        };
         activity.Setup(value => value.Count(source.Entry.Id)).Returns(0);
         options.SetupGet(value => value.CurrentValue).Returns(configuration);
         arr.Setup(value => value.IsMediaTrackedAsync(It.IsAny<ArrConnection>(), source.Entry.Identity, It.IsAny<CancellationToken>())).ReturnsAsync(false);
-        library.Setup(value => value.Find(source.Entry.StreamPath)).Returns(projected with { IsPlaying = true });
+        library.Setup(value => value.Find(source.Entry.StreamPath)).Returns(
+            projected with
+            {
+                IsPlaying = true
+            }
+        );
 
         // Act
         var removed = await sut.Handle(command, CancellationToken.None);
@@ -154,25 +221,48 @@ public sealed class PruneOrphanedProjectionTests
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_RemoveAnOrphanInRetryableOrderUsingItsOwner(PruneOrphanedProjection.Command source, StreamingOptions configuration, LibraryItem projected,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options, [Frozen] Mock<IStreamActivity> activity,
-        [Frozen] Mock<IMediaFiles> media, [Frozen] Mock<IArrClient> arr, [Frozen] Mock<IProjectionLibrary> library,
-        [Frozen] Mock<IProjectionFiles> files, [Frozen] Mock<IProjectionStore> store, PruneOrphanedProjection.Handler sut)
+    internal async Task Should_RemoveAnOrphanInRetryableOrderUsingItsOwner(
+        PruneOrphanedProjection.Command source,
+        StreamingOptions configuration,
+        LibraryItem projected,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        [Frozen] Mock<IStreamActivity> activity,
+        [Frozen] Mock<IMediaFiles> media,
+        [Frozen] Mock<IArrClient> arr,
+        [Frozen] Mock<IProjectionLibrary> library,
+        [Frozen] Mock<IProjectionFiles> files,
+        [Frozen] Mock<IProjectionStore> store,
+        PruneOrphanedProjection.Handler sut
+    )
     {
         // Arrange
         source.Entry.Identity.Kind = MediaKind.Episode;
-        var command = source with { TorrentPresent = false };
+        var command = source with
+        {
+            TorrentPresent = false
+        };
         activity.Setup(value => value.Count(source.Entry.Id)).Returns(0);
         media.Setup(value => value.Exists(source.Entry.CompletedPath!)).Returns(false);
         options.SetupGet(value => value.CurrentValue).Returns(configuration);
-        arr.Setup(value => value.IsMediaTrackedAsync(It.Is<ArrConnection>(connection =>
-                connection.Url == configuration.SonarrUrl && connection.ApiKey == configuration.SonarrApiKey), source.Entry.Identity, It.IsAny<CancellationToken>()))
+        arr.Setup(value => value.IsMediaTrackedAsync(
+                    connection: It.Is<ArrConnection>(connection =>
+                        connection.Url == configuration.SonarrUrl && connection.ApiKey == configuration.SonarrApiKey
+                    ),
+                    identity: source.Entry.Identity,
+                    cancellationToken: It.IsAny<CancellationToken>()
+                )
+            )
             .ReturnsAsync(false);
         var operations = new List<string>();
         var hostStep = "host";
         var filesStep = "files";
         var storeStep = "store";
-        library.Setup(value => value.Find(source.Entry.StreamPath)).Returns(projected with { IsPlaying = false });
+        library.Setup(value => value.Find(source.Entry.StreamPath)).Returns(
+            projected with
+            {
+                IsPlaying = false
+            }
+        );
         library.Setup(value => value.Remove(projected.Id)).Callback(() => operations.Add(hostStep));
         files.Setup(value => value.RemoveFiles(source.Entry)).Callback(() => operations.Add(filesStep));
         store.Setup(value => value.Remove(source.Entry.Id)).Callback(() => operations.Add(storeStep));
@@ -183,24 +273,48 @@ public sealed class PruneOrphanedProjectionTests
         // Assert
         removed.Should().BeTrue();
         operations.Should().Equal(hostStep, filesStep, storeStep);
-        arr.Verify(value => value.IsMediaTrackedAsync(It.Is<ArrConnection>(connection =>
-            connection.Url == configuration.SonarrUrl && connection.ApiKey == configuration.SonarrApiKey), source.Entry.Identity, It.IsAny<CancellationToken>()), Times.Once);
+        arr.Verify(
+            expression: value => value.IsMediaTrackedAsync(
+                connection: It.Is<ArrConnection>(connection =>
+                    connection.Url == configuration.SonarrUrl && connection.ApiKey == configuration.SonarrApiKey
+                ),
+                identity: source.Entry.Identity,
+                cancellationToken: It.IsAny<CancellationToken>()
+            ),
+            times: Times.Once
+        );
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_RetainTheRecordWhenFileCleanupFails(PruneOrphanedProjection.Command source, StreamingOptions configuration, LibraryItem projected,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options, [Frozen] Mock<IStreamActivity> activity,
-        [Frozen] Mock<IArrClient> arr, [Frozen] Mock<IProjectionLibrary> library, [Frozen] Mock<IProjectionFiles> files,
-        [Frozen] Mock<IProjectionStore> store, PruneOrphanedProjection.Handler sut)
+    internal async Task Should_RetainTheRecordWhenFileCleanupFails(
+        PruneOrphanedProjection.Command source,
+        StreamingOptions configuration,
+        LibraryItem projected,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        [Frozen] Mock<IStreamActivity> activity,
+        [Frozen] Mock<IArrClient> arr,
+        [Frozen] Mock<IProjectionLibrary> library,
+        [Frozen] Mock<IProjectionFiles> files,
+        [Frozen] Mock<IProjectionStore> store,
+        PruneOrphanedProjection.Handler sut
+    )
     {
         // Arrange
         source.Entry.CompletedPath = null;
         source.Entry.Identity.Kind = MediaKind.Movie;
-        var command = source with { TorrentPresent = false };
+        var command = source with
+        {
+            TorrentPresent = false
+        };
         activity.Setup(value => value.Count(source.Entry.Id)).Returns(0);
         options.SetupGet(value => value.CurrentValue).Returns(configuration);
         arr.Setup(value => value.IsMediaTrackedAsync(It.IsAny<ArrConnection>(), source.Entry.Identity, It.IsAny<CancellationToken>())).ReturnsAsync(false);
-        library.Setup(value => value.Find(source.Entry.StreamPath)).Returns(projected with { IsPlaying = false });
+        library.Setup(value => value.Find(source.Entry.StreamPath)).Returns(
+            projected with
+            {
+                IsPlaying = false
+            }
+        );
         files.Setup(value => value.RemoveFiles(source.Entry)).Throws<IOException>();
 
         // Act
@@ -212,9 +326,19 @@ public sealed class PruneOrphanedProjectionTests
     }
 
     private sealed class AutoMoqDataAttribute() : AutoDataAttribute(() =>
-    {
-        var fixture = new Fixture { RepeatCount = 1 };
-        fixture.Customize(new AutoMoqCustomization { ConfigureMembers = true, GenerateDelegates = true });
-        return fixture;
-    });
+        {
+            var fixture = new Fixture
+            {
+                RepeatCount = 1
+            };
+            fixture.Customize(
+                new AutoMoqCustomization
+                {
+                    ConfigureMembers = true,
+                    GenerateDelegates = true
+                }
+            );
+            return fixture;
+        }
+    );
 }

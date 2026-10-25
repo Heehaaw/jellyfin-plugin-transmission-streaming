@@ -7,7 +7,12 @@ using System.Text.Json.Nodes;
 /// <summary>Drives only the disposable server; no host configuration or credentials are reused.</summary>
 internal sealed class JellyfinApi(Uri address) : IDisposable
 {
-    private readonly HttpClient client = new() { BaseAddress = address, Timeout = TimeSpan.FromSeconds(20) };
+    private readonly HttpClient client = new()
+    {
+        BaseAddress = address,
+        Timeout = TimeSpan.FromSeconds(20)
+    };
+
     private string? token;
 
     public async Task<JsonNode?> RequestAsync(string path, object? body = null, HttpMethod? method = null)
@@ -16,7 +21,13 @@ internal sealed class JellyfinApi(Uri address) : IDisposable
         Authorize(request);
         if (body is not null)
         {
-            request.Content = JsonContent.Create(body, options: new JsonSerializerOptions { PropertyNamingPolicy = null });
+            request.Content = JsonContent.Create(
+                inputValue: body,
+                options: new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = null
+                }
+            );
         }
 
         using var response = await client.SendAsync(request);
@@ -42,46 +53,83 @@ internal sealed class JellyfinApi(Uri address) : IDisposable
         if (!Value<bool>(info, "StartupWizardCompleted"))
         {
             await WaitForAsync(() => RequestAsync("/Startup/User"), "Jellyfin startup API availability");
-            await RequestAsync("/Startup/User", new { Name = username, Password = password });
-            await RequestAsync("/Startup/Configuration", new
-            {
-                ServerName = "Disposable application test",
-                UICulture = "en-US",
-                MetadataCountryCode = "US",
-                PreferredMetadataLanguage = "en"
-            });
-            await RequestAsync("/Startup/RemoteAccess", new { EnableRemoteAccess = true, EnableAutomaticPortMapping = false });
-            await RequestAsync("/Startup/Complete", new { });
+            await RequestAsync(
+                path: "/Startup/User",
+                body: new
+                {
+                    Name = username,
+                    Password = password
+                }
+            );
+            await RequestAsync(
+                path: "/Startup/Configuration",
+                body: new
+                {
+                    ServerName = "Disposable application test",
+                    UICulture = "en-US",
+                    MetadataCountryCode = "US",
+                    PreferredMetadataLanguage = "en"
+                }
+            );
+            await RequestAsync(
+                path: "/Startup/RemoteAccess",
+                body: new
+                {
+                    EnableRemoteAccess = true,
+                    EnableAutomaticPortMapping = false
+                }
+            );
+            await RequestAsync(
+                path: "/Startup/Complete",
+                body: new
+                {
+                }
+            );
         }
 
-        var authentication = await WaitForAsync(() => RequestAsync("/Users/AuthenticateByName", new { Username = username, Pw = password }),
-            "Jellyfin authentication API availability");
+        var authentication = await WaitForAsync(
+            request: () => RequestAsync(
+                path: "/Users/AuthenticateByName",
+                body: new
+                {
+                    Username = username,
+                    Pw = password
+                }
+            ),
+            description: "Jellyfin authentication API availability"
+        );
         token = Value<string>(authentication, "AccessToken");
         return Value<string>(Field(authentication, "User"), "Id");
     }
 
     private void Authorize(HttpRequestMessage request)
     {
-        request.Headers.TryAddWithoutValidation("Authorization", token is null
-            ? "MediaBrowser Client=\"Application tests\", Device=\"Disposable container\", DeviceId=\"transmission-tests\", Version=\"1\""
-            : $"MediaBrowser Token=\"{token}\"");
+        request.Headers.TryAddWithoutValidation(
+            name: "Authorization",
+            value: token is null
+                ? "MediaBrowser Client=\"Application tests\", Device=\"Disposable container\", DeviceId=\"transmission-tests\", Version=\"1\""
+                : $"MediaBrowser Token=\"{token}\""
+        );
     }
 
     private static async Task<JsonNode?> WaitForAsync(Func<Task<JsonNode?>> request, string description)
     {
         JsonNode? result = null;
-        await TestWait.UntilAsync(async () =>
-        {
-            try
+        await TestWait.UntilAsync(
+            probe: async () =>
             {
-                result = await request();
-                return true;
-            }
-            catch (HttpRequestException exception) when (exception.StatusCode is null or System.Net.HttpStatusCode.ServiceUnavailable)
-            {
-                return false;
-            }
-        }, description);
+                try
+                {
+                    result = await request();
+                    return true;
+                }
+                catch (HttpRequestException exception) when (exception.StatusCode is null or System.Net.HttpStatusCode.ServiceUnavailable)
+                {
+                    return false;
+                }
+            },
+            description: description
+        );
         return result;
     }
 

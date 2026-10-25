@@ -12,11 +12,21 @@ using Xunit;
 public sealed class MediaPathsTests
 {
     private sealed class AutoMoqDataAttribute() : AutoDataAttribute(() =>
-    {
-        var fixture = new Fixture { RepeatCount = 1 };
-        fixture.Customize(new AutoMoqCustomization { ConfigureMembers = true, GenerateDelegates = true });
-        return fixture;
-    });
+        {
+            var fixture = new Fixture
+            {
+                RepeatCount = 1
+            };
+            fixture.Customize(
+                new AutoMoqCustomization
+                {
+                    ConfigureMembers = true,
+                    GenerateDelegates = true
+                }
+            );
+            return fixture;
+        }
+    );
 
     [Theory, AutoMoqData]
     internal void Should_MapAFileInsideTheApprovedRoot(string name, TemporaryDirectory directory, MediaPaths sut)
@@ -124,6 +134,7 @@ public sealed class MediaPathsTests
         // Assert
         result.Should().Be(expectedId);
     }
+
     [Theory, AutoMoqData]
     internal void Should_SanitizeMetadataIntoSafePathComponents(MediaIdentity identity, TemporaryDirectory directory, MediaPaths sut)
     {
@@ -172,5 +183,4 @@ public sealed class MediaPathsTests
         // Assert
         Path.GetFileName(path).Should().Be(identity.Title + ".strm");
     }
-
 }

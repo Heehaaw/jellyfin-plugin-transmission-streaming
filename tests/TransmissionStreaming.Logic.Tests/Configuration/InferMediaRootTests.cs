@@ -14,7 +14,10 @@ public sealed class InferMediaRootTests
     {
         // Arrange
         var root = Path.GetDirectoryName(source.ProjectionRoot)!;
-        source = source with { LibraryPaths = [Path.Combine(root, "movies"), Path.Combine(root, "shows")] };
+        source = source with
+        {
+            LibraryPaths = [Path.Combine(root, "movies"), Path.Combine(root, "shows")]
+        };
 
         // Act
         var result = await sut.Handle(source, CancellationToken.None);
@@ -28,7 +31,10 @@ public sealed class InferMediaRootTests
     {
         // Arrange
         var media = Path.Combine(Path.GetDirectoryName(source.ProjectionRoot)!, "media");
-        source = source with { LibraryPaths = [source.ProjectionRoot, Path.Combine(source.ProjectionRoot, "movies"), Path.Combine(media, "movies")] };
+        source = source with
+        {
+            LibraryPaths = [source.ProjectionRoot, Path.Combine(source.ProjectionRoot, "movies"), Path.Combine(media, "movies")]
+        };
 
         // Act
         var result = await sut.Handle(source, CancellationToken.None);
@@ -43,7 +49,10 @@ public sealed class InferMediaRootTests
         // Arrange
         var root = Path.GetDirectoryName(source.ProjectionRoot)!;
         var relative = source.LibraryPaths[0];
-        source = source with { LibraryPaths = [relative, " ", Path.Combine(root, "invalid\0folder"), Path.Combine(root, "movies")] };
+        source = source with
+        {
+            LibraryPaths = [relative, " ", Path.Combine(root, "invalid\0folder"), Path.Combine(root, "movies")]
+        };
 
         // Act
         var result = await sut.Handle(source, CancellationToken.None);
@@ -58,7 +67,10 @@ public sealed class InferMediaRootTests
         // Arrange
         var root = Path.GetDirectoryName(source.ProjectionRoot)!;
         var otherRoot = Path.Combine(Path.GetPathRoot(root)!, Path.GetFileName(root) + "-other");
-        source = source with { LibraryPaths = [Path.Combine(root, "movies"), Path.Combine(otherRoot, "shows")] };
+        source = source with
+        {
+            LibraryPaths = [Path.Combine(root, "movies"), Path.Combine(otherRoot, "shows")]
+        };
 
         // Act
         var result = await sut.Handle(source, CancellationToken.None);
@@ -71,7 +83,10 @@ public sealed class InferMediaRootTests
     internal async Task Should_LeaveAnEmptyLibraryUndecided(InferMediaRoot.Query source, InferMediaRoot.Handler sut)
     {
         // Arrange
-        source = source with { LibraryPaths = [] };
+        source = source with
+        {
+            LibraryPaths = []
+        };
 
         // Act
         var result = await sut.Handle(source, CancellationToken.None);
@@ -84,7 +99,10 @@ public sealed class InferMediaRootTests
     internal async Task Should_RefuseAnUnqualifiedProjectionRoot(InferMediaRoot.Query source, InferMediaRoot.Handler sut)
     {
         // Arrange
-        source = source with { ProjectionRoot = Path.GetFileName(source.ProjectionRoot) };
+        source = source with
+        {
+            ProjectionRoot = Path.GetFileName(source.ProjectionRoot)
+        };
 
         // Act
         var result = await sut.Handle(source, CancellationToken.None);
@@ -108,11 +126,22 @@ public sealed class InferMediaRootTests
     }
 
     private sealed class AutoMoqDataAttribute() : AutoDataAttribute(() =>
-    {
-        var fixture = new Fixture { RepeatCount = 1 };
-        fixture.Customize(new AutoMoqCustomization { ConfigureMembers = true, GenerateDelegates = true });
-        fixture.Customize<InferMediaRoot.Query>(composer => composer
-            .With(value => value.ProjectionRoot, () => Path.Combine(Path.GetTempPath(), fixture.Create<string>(), "projection")));
-        return fixture;
-    });
+        {
+            var fixture = new Fixture
+            {
+                RepeatCount = 1
+            };
+            fixture.Customize(
+                new AutoMoqCustomization
+                {
+                    ConfigureMembers = true,
+                    GenerateDelegates = true
+                }
+            );
+            fixture.Customize<InferMediaRoot.Query>(composer => composer
+                .With(value => value.ProjectionRoot, () => Path.Combine(Path.GetTempPath(), fixture.Create<string>(), "projection"))
+            );
+            return fixture;
+        }
+    );
 }

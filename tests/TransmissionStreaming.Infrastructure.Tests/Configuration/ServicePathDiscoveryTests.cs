@@ -12,13 +12,23 @@ using Xunit;
 public sealed class ServicePathDiscoveryTests
 {
     [Theory, AutoMoqData]
-    internal async Task Should_ReportDefaultAndPerTorrentDownloadDirectories(ServiceConnection connection, TransmissionSessionSnapshot session,
-        TorrentSnapshot torrent, [Frozen] Mock<ITransmissionClient> transmission, ServicePathDiscovery sut)
+    internal async Task Should_ReportDefaultAndPerTorrentDownloadDirectories(
+        ServiceConnection connection,
+        TransmissionSessionSnapshot session,
+        TorrentSnapshot torrent,
+        [Frozen] Mock<ITransmissionClient> transmission,
+        ServicePathDiscovery sut
+    )
     {
         // Arrange
         session.IncompleteDirectoryEnabled = true;
-        transmission.Setup(value => value.GetSessionAsync(It.Is<TransmissionConnection>(server => server.Url == connection.Url &&
-            server.Username == connection.Username && server.Password == connection.Password), It.IsAny<CancellationToken>())).ReturnsAsync(session);
+        transmission.Setup(value => value.GetSessionAsync(
+                connection: It.Is<TransmissionConnection>(server => server.Url == connection.Url &&
+                                                                    server.Username == connection.Username && server.Password == connection.Password
+                ),
+                cancellationToken: It.IsAny<CancellationToken>()
+            )
+        ).ReturnsAsync(session);
         transmission.Setup(value => value.GetTorrentsAsync(It.IsAny<TransmissionConnection>(), It.IsAny<CancellationToken>())).ReturnsAsync([torrent, torrent]);
 
         // Act
@@ -32,8 +42,12 @@ public sealed class ServicePathDiscoveryTests
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_OmitDisabledIncompleteDirectory(ServiceConnection connection, TransmissionSessionSnapshot session,
-        [Frozen] Mock<ITransmissionClient> transmission, ServicePathDiscovery sut)
+    internal async Task Should_OmitDisabledIncompleteDirectory(
+        ServiceConnection connection,
+        TransmissionSessionSnapshot session,
+        [Frozen] Mock<ITransmissionClient> transmission,
+        ServicePathDiscovery sut
+    )
     {
         // Arrange
         session.IncompleteDirectoryEnabled = false;
@@ -49,14 +63,25 @@ public sealed class ServicePathDiscoveryTests
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_ReadEachArrServicesOwnLibraryRoots(ServiceConnection connection, string[] roots,
-        [Frozen] Mock<IArrClient> arr, [Frozen] Mock<ITransmissionClient> transmission, ServicePathDiscovery sut)
+    internal async Task Should_ReadEachArrServicesOwnLibraryRoots(
+        ServiceConnection connection,
+        string[] roots,
+        [Frozen] Mock<IArrClient> arr,
+        [Frozen] Mock<ITransmissionClient> transmission,
+        ServicePathDiscovery sut
+    )
     {
         // Arrange
-        arr.Setup(value => value.GetRootFoldersAsync(It.Is<ArrConnection>(server => server.Url == connection.Url && server.ApiKey == connection.ApiKey),
-            It.IsAny<CancellationToken>())).ReturnsAsync(roots);
+        arr.Setup(value => value.GetRootFoldersAsync(
+                connection: It.Is<ArrConnection>(server => server.Url == connection.Url && server.ApiKey == connection.ApiKey),
+                cancellationToken: It.IsAny<CancellationToken>()
+            )
+        ).ReturnsAsync(roots);
 
-        foreach (var service in new[] { MediaService.Radarr, MediaService.Sonarr })
+        foreach (var service in new[]
+                 {
+                     MediaService.Radarr, MediaService.Sonarr
+                 })
         {
             // Act
             var result = await sut.DiscoverAsync(service, connection, CancellationToken.None);
@@ -66,6 +91,7 @@ public sealed class ServicePathDiscoveryTests
             result.DownloadDirectory.Should().BeNull();
             result.DownloadDirectories.Should().BeEmpty();
         }
+
         transmission.Verify(value => value.GetSessionAsync(It.IsAny<TransmissionConnection>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 

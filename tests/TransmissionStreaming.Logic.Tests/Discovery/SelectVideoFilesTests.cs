@@ -66,7 +66,10 @@ public sealed class SelectVideoFilesTests
     internal async Task Should_RejectUnsupportedPayloads(SelectVideoFiles.Query source, SelectVideoFiles.Handler sut)
     {
         // Arrange
-        foreach (var file in source.Files) file.Name += ".txt";
+        foreach (var file in source.Files)
+        {
+            file.Name += ".txt";
+        }
 
         // Act
         var result = await sut.Handle(source, CancellationToken.None);
@@ -79,7 +82,11 @@ public sealed class SelectVideoFilesTests
     internal async Task Should_ExposeEveryIndependentEpisode(SelectVideoFiles.Query source, SelectVideoFiles.Handler sut)
     {
         // Arrange
-        foreach (var file in source.Files) file.Name += ".S01E02.mkv";
+        foreach (var file in source.Files)
+        {
+            file.Name += ".S01E02.mkv";
+        }
+
         var expected = Enumerable.Range(0, source.Files.Count);
 
         // Act
@@ -93,7 +100,11 @@ public sealed class SelectVideoFilesTests
     internal async Task Should_IgnoreEmptyFiles(SelectVideoFiles.Query source, SelectVideoFiles.Handler sut)
     {
         // Arrange
-        foreach (var file in source.Files) file.Name += ".mkv";
+        foreach (var file in source.Files)
+        {
+            file.Name += ".mkv";
+        }
+
         source.Files[0].Length = 0;
         var expectedIndex = source.Files.ToList().IndexOf(source.Files[1]);
 
@@ -106,9 +117,19 @@ public sealed class SelectVideoFilesTests
     }
 
     private sealed class AutoMoqDataAttribute() : AutoDataAttribute(() =>
-    {
-        var fixture = new Fixture { RepeatCount = 2 };
-        fixture.Customize(new AutoMoqCustomization { ConfigureMembers = true, GenerateDelegates = true });
-        return fixture;
-    });
+        {
+            var fixture = new Fixture
+            {
+                RepeatCount = 2
+            };
+            fixture.Customize(
+                new AutoMoqCustomization
+                {
+                    ConfigureMembers = true,
+                    GenerateDelegates = true
+                }
+            );
+            return fixture;
+        }
+    );
 }

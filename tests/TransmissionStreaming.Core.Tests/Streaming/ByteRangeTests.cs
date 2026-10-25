@@ -10,13 +10,23 @@ using Xunit;
 public sealed class ByteRangeTests
 {
     private sealed class AutoMoqDataAttribute() : AutoDataAttribute(() =>
-    {
-        var fixture = new Fixture { RepeatCount = 1 };
-        fixture.Customize(new AutoMoqCustomization { ConfigureMembers = true, GenerateDelegates = true });
-        // Every range test needs a nonempty file with room for distinct start/end offsets.
-        fixture.Register(() => (long)fixture.Create<int>() + 8);
-        return fixture;
-    });
+        {
+            var fixture = new Fixture
+            {
+                RepeatCount = 1
+            };
+            fixture.Customize(
+                new AutoMoqCustomization
+                {
+                    ConfigureMembers = true,
+                    GenerateDelegates = true
+                }
+            );
+            // Every range test needs a nonempty file with room for distinct start/end offsets.
+            fixture.Register(() => (long)fixture.Create<int>() + 8);
+            return fixture;
+        }
+    );
 
     [Theory, AutoMoqData]
     public void Should_ReturnWholeFileWithoutRange(long length)

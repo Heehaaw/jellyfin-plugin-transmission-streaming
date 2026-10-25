@@ -7,7 +7,13 @@ using Xunit;
 /// <summary>Amortizes migrations and initial setup while giving every scenario an independent copy of an empty server database.</summary>
 public sealed class JellyfinBaseline : IAsyncLifetime
 {
-    private readonly string workspace = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".cache", "transmission-streaming-tests", "baseline-" + Guid.NewGuid().ToString("N"));
+    private readonly string workspace = Path.Combine(
+        path1: Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+        path2: ".cache",
+        path3: "transmission-streaming-tests",
+        path4: "baseline-" + Guid.NewGuid().ToString("N")
+    );
+
     private readonly INetwork network = new NetworkBuilder().Build();
     private string Configuration => Path.Combine(workspace, "jellyfin");
 
@@ -43,6 +49,7 @@ public sealed class JellyfinBaseline : IAsyncLifetime
         {
             throw new InvalidOperationException("A baseline must populate an empty scenario configuration directory.");
         }
+
         CopyDirectory(Configuration, destination);
     }
 
@@ -69,6 +76,7 @@ public sealed class JellyfinBaseline : IAsyncLifetime
         {
             File.Copy(file, Path.Combine(destination, Path.GetFileName(file)));
         }
+
         foreach (var directory in Directory.EnumerateDirectories(source))
         {
             CopyDirectory(directory, Path.Combine(destination, Path.GetFileName(directory)));

@@ -25,12 +25,23 @@ public sealed class PhysicalMediaPathMapperTests
     }
 
     private sealed class AutoMoqDataAttribute() : AutoDataAttribute(() =>
-    {
-        var fixture = new Fixture { RepeatCount = 1 };
-        fixture.Customize(new AutoMoqCustomization { ConfigureMembers = true, GenerateDelegates = true });
-        fixture.Customize<ServicePathMapping>(composer => composer
-            .With(value => value.RemoteRoot, "/remote/" + fixture.Create<string>())
-            .With(value => value.LocalRoot, Path.Combine(Path.GetTempPath(), fixture.Create<string>())));
-        return fixture;
-    });
+        {
+            var fixture = new Fixture
+            {
+                RepeatCount = 1
+            };
+            fixture.Customize(
+                new AutoMoqCustomization
+                {
+                    ConfigureMembers = true,
+                    GenerateDelegates = true
+                }
+            );
+            fixture.Customize<ServicePathMapping>(composer => composer
+                .With(value => value.RemoteRoot, "/remote/" + fixture.Create<string>())
+                .With(value => value.LocalRoot, Path.Combine(Path.GetTempPath(), fixture.Create<string>()))
+            );
+            return fixture;
+        }
+    );
 }

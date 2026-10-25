@@ -15,12 +15,22 @@ using ProjectionEntry = global::TransmissionStreaming.Core.Projection.Projection
 public sealed class ProjectionFilesTests
 {
     [Theory, AutoMoqData]
-    internal void Should_RefuseAnUnrecognizedOwnershipMarker(string markerValue, StreamingOptions configuration, TemporaryDirectory directory,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options, ProjectionFiles sut)
+    internal void Should_RefuseAnUnrecognizedOwnershipMarker(
+        string markerValue,
+        StreamingOptions configuration,
+        TemporaryDirectory directory,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        ProjectionFiles sut
+    )
     {
         // Arrange
         using var root = directory;
-        options.SetupGet(value => value.CurrentValue).Returns(configuration with { ProjectionRoot = root.Path });
+        options.SetupGet(value => value.CurrentValue).Returns(
+            configuration with
+            {
+                ProjectionRoot = root.Path
+            }
+        );
         var marker = Path.Combine(root.Path, ".transmission-streaming");
         File.WriteAllText(marker, markerValue);
 
@@ -34,14 +44,24 @@ public sealed class ProjectionFilesTests
     }
 
     [Theory, AutoMoqData]
-    internal void Should_RefuseToAdoptExistingContents(string name, StreamingOptions configuration, TemporaryDirectory directory,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options, ProjectionFiles sut)
+    internal void Should_RefuseToAdoptExistingContents(
+        string name,
+        StreamingOptions configuration,
+        TemporaryDirectory directory,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        ProjectionFiles sut
+    )
     {
         // Arrange
         using var root = directory;
         var existing = Path.Combine(root.Path, name);
         File.WriteAllText(existing, name);
-        options.SetupGet(value => value.CurrentValue).Returns(configuration with { ProjectionRoot = root.Path });
+        options.SetupGet(value => value.CurrentValue).Returns(
+            configuration with
+            {
+                ProjectionRoot = root.Path
+            }
+        );
 
         // Act
         var action = sut.EnsureReady;
@@ -53,12 +73,21 @@ public sealed class ProjectionFilesTests
     }
 
     [Theory, AutoMoqData]
-    internal void Should_ClaimAndReuseADedicatedEmptyDirectory(StreamingOptions configuration, TemporaryDirectory directory,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options, ProjectionFiles sut)
+    internal void Should_ClaimAndReuseADedicatedEmptyDirectory(
+        StreamingOptions configuration,
+        TemporaryDirectory directory,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        ProjectionFiles sut
+    )
     {
         // Arrange
         using var root = directory;
-        options.SetupGet(value => value.CurrentValue).Returns(configuration with { ProjectionRoot = root.Path });
+        options.SetupGet(value => value.CurrentValue).Returns(
+            configuration with
+            {
+                ProjectionRoot = root.Path
+            }
+        );
 
         // Act
         sut.EnsureReady();
@@ -71,12 +100,21 @@ public sealed class ProjectionFilesTests
     }
 
     [Theory, AutoMoqData]
-    internal void Should_RejectTheFilesystemRoot(StreamingOptions configuration, TemporaryDirectory directory,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options, ProjectionFiles sut)
+    internal void Should_RejectTheFilesystemRoot(
+        StreamingOptions configuration,
+        TemporaryDirectory directory,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        ProjectionFiles sut
+    )
     {
         // Arrange
         using var root = directory;
-        options.SetupGet(value => value.CurrentValue).Returns(configuration with { ProjectionRoot = Path.GetPathRoot(root.Path)! });
+        options.SetupGet(value => value.CurrentValue).Returns(
+            configuration with
+            {
+                ProjectionRoot = Path.GetPathRoot(root.Path)!
+            }
+        );
 
         // Act
         var action = sut.EnsureReady;
@@ -86,15 +124,25 @@ public sealed class ProjectionFilesTests
     }
 
     [Theory, AutoMoqData]
-    internal void Should_WriteStableMovieLinkAndEscapedMetadata(ProjectionEntry entry, StreamingOptions configuration, TemporaryDirectory directory,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options, ProjectionFiles sut)
+    internal void Should_WriteStableMovieLinkAndEscapedMetadata(
+        ProjectionEntry entry,
+        StreamingOptions configuration,
+        TemporaryDirectory directory,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        ProjectionFiles sut
+    )
     {
         // Arrange
         using var root = directory;
         entry.Identity.Kind = MediaKind.Movie;
         entry.Identity.Title += " <>&";
         entry.StreamPath = Path.Combine(root.Path, entry.Id + ".strm");
-        options.SetupGet(value => value.CurrentValue).Returns(configuration with { JellyfinPublicUrl = "https://jellyfin.invalid/base" });
+        options.SetupGet(value => value.CurrentValue).Returns(
+            configuration with
+            {
+                JellyfinPublicUrl = "https://jellyfin.invalid/base"
+            }
+        );
 
         // Act
         sut.WriteFiles(entry);
@@ -114,14 +162,24 @@ public sealed class ProjectionFilesTests
     }
 
     [Theory, AutoMoqData]
-    internal void Should_WriteEpisodeAndSeriesSidecars(ProjectionEntry entry, StreamingOptions configuration, TemporaryDirectory directory,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options, ProjectionFiles sut)
+    internal void Should_WriteEpisodeAndSeriesSidecars(
+        ProjectionEntry entry,
+        StreamingOptions configuration,
+        TemporaryDirectory directory,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        ProjectionFiles sut
+    )
     {
         // Arrange
         using var root = directory;
         entry.Identity.Kind = MediaKind.Episode;
         entry.StreamPath = Path.Combine(root.Path, entry.Id, "season", entry.Id + ".strm");
-        options.SetupGet(value => value.CurrentValue).Returns(configuration with { JellyfinPublicUrl = "https://jellyfin.invalid" });
+        options.SetupGet(value => value.CurrentValue).Returns(
+            configuration with
+            {
+                JellyfinPublicUrl = "https://jellyfin.invalid"
+            }
+        );
 
         // Act
         sut.WriteFiles(entry);
@@ -137,14 +195,24 @@ public sealed class ProjectionFilesTests
     }
 
     [Theory, AutoMoqData]
-    internal void Should_LeaveAnUnchangedLinkUntouched(ProjectionEntry entry, StreamingOptions configuration, TemporaryDirectory directory,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options, ProjectionFiles sut)
+    internal void Should_LeaveAnUnchangedLinkUntouched(
+        ProjectionEntry entry,
+        StreamingOptions configuration,
+        TemporaryDirectory directory,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        ProjectionFiles sut
+    )
     {
         // Arrange
         using var root = directory;
         entry.Identity.Kind = MediaKind.Movie;
         entry.StreamPath = Path.Combine(root.Path, entry.Id + ".strm");
-        options.SetupGet(value => value.CurrentValue).Returns(configuration with { JellyfinPublicUrl = "https://jellyfin.invalid" });
+        options.SetupGet(value => value.CurrentValue).Returns(
+            configuration with
+            {
+                JellyfinPublicUrl = "https://jellyfin.invalid"
+            }
+        );
         sut.WriteFiles(entry);
         File.SetLastWriteTimeUtc(entry.StreamPath, File.GetLastWriteTimeUtc(entry.StreamPath).AddMinutes(-1));
         var savedWriteTime = File.GetLastWriteTimeUtc(entry.StreamPath);
@@ -158,11 +226,20 @@ public sealed class ProjectionFilesTests
     }
 
     [Theory, AutoMoqData]
-    internal void Should_RejectNonHttpPlaybackUrls(ProjectionEntry entry, StreamingOptions configuration,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options, ProjectionFiles sut)
+    internal void Should_RejectNonHttpPlaybackUrls(
+        ProjectionEntry entry,
+        StreamingOptions configuration,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        ProjectionFiles sut
+    )
     {
         // Arrange
-        options.SetupGet(value => value.CurrentValue).Returns(configuration with { JellyfinPublicUrl = "file:///private-media" });
+        options.SetupGet(value => value.CurrentValue).Returns(
+            configuration with
+            {
+                JellyfinPublicUrl = "file:///private-media"
+            }
+        );
 
         // Act
         var action = () => sut.WriteFiles(entry);
@@ -172,12 +249,21 @@ public sealed class ProjectionFilesTests
     }
 
     [Theory, AutoMoqData]
-    internal void Should_RejectCredentialsEmbeddedInPlaybackUrls(ProjectionEntry entry, StreamingOptions configuration,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options, ProjectionFiles sut)
+    internal void Should_RejectCredentialsEmbeddedInPlaybackUrls(
+        ProjectionEntry entry,
+        StreamingOptions configuration,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        ProjectionFiles sut
+    )
     {
         // Arrange
         var url = $"https://{configuration.TransmissionUsername}:{configuration.TransmissionPassword}@jellyfin.invalid";
-        options.SetupGet(value => value.CurrentValue).Returns(configuration with { JellyfinPublicUrl = url });
+        options.SetupGet(value => value.CurrentValue).Returns(
+            configuration with
+            {
+                JellyfinPublicUrl = url
+            }
+        );
 
         // Act
         var action = () => sut.WriteFiles(entry);
@@ -187,8 +273,13 @@ public sealed class ProjectionFilesTests
     }
 
     [Theory, AutoMoqData]
-    internal void Should_OmitUnknownProviderIdentifiers(ProjectionEntry entry, StreamingOptions configuration, TemporaryDirectory directory,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options, ProjectionFiles sut)
+    internal void Should_OmitUnknownProviderIdentifiers(
+        ProjectionEntry entry,
+        StreamingOptions configuration,
+        TemporaryDirectory directory,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        ProjectionFiles sut
+    )
     {
         // Arrange
         using var root = directory;
@@ -197,7 +288,12 @@ public sealed class ProjectionFilesTests
         entry.Identity.TvdbId = 0;
         entry.Identity.ImdbId = "";
         entry.StreamPath = Path.Combine(root.Path, entry.Id + ".strm");
-        options.SetupGet(value => value.CurrentValue).Returns(configuration with { JellyfinPublicUrl = "https://jellyfin.invalid" });
+        options.SetupGet(value => value.CurrentValue).Returns(
+            configuration with
+            {
+                JellyfinPublicUrl = "https://jellyfin.invalid"
+            }
+        );
 
         // Act
         sut.WriteFiles(entry);

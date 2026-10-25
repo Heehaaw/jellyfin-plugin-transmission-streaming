@@ -27,12 +27,15 @@ public sealed class OrphanCleanupTests(JellyfinTestServer sut, ITestOutputHelper
             await sut.Arr.SetRemovedAsync(true, cancellationToken);
             await sut.Swarm.RemoveAsync(cancellationToken);
             File.Delete(sut.Swarm.LocalPartialPath);
-            await JellyfinTestServer.UntilAsync(async () =>
-            {
-                var status = await sut.Api.RequestAsync("/TransmissionStreaming/status");
-                return JellyfinApi.Field(status, "Entries")!.AsArray().Count == 0 &&
-                       !File.Exists(localProjection) && await sut.FindItemAsync(true) is null;
-            }, "orphan projection and library cleanup");
+            await JellyfinTestServer.UntilAsync(
+                probe: async () =>
+                {
+                    var status = await sut.Api.RequestAsync("/TransmissionStreaming/status");
+                    return JellyfinApi.Field(status, "Entries")!.AsArray().Count == 0 &&
+                           !File.Exists(localProjection) && await sut.FindItemAsync(true) is null;
+                },
+                description: "orphan projection and library cleanup"
+            );
             await sut.RestartAsync();
             var afterRestart = await sut.Api.RequestAsync("/TransmissionStreaming/status");
             var item = await sut.FindItemAsync(true);
@@ -55,9 +58,19 @@ public sealed class OrphanCleanupTests(JellyfinTestServer sut, ITestOutputHelper
     }
 
     private sealed class AutoMoqDataAttribute() : AutoDataAttribute(() =>
-    {
-        var fixture = new Fixture { RepeatCount = 1 };
-        fixture.Customize(new AutoMoqCustomization { ConfigureMembers = true, GenerateDelegates = true });
-        return fixture;
-    });
+        {
+            var fixture = new Fixture
+            {
+                RepeatCount = 1
+            };
+            fixture.Customize(
+                new AutoMoqCustomization
+                {
+                    ConfigureMembers = true,
+                    GenerateDelegates = true
+                }
+            );
+            return fixture;
+        }
+    );
 }

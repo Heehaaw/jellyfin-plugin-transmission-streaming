@@ -19,8 +19,14 @@ using Xunit;
 public sealed class LibraryProjectionTests
 {
     [Theory, AutoMoqData]
-    internal void Should_ReadCanonicalFactsAndCurrentPlayback(Movie snapshot, Movie canonical, SessionInfo session,
-        [Frozen] Mock<ILibraryManager> library, [Frozen] Mock<ISessionManager> sessions, LibraryProjection sut)
+    internal void Should_ReadCanonicalFactsAndCurrentPlayback(
+        Movie snapshot,
+        Movie canonical,
+        SessionInfo session,
+        [Frozen] Mock<ILibraryManager> library,
+        [Frozen] Mock<ISessionManager> sessions,
+        LibraryProjection sut
+    )
     {
         // Arrange
         canonical.Id = snapshot.Id;
@@ -43,8 +49,12 @@ public sealed class LibraryProjectionTests
     }
 
     [Theory, AutoMoqData]
-    internal void Should_UseTheExactPathSnapshotWhenTheCanonicalItemIsUnavailable(Movie source,
-        [Frozen] Mock<ILibraryManager> library, [Frozen] Mock<ISessionManager> sessions, LibraryProjection sut)
+    internal void Should_UseTheExactPathSnapshotWhenTheCanonicalItemIsUnavailable(
+        Movie source,
+        [Frozen] Mock<ILibraryManager> library,
+        [Frozen] Mock<ISessionManager> sessions,
+        LibraryProjection sut
+    )
     {
         // Arrange
         Index(library, source);
@@ -62,8 +72,12 @@ public sealed class LibraryProjectionTests
     }
 
     [Theory, AutoMoqData]
-    internal void Should_RejectResultsForAnotherPath(Movie source, string requestedPath,
-        [Frozen] Mock<ILibraryManager> library, LibraryProjection sut)
+    internal void Should_RejectResultsForAnotherPath(
+        Movie source,
+        string requestedPath,
+        [Frozen] Mock<ILibraryManager> library,
+        LibraryProjection sut
+    )
     {
         // Arrange
         library.Setup(value => value.GetItemList(It.IsAny<InternalItemsQuery>())).Returns([source]);
@@ -76,8 +90,11 @@ public sealed class LibraryProjectionTests
     }
 
     [Theory, AutoMoqData]
-    internal void Should_ReturnNoFactsWhenThePathIsNotIndexed(string path,
-        [Frozen] Mock<ILibraryManager> library, LibraryProjection sut)
+    internal void Should_ReturnNoFactsWhenThePathIsNotIndexed(
+        string path,
+        [Frozen] Mock<ILibraryManager> library,
+        LibraryProjection sut
+    )
     {
         // Arrange
         library.Setup(value => value.GetItemList(It.IsAny<InternalItemsQuery>())).Returns([]);
@@ -90,8 +107,13 @@ public sealed class LibraryProjectionTests
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_WriteMetadataOnTheCanonicalItem(Movie source, Folder parent, LibraryItem metadata,
-        [Frozen] Mock<ILibraryManager> library, LibraryProjection sut)
+    internal async Task Should_WriteMetadataOnTheCanonicalItem(
+        Movie source,
+        Folder parent,
+        LibraryItem metadata,
+        [Frozen] Mock<ILibraryManager> library,
+        LibraryProjection sut
+    )
     {
         // Arrange
         source.ParentId = parent.Id;
@@ -109,8 +131,11 @@ public sealed class LibraryProjectionTests
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_RefuseMetadataWritesWhenTheParentIsUnavailable(Movie source,
-        [Frozen] Mock<ILibraryManager> library, LibraryProjection sut)
+    internal async Task Should_RefuseMetadataWritesWhenTheParentIsUnavailable(
+        Movie source,
+        [Frozen] Mock<ILibraryManager> library,
+        LibraryProjection sut
+    )
     {
         // Arrange
         Index(library, source);
@@ -125,8 +150,13 @@ public sealed class LibraryProjectionTests
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_PropagateMetadataWriteFailures(Movie source, Folder parent, IOException failure,
-        [Frozen] Mock<ILibraryManager> library, LibraryProjection sut)
+    internal async Task Should_PropagateMetadataWriteFailures(
+        Movie source,
+        Folder parent,
+        IOException failure,
+        [Frozen] Mock<ILibraryManager> library,
+        LibraryProjection sut
+    )
     {
         // Arrange
         source.ParentId = parent.Id;
@@ -142,9 +172,18 @@ public sealed class LibraryProjectionTests
     }
 
     [Theory, AutoMoqData]
-    internal void Should_SnapshotHydratedSourceAndTargetHistory(Movie source, Movie target, User user,
-        UserItemData sourceState, UserItemData targetState, Dictionary<Guid, UserItemData> saved,
-        [Frozen] Mock<ILibraryManager> library, [Frozen] Mock<IUserManager> users, [Frozen] Mock<IUserDataManager> userData, LibraryProjection sut)
+    internal void Should_SnapshotHydratedSourceAndTargetHistory(
+        Movie source,
+        Movie target,
+        User user,
+        UserItemData sourceState,
+        UserItemData targetState,
+        Dictionary<Guid, UserItemData> saved,
+        [Frozen] Mock<ILibraryManager> library,
+        [Frozen] Mock<IUserManager> users,
+        [Frozen] Mock<IUserDataManager> userData,
+        LibraryProjection sut
+    )
     {
         // Arrange
         Index(library, source);
@@ -163,13 +202,28 @@ public sealed class LibraryProjectionTests
         state.UserId.Should().Be(user.Id.ToString("N"));
         AssertWatchState(state.Source!, sourceState);
         AssertWatchState(state.Target!, targetState);
-        userData.Verify(value => value.GetUserDataBatch(It.Is<IReadOnlyList<BaseItem>>(items =>
-            items.Count == 2 && items[0] == source && items[1] == target), user), Times.Once);
+        userData.Verify(
+            expression: value => value.GetUserDataBatch(
+                items: It.Is<IReadOnlyList<BaseItem>>(items =>
+                    items.Count == 2 && items[0] == source && items[1] == target
+                ),
+                user: user
+            ),
+            times: Times.Once
+        );
     }
 
     [Theory, AutoMoqData]
-    internal void Should_KeepAbsentUserRowsAsAbsent(Movie source, Movie target, User user, Dictionary<Guid, UserItemData> saved,
-        [Frozen] Mock<ILibraryManager> library, [Frozen] Mock<IUserManager> users, [Frozen] Mock<IUserDataManager> userData, LibraryProjection sut)
+    internal void Should_KeepAbsentUserRowsAsAbsent(
+        Movie source,
+        Movie target,
+        User user,
+        Dictionary<Guid, UserItemData> saved,
+        [Frozen] Mock<ILibraryManager> library,
+        [Frozen] Mock<IUserManager> users,
+        [Frozen] Mock<IUserDataManager> userData,
+        LibraryProjection sut
+    )
     {
         // Arrange
         Index(library, source);
@@ -188,8 +242,15 @@ public sealed class LibraryProjectionTests
     }
 
     [Theory, AutoMoqData]
-    internal void Should_SaveAllWatchFieldsToTheRequestedUserAndItem(Movie target, User user, LibraryWatchState state,
-        [Frozen] Mock<ILibraryManager> library, [Frozen] Mock<IUserManager> users, [Frozen] Mock<IUserDataManager> userData, LibraryProjection sut)
+    internal void Should_SaveAllWatchFieldsToTheRequestedUserAndItem(
+        Movie target,
+        User user,
+        LibraryWatchState state,
+        [Frozen] Mock<ILibraryManager> library,
+        [Frozen] Mock<IUserManager> users,
+        [Frozen] Mock<IUserDataManager> userData,
+        LibraryProjection sut
+    )
     {
         // Arrange
         Index(library, target);
@@ -208,8 +269,14 @@ public sealed class LibraryProjectionTests
     }
 
     [Theory, AutoMoqData]
-    internal void Should_RefuseHistoryWritesForAnUnavailableUser(User source, Movie target, LibraryWatchState state,
-        [Frozen] Mock<IUserManager> users, [Frozen] Mock<IUserDataManager> userData, LibraryProjection sut)
+    internal void Should_RefuseHistoryWritesForAnUnavailableUser(
+        User source,
+        Movie target,
+        LibraryWatchState state,
+        [Frozen] Mock<IUserManager> users,
+        [Frozen] Mock<IUserDataManager> userData,
+        LibraryProjection sut
+    )
     {
         // Arrange
         users.Setup(value => value.GetUsers()).Returns([]);
@@ -223,8 +290,11 @@ public sealed class LibraryProjectionTests
     }
 
     [Theory, AutoMoqData]
-    internal void Should_RemoveOnlyTheHostDatabaseEntry(Movie source,
-        [Frozen] Mock<ILibraryManager> library, LibraryProjection sut)
+    internal void Should_RemoveOnlyTheHostDatabaseEntry(
+        Movie source,
+        [Frozen] Mock<ILibraryManager> library,
+        LibraryProjection sut
+    )
     {
         // Arrange
         Index(library, source);
@@ -237,8 +307,11 @@ public sealed class LibraryProjectionTests
     }
 
     [Theory, AutoMoqData]
-    internal void Should_AllowRemovalOfAnAlreadyMissingHostEntry(Guid itemId,
-        [Frozen] Mock<ILibraryManager> library, LibraryProjection sut)
+    internal void Should_AllowRemovalOfAnAlreadyMissingHostEntry(
+        Guid itemId,
+        [Frozen] Mock<ILibraryManager> library,
+        LibraryProjection sut
+    )
     {
         // Arrange
         library.Setup(value => value.GetItemById(itemId)).Returns((BaseItem?)null);
@@ -251,8 +324,13 @@ public sealed class LibraryProjectionTests
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_SkipUnrelatedLibrariesDuringRefresh(VirtualFolderInfo source, string unrelatedDirectory,
-        [Frozen] Mock<IProjectionFiles> files, [Frozen] Mock<ILibraryManager> library, LibraryProjection sut)
+    internal async Task Should_SkipUnrelatedLibrariesDuringRefresh(
+        VirtualFolderInfo source,
+        string unrelatedDirectory,
+        [Frozen] Mock<IProjectionFiles> files,
+        [Frozen] Mock<ILibraryManager> library,
+        LibraryProjection sut
+    )
     {
         // Arrange
         library.Setup(value => value.GetVirtualFolders(false)).Returns([source]);
@@ -284,16 +362,27 @@ public sealed class LibraryProjectionTests
     }
 
     private sealed class AutoMoqDataAttribute() : AutoDataAttribute(() =>
-    {
-        var fixture = new Fixture { RepeatCount = 1 };
-        fixture.Customize(new AutoMoqCustomization { ConfigureMembers = true, GenerateDelegates = true });
-        fixture.Customize<Movie>(composer => composer.OmitAutoProperties().With(value => value.Id).With(value => value.ParentId)
-            .With(value => value.Path).With(value => value.Name).With(value => value.Overview));
-        fixture.Customize<Folder>(composer => composer.OmitAutoProperties().With(value => value.Id).With(value => value.Path));
-        fixture.Customize<BaseItemDto>(composer => composer.OmitAutoProperties().With(value => value.Id));
-        fixture.Customize<SessionInfo>(composer => composer.OmitAutoProperties().With(value => value.NowPlayingItem));
-        fixture.Customize<User>(composer => composer.OmitAutoProperties());
-        fixture.Customize<UserItemData>(composer => composer.With(value => value.Rating, () => fixture.Create<int>() % 11d).Without(value => value.Likes));
-        return fixture;
-    });
+        {
+            var fixture = new Fixture
+            {
+                RepeatCount = 1
+            };
+            fixture.Customize(
+                new AutoMoqCustomization
+                {
+                    ConfigureMembers = true,
+                    GenerateDelegates = true
+                }
+            );
+            fixture.Customize<Movie>(composer => composer.OmitAutoProperties().With(value => value.Id).With(value => value.ParentId)
+                .With(value => value.Path).With(value => value.Name).With(value => value.Overview)
+            );
+            fixture.Customize<Folder>(composer => composer.OmitAutoProperties().With(value => value.Id).With(value => value.Path));
+            fixture.Customize<BaseItemDto>(composer => composer.OmitAutoProperties().With(value => value.Id));
+            fixture.Customize<SessionInfo>(composer => composer.OmitAutoProperties().With(value => value.NowPlayingItem));
+            fixture.Customize<User>(composer => composer.OmitAutoProperties());
+            fixture.Customize<UserItemData>(composer => composer.With(value => value.Rating, () => fixture.Create<int>() % 11d).Without(value => value.Likes));
+            return fixture;
+        }
+    );
 }

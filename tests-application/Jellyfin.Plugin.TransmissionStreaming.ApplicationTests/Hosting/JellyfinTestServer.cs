@@ -17,8 +17,18 @@ public sealed class JellyfinTestServer(DownloadServices containers, JellyfinBase
     private StreamingScenario downloads = null!;
     private string administrator = "";
 
-    internal TorrentScenario Swarm { get; private set; } = null!;
-    internal ArrStub Arr { get; private set; } = null!;
+    internal TorrentScenario Swarm
+    {
+        get;
+        private set;
+    } = null!;
+
+    internal ArrStub Arr
+    {
+        get;
+        private set;
+    } = null!;
+
     internal byte[] ExpectedBytes => Swarm.ExpectedBytes;
     internal string Workspace => workspace;
     internal string ProjectionMoviesPath => Swarm.RemotePath(Path.Combine(workspace, "projection", "movies"));
@@ -29,8 +39,15 @@ public sealed class JellyfinTestServer(DownloadServices containers, JellyfinBase
     internal VideoDecoder Decoder => server!.Decoder;
     internal string ReferenceVideoPath => Swarm.RemotePath(Path.Combine(workspace, "reference.mkv"));
 
-    internal string ProjectionFilePath => Swarm.RemotePath(Directory.EnumerateFiles(
-        Path.Combine(workspace, "projection"), "*.strm", SearchOption.AllDirectories).Single());
+    internal string ProjectionFilePath
+    {
+        get
+        {
+            var root = Path.Combine(workspace, "projection");
+            var localPath = Directory.EnumerateFiles(root, "*.strm", SearchOption.AllDirectories).Single();
+            return Swarm.RemotePath(localPath);
+        }
+    }
 
     public async ValueTask InitializeAsync()
     {
@@ -75,7 +92,8 @@ public sealed class JellyfinTestServer(DownloadServices containers, JellyfinBase
         }
         catch (TimeoutException)
         {
-            Console.Error.WriteLine("Discovery status: " + await api.RequestAsync("/TransmissionStreaming/status"));
+            var status = await api.RequestAsync("/TransmissionStreaming/status");
+            Console.Error.WriteLine("Discovery status: " + status);
             await WriteDiagnosticsAsync();
             throw;
         }
@@ -133,7 +151,8 @@ public sealed class JellyfinTestServer(DownloadServices containers, JellyfinBase
     {
         var hostLogs = server is null ? "" : await server.LogsAsync();
         var swarmLogs = Swarm is null ? "" : await Swarm.LogsAsync(CancellationToken.None);
-        var tail = string.Join('\n', (hostLogs + swarmLogs).Split('\n').TakeLast(100));
+        var lines = (hostLogs + swarmLogs).Split('\n');
+        var tail = string.Join('\n', lines.TakeLast(100));
         // Jellyfin records stream URLs, so capability values must be removed from test output.
         return Regex.Replace(tail, "(?i)(key=)[^&\\s\\\"<>]+", "$1[redacted]");
     }

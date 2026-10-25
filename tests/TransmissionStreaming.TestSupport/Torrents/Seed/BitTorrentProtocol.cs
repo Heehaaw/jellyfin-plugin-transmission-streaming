@@ -12,22 +12,49 @@ internal static class BitTorrentProtocol
     public static async Task<bool> HandshakeAsync(NetworkStream stream, string hash, CancellationToken cancellationToken)
     {
         var incoming = new byte[HandshakeLength];
-        await stream.ReadExactlyAsync(incoming, cancellationToken);
-        if (!Matches(incoming, hash))
+        await stream.ReadExactlyAsync
+        (
+            buffer: incoming,
+            cancellationToken: cancellationToken
+        );
+        var accepted = Matches
+        (
+            bytes: incoming,
+            hash: hash
+        );
+        if (!accepted)
         {
             return false;
         }
-        await stream.WriteAsync(CreateHandshake(hash), cancellationToken);
+
+        var response = CreateHandshake(hash);
+        await stream.WriteAsync
+        (
+            buffer: response,
+            cancellationToken: cancellationToken
+        );
         return true;
     }
 
     public static async Task SendAsync(NetworkStream stream, byte identifier, byte[] body, CancellationToken cancellationToken)
     {
         var frame = new byte[5 + body.Length];
-        BinaryPrimitives.WriteInt32BigEndian(frame, body.Length + 1);
+        BinaryPrimitives.WriteInt32BigEndian
+        (
+            destination: frame,
+            value: body.Length + 1
+        );
         frame[4] = identifier;
-        body.CopyTo(frame, 5);
-        await stream.WriteAsync(frame, cancellationToken);
+        body.CopyTo
+        (
+            array: frame,
+            index: 5
+        );
+        await stream.WriteAsync
+        (
+            buffer: frame,
+            cancellationToken: cancellationToken
+        );
     }
 
     private static byte[] CreateHandshake(string hash)
@@ -35,14 +62,39 @@ internal static class BitTorrentProtocol
         var bytes = new byte[HandshakeLength];
         bytes[0] = 19;
         "BitTorrent protocol"u8.CopyTo(bytes.AsSpan(1));
-        Convert.FromHexString(hash).CopyTo(bytes, InfoHashOffset);
+        var infoHash = Convert.FromHexString(hash);
+        infoHash.CopyTo
+        (
+            array: bytes,
+            index: InfoHashOffset
+        );
         "-TS0001-012345678901"u8.CopyTo(bytes.AsSpan(PeerIdOffset));
         return bytes;
     }
 
     private static bool Matches(byte[] bytes, string hash)
     {
-        return bytes[0] == 19 && bytes.AsSpan(1, 19).SequenceEqual("BitTorrent protocol"u8)
-            && bytes.AsSpan(InfoHashOffset, 20).SequenceEqual(Convert.FromHexString(hash));
+        if (bytes[0] != 19)
+        {
+            return false;
+        }
+
+        var protocol = bytes.AsSpan
+        (
+            start: 1,
+            length: 19
+        );
+        if (!protocol.SequenceEqual("BitTorrent protocol"u8))
+        {
+            return false;
+        }
+
+        var receivedHash = bytes.AsSpan
+        (
+            start: InfoHashOffset,
+            length: 20
+        );
+        var expectedHash = Convert.FromHexString(hash);
+        return receivedHash.SequenceEqual(expectedHash);
     }
 }

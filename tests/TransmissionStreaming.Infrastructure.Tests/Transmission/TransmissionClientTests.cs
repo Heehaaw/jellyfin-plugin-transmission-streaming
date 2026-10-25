@@ -14,18 +14,34 @@ using Xunit;
 public sealed class TransmissionClientTests
 {
     private sealed class AutoMoqDataAttribute() : AutoDataAttribute(() =>
-    {
-        var fixture = new Fixture { RepeatCount = 1 };
-        fixture.Customize(new AutoMoqCustomization { ConfigureMembers = true, GenerateDelegates = true });
-        fixture.Register(() => new HttpClient(fixture.Freeze<ScriptedHandler>()));
-        fixture.Customize<TransmissionConnection>(c => c.FromFactory((string user, string password) => new TransmissionConnection("http://localhost:9091/transmission/rpc", user, password)).OmitAutoProperties());
-        return fixture;
-    });
+        {
+            var fixture = new Fixture
+            {
+                RepeatCount = 1
+            };
+            fixture.Customize(
+                new AutoMoqCustomization
+                {
+                    ConfigureMembers = true,
+                    GenerateDelegates = true
+                }
+            );
+            fixture.Register(() => new HttpClient(fixture.Freeze<ScriptedHandler>()));
+            fixture.Customize<TransmissionConnection>(c =>
+                c.FromFactory((string user, string password) => new TransmissionConnection("http://localhost:9091/transmission/rpc", user, password)).OmitAutoProperties()
+            );
+            return fixture;
+        }
+    );
 
     [Theory, AutoMoqData]
     internal async Task Should_NegotiateSessionAndReadSnakeCaseFields(
-        TransmissionConnection connection, TorrentSnapshot torrent, string sessionId,
-        [Frozen] ScriptedHandler handler, TransmissionClient sut)
+        TransmissionConnection connection,
+        TorrentSnapshot torrent,
+        string sessionId,
+        [Frozen] ScriptedHandler handler,
+        TransmissionClient sut
+    )
     {
         // Arrange
         var requests = 0;
@@ -42,10 +58,26 @@ public sealed class TransmissionClientTests
                 conflict.Headers.Add("X-Transmission-Session-Id", sessionId);
                 return conflict;
             }
+
             receivedSession = request.Headers.GetValues("X-Transmission-Session-Id").Single();
             return new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent(JsonSerializer.Serialize(new { jsonrpc = "2.0", id = 1, result = new { torrents = new[] { torrent } } }))
+                Content = new StringContent(
+                    JsonSerializer.Serialize(
+                        new
+                        {
+                            jsonrpc = "2.0",
+                            id = 1,
+                            result = new
+                            {
+                                torrents = new[]
+                                {
+                                    torrent
+                                }
+                            }
+                        }
+                    )
+                )
             };
         };
         var expectedMethod = "torrent_get";
@@ -63,7 +95,10 @@ public sealed class TransmissionClientTests
 
     [Theory, AutoMoqData]
     internal async Task Should_RejectRedirectResponses(
-        TransmissionConnection connection, [Frozen] ScriptedHandler handler, TransmissionClient sut)
+        TransmissionConnection connection,
+        [Frozen] ScriptedHandler handler,
+        TransmissionClient sut
+    )
     {
         // Arrange
         handler.Respond = _ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.TemporaryRedirect));
@@ -74,9 +109,14 @@ public sealed class TransmissionClientTests
         // Assert
         await action.Should().ThrowAsync<IOException>();
     }
+
     [Theory, AutoMoqData]
-    internal async Task Should_ReadSessionCacheAndIncompleteDirectorySettings(TransmissionConnection connection, TransmissionSessionSnapshot source,
-        [Frozen] ScriptedHandler handler, TransmissionClient sut)
+    internal async Task Should_ReadSessionCacheAndIncompleteDirectorySettings(
+        TransmissionConnection connection,
+        TransmissionSessionSnapshot source,
+        [Frozen] ScriptedHandler handler,
+        TransmissionClient sut
+    )
     {
         // Arrange
         var authenticated = false;
@@ -96,8 +136,12 @@ public sealed class TransmissionClientTests
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_SelectOnlyTheRequestedTorrent(TransmissionConnection connection, TorrentSnapshot source,
-        [Frozen] ScriptedHandler handler, TransmissionClient sut)
+    internal async Task Should_SelectOnlyTheRequestedTorrent(
+        TransmissionConnection connection,
+        TorrentSnapshot source,
+        [Frozen] ScriptedHandler handler,
+        TransmissionClient sut
+    )
     {
         // Arrange
         JsonElement parameters = default;
@@ -105,7 +149,15 @@ public sealed class TransmissionClientTests
         {
             using var payload = JsonDocument.Parse(await request.Content!.ReadAsStringAsync());
             parameters = payload.RootElement.GetProperty("params").Clone();
-            return RpcResponse(new { torrents = new[] { source } });
+            return RpcResponse(
+                new
+                {
+                    torrents = new[]
+                    {
+                        source
+                    }
+                }
+            );
         };
 
         // Act
@@ -117,8 +169,12 @@ public sealed class TransmissionClientTests
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_EnableSequentialDownloadingOnlyForThePlayedTorrent(TransmissionConnection connection, TorrentSnapshot source,
-        [Frozen] ScriptedHandler handler, TransmissionClient sut)
+    internal async Task Should_EnableSequentialDownloadingOnlyForThePlayedTorrent(
+        TransmissionConnection connection,
+        TorrentSnapshot source,
+        [Frozen] ScriptedHandler handler,
+        TransmissionClient sut
+    )
     {
         // Arrange
         JsonElement parameters = default;
@@ -126,7 +182,11 @@ public sealed class TransmissionClientTests
         {
             using var payload = JsonDocument.Parse(await request.Content!.ReadAsStringAsync());
             parameters = payload.RootElement.GetProperty("params").Clone();
-            return RpcResponse(new { });
+            return RpcResponse(
+                new
+                {
+                }
+            );
         };
 
         // Act
@@ -139,8 +199,13 @@ public sealed class TransmissionClientTests
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_MoveTheCursorForOnlyTheSelectedTorrent(TransmissionConnection connection, TorrentSnapshot source, byte piece,
-        [Frozen] ScriptedHandler handler, TransmissionClient sut)
+    internal async Task Should_MoveTheCursorForOnlyTheSelectedTorrent(
+        TransmissionConnection connection,
+        TorrentSnapshot source,
+        byte piece,
+        [Frozen] ScriptedHandler handler,
+        TransmissionClient sut
+    )
     {
         // Arrange
         JsonElement parameters = default;
@@ -148,7 +213,11 @@ public sealed class TransmissionClientTests
         {
             using var payload = JsonDocument.Parse(await request.Content!.ReadAsStringAsync());
             parameters = payload.RootElement.GetProperty("params").Clone();
-            return RpcResponse(new { });
+            return RpcResponse(
+                new
+                {
+                }
+            );
         };
 
         // Act
@@ -160,14 +229,27 @@ public sealed class TransmissionClientTests
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_SurfaceRpcRejectionWithoutItsMessage(TransmissionConnection connection, string upstreamMessage,
-        [Frozen] ScriptedHandler handler, TransmissionClient sut)
+    internal async Task Should_SurfaceRpcRejectionWithoutItsMessage(
+        TransmissionConnection connection,
+        string upstreamMessage,
+        [Frozen] ScriptedHandler handler,
+        TransmissionClient sut
+    )
     {
         // Arrange
-        handler.Respond = _ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
-        {
-            Content = new StringContent(JsonSerializer.Serialize(new { error = upstreamMessage }))
-        });
+        handler.Respond = _ => Task.FromResult(
+            new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(
+                    JsonSerializer.Serialize(
+                        new
+                        {
+                            error = upstreamMessage
+                        }
+                    )
+                )
+            }
+        );
 
         // Act
         var action = () => sut.GetSessionAsync(connection);
@@ -178,8 +260,11 @@ public sealed class TransmissionClientTests
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_RejectInvalidRpcResultShapes(TransmissionConnection connection,
-        [Frozen] ScriptedHandler handler, TransmissionClient sut)
+    internal async Task Should_RejectInvalidRpcResultShapes(
+        TransmissionConnection connection,
+        [Frozen] ScriptedHandler handler,
+        TransmissionClient sut
+    )
     {
         // Arrange
         handler.Respond = _ => Task.FromResult(RpcResponse(Array.Empty<string>()));
@@ -195,8 +280,16 @@ public sealed class TransmissionClientTests
     {
         return new HttpResponseMessage(HttpStatusCode.OK)
         {
-            Content = new StringContent(JsonSerializer.Serialize(new { jsonrpc = "2.0", id = 1, result }))
+            Content = new StringContent(
+                JsonSerializer.Serialize(
+                    new
+                    {
+                        jsonrpc = "2.0",
+                        id = 1,
+                        result
+                    }
+                )
+            )
         };
     }
-
 }

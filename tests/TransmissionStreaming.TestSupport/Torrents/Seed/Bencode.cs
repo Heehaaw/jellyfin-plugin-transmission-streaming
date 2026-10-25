@@ -10,22 +10,26 @@ internal static class Bencode
         result.WriteByte((byte)'d');
         foreach (var (key, value) in values)
         {
-            WriteBytes(Encoding.ASCII.GetBytes(key));
+            var encodedKey = Encoding.ASCII.GetBytes(key);
+            WriteBytes(encodedKey);
             if (value is int number)
             {
-                result.Write(Encoding.ASCII.GetBytes("i" + number + "e"));
+                var encodedNumber = Encoding.ASCII.GetBytes("i" + number + "e");
+                result.Write(encodedNumber);
             }
             else
             {
                 WriteBytes((byte[])value);
             }
         }
+
         result.WriteByte((byte)'e');
         return result.ToArray();
 
         void WriteBytes(byte[] bytes)
         {
-            result.Write(Encoding.ASCII.GetBytes(bytes.Length + ":"));
+            var prefix = Encoding.ASCII.GetBytes(bytes.Length + ":");
+            result.Write(prefix);
             result.Write(bytes);
         }
     }

@@ -39,6 +39,7 @@ internal static class SwarmContainers
             resource.CopyTo(content);
             builder = builder.WithResourceMapping(content.ToArray(), "/Seed/" + name[ResourcePrefix.Length..]);
         }
+
         return builder.Build();
     }
 
@@ -52,8 +53,11 @@ internal static class SwarmContainers
             .WithEntrypoint("/usr/bin/transmission-daemon")
             .WithCommand("--foreground", "--config-dir", SwarmSettings.RemoteRoot + "/.transmission", "--log-level", "warn")
             .WithPortBinding(SwarmSettings.RpcPort, true)
-            .WithWaitStrategy(Wait.ForUnixContainer().UntilHttpRequestIsSucceeded(request => request
-                .ForPort(SwarmSettings.RpcPort).ForPath(SwarmSettings.RpcPath).ForStatusCode(HttpStatusCode.Conflict)))
+            .WithWaitStrategy(
+                Wait.ForUnixContainer().UntilHttpRequestIsSucceeded(request => request
+                    .ForPort(SwarmSettings.RpcPort).ForPath(SwarmSettings.RpcPath).ForStatusCode(HttpStatusCode.Conflict)
+                )
+            )
             .Build();
     }
 }

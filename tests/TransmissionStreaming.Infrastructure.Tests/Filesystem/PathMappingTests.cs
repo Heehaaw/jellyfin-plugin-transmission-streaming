@@ -10,12 +10,22 @@ using Xunit;
 public sealed class PathMappingTests
 {
     private sealed class AutoMoqDataAttribute() : AutoDataAttribute(() =>
-    {
-        var fixture = new Fixture { RepeatCount = 1 };
-        fixture.Customize(new AutoMoqCustomization { ConfigureMembers = true, GenerateDelegates = true });
-        fixture.Register(() => new PathMapping("/data", Path.GetTempPath()));
-        return fixture;
-    });
+        {
+            var fixture = new Fixture
+            {
+                RepeatCount = 1
+            };
+            fixture.Customize(
+                new AutoMoqCustomization
+                {
+                    ConfigureMembers = true,
+                    GenerateDelegates = true
+                }
+            );
+            fixture.Register(() => new PathMapping("/data", Path.GetTempPath()));
+            return fixture;
+        }
+    );
 
     [Theory, AutoMoqData]
     internal void Should_MapOnlyWholeRootBoundaries(string fileName, PathMapping sut)

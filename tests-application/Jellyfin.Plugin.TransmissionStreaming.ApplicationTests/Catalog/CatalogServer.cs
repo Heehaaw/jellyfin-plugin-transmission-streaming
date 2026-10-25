@@ -12,7 +12,14 @@ internal sealed class CatalogServer(DownloadServices services, TorrentScenario s
     {
         var packageUrl = new UriBuilder("http", SwarmSettings.CatalogHost, SwarmSettings.HttpPort, "/package.zip").Uri;
         CatalogPackage.Write(Root, packageUrl, corruptChecksum);
-        await services.ControlAsync("catalog", new { directory = scenario.RemotePath(Root) }, cancellationToken);
+        await services.ControlAsync(
+            operation: "catalog",
+            value: new
+            {
+                directory = scenario.RemotePath(Root)
+            },
+            cancellationToken: cancellationToken
+        );
     }
 
     public Task<string> LogsAsync(CancellationToken cancellationToken)

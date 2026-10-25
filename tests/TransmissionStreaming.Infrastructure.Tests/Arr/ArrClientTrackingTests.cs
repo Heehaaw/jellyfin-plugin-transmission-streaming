@@ -125,8 +125,18 @@ public sealed class ArrClientTrackingTests
     internal async Task Should_PreserveUnknownOrUnidentifiableMediaWithoutARequest(TrackingScenario source, [Frozen] TestHttpHandler handler, ArrClient sut)
     {
         // Arrange
-        var unknown = source.Identity with { Kind = (MediaKind)(-1) };
-        var unidentified = source.Identity with { Kind = MediaKind.Movie, MovieId = 0, TmdbId = 0, TvdbId = 0, ImdbId = "tt0000" };
+        var unknown = source.Identity with
+        {
+            Kind = (MediaKind)(-1)
+        };
+        var unidentified = source.Identity with
+        {
+            Kind = MediaKind.Movie,
+            MovieId = 0,
+            TmdbId = 0,
+            TvdbId = 0,
+            ImdbId = "tt0000"
+        };
 
         // Act
         var unknownRemains = await sut.IsMediaTrackedAsync(source.Connection, unknown, CancellationToken.None);
@@ -187,7 +197,10 @@ public sealed class ArrClientTrackingTests
 
     private static HttpResponseMessage Response(string json)
     {
-        return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(json, Encoding.UTF8, "application/json") };
+        return new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(json, Encoding.UTF8, "application/json")
+        };
     }
 
     private static JsonElement Library(TrackingScenario source)
@@ -199,21 +212,50 @@ public sealed class ArrClientTrackingTests
 
     internal sealed record TrackedMedia
     {
-        public int Id { get; set; }
-        public int TmdbId { get; set; }
-        public int TvdbId { get; set; }
-        public string ImdbId { get; set; } = "";
+        public int Id
+        {
+            get;
+            set;
+        }
+
+        public int TmdbId
+        {
+            get;
+            set;
+        }
+
+        public int TvdbId
+        {
+            get;
+            set;
+        }
+
+        public string ImdbId
+        {
+            get;
+            set;
+        } = "";
     }
 
     private sealed class AutoMoqDataAttribute() : AutoDataAttribute(() =>
-    {
-        var fixture = new Fixture { RepeatCount = 1 };
-        fixture.Customize(new AutoMoqCustomization { ConfigureMembers = true, GenerateDelegates = true });
-        fixture.Register<IArrTransport>(() => fixture.Create<ArrTransport>());
-        fixture.Register<IArrDownloadDiscovery>(() => fixture.Create<ArrDownloadDiscovery>());
-        fixture.Register<IArrImportResolver>(() => fixture.Create<ArrImportResolver>());
-        fixture.Customize<ArrConnection>(composer => composer.With(connection => connection.Url, "http://arr.invalid/"));
-        fixture.Register(() => new HttpClient(fixture.Create<TestHttpHandler>()));
-        return fixture;
-    });
+        {
+            var fixture = new Fixture
+            {
+                RepeatCount = 1
+            };
+            fixture.Customize(
+                new AutoMoqCustomization
+                {
+                    ConfigureMembers = true,
+                    GenerateDelegates = true
+                }
+            );
+            fixture.Register<IArrTransport>(() => fixture.Create<ArrTransport>());
+            fixture.Register<IArrDownloadDiscovery>(() => fixture.Create<ArrDownloadDiscovery>());
+            fixture.Register<IArrImportResolver>(() => fixture.Create<ArrImportResolver>());
+            fixture.Customize<ArrConnection>(composer => composer.With(connection => connection.Url, "http://arr.invalid/"));
+            fixture.Register(() => new HttpClient(fixture.Create<TestHttpHandler>()));
+            return fixture;
+        }
+    );
 }

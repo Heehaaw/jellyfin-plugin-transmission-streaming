@@ -16,7 +16,10 @@ public sealed class PlaybackFailureTests(JellyfinTestServer sut, ITestOutputHelp
     {
         // Arrange
         var cancellationToken = TestContext.Current.CancellationToken;
-        using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
+        using var client = new HttpClient
+        {
+            Timeout = TimeSpan.FromSeconds(30)
+        };
         var permanentUrl = await sut.WaitForStreamAsync();
         var hostUrl = sut.HostStream(permanentUrl);
         var missingOffset = sut.Swarm.PieceSize;
@@ -46,6 +49,7 @@ public sealed class PlaybackFailureTests(JellyfinTestServer sut, ITestOutputHelp
             {
                 cancelled = true;
             }
+
             using var stalled = await client.SendAsync(missing, cancellationToken);
             var status = await sut.Api.RequestAsync("/TransmissionStreaming/status");
             var readers = JellyfinApi.Field(status, "Entries")!.AsArray().Select(entry => JellyfinApi.Value<int>(entry, "Readers"));
@@ -72,9 +76,10 @@ public sealed class PlaybackFailureTests(JellyfinTestServer sut, ITestOutputHelp
     }
 
     private sealed class AutoMoqDataAttribute() : AutoDataAttribute(() =>
-    {
-        var fixture = new Fixture();
-        fixture.Customize(new AutoMoqCustomization());
-        return fixture;
-    });
+        {
+            var fixture = new Fixture();
+            fixture.Customize(new AutoMoqCustomization());
+            return fixture;
+        }
+    );
 }

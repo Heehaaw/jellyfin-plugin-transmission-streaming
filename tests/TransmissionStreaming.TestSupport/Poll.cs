@@ -4,8 +4,13 @@ using System.Diagnostics;
 
 internal static class Poll
 {
-    public static async Task<T> UntilAsync<T>(Func<Task<T>> probe, Func<T, bool> ready, string description, CancellationToken cancellationToken,
-        TimeSpan? timeout = null)
+    public static async Task<T> UntilAsync<T>(
+        Func<Task<T>> probe,
+        Func<T, bool> ready,
+        string description,
+        CancellationToken cancellationToken,
+        TimeSpan? timeout = null
+    )
     {
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         deadline.CancelAfter(timeout ?? TimeSpan.FromSeconds(45));
@@ -22,6 +27,7 @@ internal static class Poll
             {
                 throw new TimeoutException($"Timed out waiting for {description} after {watch.Elapsed}.");
             }
+
             if (ready(value))
             {
                 return value;

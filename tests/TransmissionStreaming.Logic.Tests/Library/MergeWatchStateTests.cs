@@ -10,15 +10,6 @@ using Xunit;
 
 public sealed class MergeWatchStateTests
 {
-    private sealed class AutoMoqDataAttribute() : AutoDataAttribute(() =>
-    {
-        var fixture = new Fixture { RepeatCount = 1 };
-        fixture.Customize(new AutoMoqCustomization { ConfigureMembers = true, GenerateDelegates = true });
-        // Ratings remain inside the host-supported personal-rating range.
-        fixture.Customize<LibraryWatchState>(c => c.With(x => x.Rating, () => fixture.Create<int>() % 11d));
-        return fixture;
-    });
-
     [Theory, AutoMoqData]
     internal async Task Should_UseTheNewerSourcePlayback(MergeWatchState.Query query, MergeWatchState.Handler sut)
     {
@@ -207,7 +198,10 @@ public sealed class MergeWatchStateTests
     {
         // Arrange
         var source = query.Source;
-        query = query with { Target = null };
+        query = query with
+        {
+            Target = null
+        };
 
         // Act
         var result = await sut.Handle(query, CancellationToken.None);
@@ -218,4 +212,23 @@ public sealed class MergeWatchStateTests
         result.LastPlayedDate.Should().Be(source.LastPlayedDate);
         result.Rating.Should().Be(source.Rating);
     }
+
+    private sealed class AutoMoqDataAttribute() : AutoDataAttribute(() =>
+        {
+            var fixture = new Fixture
+            {
+                RepeatCount = 1
+            };
+            fixture.Customize(
+                new AutoMoqCustomization
+                {
+                    ConfigureMembers = true,
+                    GenerateDelegates = true
+                }
+            );
+            // Ratings remain inside the host-supported personal-rating range.
+            fixture.Customize<LibraryWatchState>(composer => composer.With(value => value.Rating, () => fixture.Create<int>() % 11d));
+            return fixture;
+        }
+    );
 }

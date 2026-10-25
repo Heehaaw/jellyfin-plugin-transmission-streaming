@@ -17,7 +17,15 @@ internal sealed class TransmissionRpcClient(HttpClient http, Func<Uri> endpoint)
         {
             using var request = new HttpRequestMessage(HttpMethod.Post, endpoint())
             {
-                Content = JsonContent.Create(new { jsonrpc = "2.0", method, @params = parameters, id = 1 })
+                Content = JsonContent.Create(
+                    new
+                    {
+                        jsonrpc = "2.0",
+                        method,
+                        @params = parameters,
+                        id = 1
+                    }
+                )
             };
             if (sessionId is not null)
             {
@@ -32,8 +40,10 @@ internal sealed class TransmissionRpcClient(HttpClient http, Func<Uri> endpoint)
             }
 
             response.EnsureSuccessStatusCode();
-            using var body = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false),
-                cancellationToken: cancellationToken).ConfigureAwait(false);
+            using var body = await JsonDocument.ParseAsync(
+                utf8Json: await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false),
+                cancellationToken: cancellationToken
+            ).ConfigureAwait(false);
             if (body.RootElement.TryGetProperty("error", out _))
             {
                 throw new IOException("The disposable Transmission daemon rejected a fixture RPC request.");

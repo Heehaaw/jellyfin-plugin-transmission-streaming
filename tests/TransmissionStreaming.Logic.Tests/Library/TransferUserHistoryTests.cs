@@ -13,8 +13,14 @@ using Xunit;
 public sealed class TransferUserHistoryTests
 {
     [Theory, AutoMoqData]
-    internal async Task Should_MergeEachAvailableUserState(TransferUserHistory.Command source, LibraryUserState[] users, LibraryWatchState merged,
-        [Frozen] Mock<IProjectionLibrary> library, [Frozen] Mock<IMediator> mediator, TransferUserHistory.Handler sut)
+    internal async Task Should_MergeEachAvailableUserState(
+        TransferUserHistory.Command source,
+        LibraryUserState[] users,
+        LibraryWatchState merged,
+        [Frozen] Mock<IProjectionLibrary> library,
+        [Frozen] Mock<IMediator> mediator,
+        TransferUserHistory.Handler sut
+    )
     {
         // Arrange
         library.Setup(value => value.GetUserStates(source.SourceItemId, source.TargetItemId)).Returns(users);
@@ -26,17 +32,32 @@ public sealed class TransferUserHistoryTests
         // Assert
         foreach (var user in users)
         {
-            mediator.Verify(value => value.Send(It.Is<MergeWatchState.Query>(query => query.Source == user.Source && query.Target == user.Target), It.IsAny<CancellationToken>()), Times.Once);
+            mediator.Verify(
+                expression: value => value.Send(It.Is<MergeWatchState.Query>(query => query.Source == user.Source && query.Target == user.Target), It.IsAny<CancellationToken>()),
+                times: Times.Once
+            );
             library.Verify(value => value.SaveUserState(user.UserId, source.TargetItemId, merged), Times.Once);
         }
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_SkipUsersWithoutSourceHistory(TransferUserHistory.Command source, LibraryUserState user,
-        [Frozen] Mock<IProjectionLibrary> library, [Frozen] Mock<IMediator> mediator, TransferUserHistory.Handler sut)
+    internal async Task Should_SkipUsersWithoutSourceHistory(
+        TransferUserHistory.Command source,
+        LibraryUserState user,
+        [Frozen] Mock<IProjectionLibrary> library,
+        [Frozen] Mock<IMediator> mediator,
+        TransferUserHistory.Handler sut
+    )
     {
         // Arrange
-        library.Setup(value => value.GetUserStates(source.SourceItemId, source.TargetItemId)).Returns([user with { Source = null }]);
+        library.Setup(value => value.GetUserStates(source.SourceItemId, source.TargetItemId)).Returns(
+            [
+                user with
+                {
+                    Source = null
+                }
+            ]
+        );
 
         // Act
         await sut.Handle(source, CancellationToken.None);
@@ -47,9 +68,19 @@ public sealed class TransferUserHistoryTests
     }
 
     private sealed class AutoMoqDataAttribute() : AutoDataAttribute(() =>
-    {
-        var fixture = new Fixture { RepeatCount = 2 };
-        fixture.Customize(new AutoMoqCustomization { ConfigureMembers = true, GenerateDelegates = true });
-        return fixture;
-    });
+        {
+            var fixture = new Fixture
+            {
+                RepeatCount = 2
+            };
+            fixture.Customize(
+                new AutoMoqCustomization
+                {
+                    ConfigureMembers = true,
+                    GenerateDelegates = true
+                }
+            );
+            return fixture;
+        }
+    );
 }

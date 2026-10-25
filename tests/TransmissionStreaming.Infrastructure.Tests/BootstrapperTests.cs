@@ -21,15 +21,30 @@ using Xunit;
 public sealed class BootstrapperTests
 {
     [Theory, AutoMoqData]
-    internal void Should_ComposeEveryInfrastructureFeature(StreamingOptions source, TemporaryDirectory directory,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options, ServiceCollection services)
+    internal void Should_ComposeEveryInfrastructureFeature(
+        StreamingOptions source,
+        TemporaryDirectory directory,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        ServiceCollection services
+    )
     {
         // Arrange
         using var root = directory;
-        options.SetupGet(value => value.CurrentValue).Returns(source with { StateDirectory = root.Path });
+        options.SetupGet(value => value.CurrentValue).Returns(
+            source with
+            {
+                StateDirectory = root.Path
+            }
+        );
         services.AddSingleton(options.Object);
         services.AddTransmissionStreamingInfrastructure();
-        using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });
+        using var provider = services.BuildServiceProvider(
+            new ServiceProviderOptions
+            {
+                ValidateOnBuild = true,
+                ValidateScopes = true
+            }
+        );
         Type[] contracts =
         [
             typeof(IArrClient), typeof(ITransmissionClient), typeof(IServicePathDiscovery), typeof(IProjectionPaths), typeof(IMediaPathMapper), typeof(IMediaFiles),
@@ -61,10 +76,20 @@ public sealed class BootstrapperTests
     }
 
     private sealed class AutoMoqDataAttribute() : AutoDataAttribute(() =>
-    {
-        var fixture = new Fixture { RepeatCount = 1 };
-        fixture.Customize(new AutoMoqCustomization { ConfigureMembers = true, GenerateDelegates = true });
-        fixture.Register(() => new ServiceCollection());
-        return fixture;
-    });
+        {
+            var fixture = new Fixture
+            {
+                RepeatCount = 1
+            };
+            fixture.Customize(
+                new AutoMoqCustomization
+                {
+                    ConfigureMembers = true,
+                    GenerateDelegates = true
+                }
+            );
+            fixture.Register(() => new ServiceCollection());
+            return fixture;
+        }
+    );
 }

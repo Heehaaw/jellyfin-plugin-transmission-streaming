@@ -13,15 +13,23 @@ internal sealed class JellyfinLibraryScan(JellyfinApi api)
     public async Task StartAfterFolderChangeAsync()
     {
         ScanSnapshot? idle = null;
-        await TestWait.UntilAsync(async () =>
-        {
-            idle = await ReadAsync();
-            return idle.State == Idle;
-        }, "the previous library scan to finish");
+        await TestWait.UntilAsync(
+            probe: async () =>
+            {
+                idle = await ReadAsync();
+                return idle.State == Idle;
+            },
+            description: "the previous library scan to finish"
+        );
 
         try
         {
-            await api.RequestAsync($"/ScheduledTasks/Running/{idle!.Id}", new { });
+            await api.RequestAsync(
+                path: $"/ScheduledTasks/Running/{idle!.Id}",
+                body: new
+                {
+                }
+            );
         }
         catch (HttpRequestException exception) when (exception.StatusCode == HttpStatusCode.Conflict)
         {
@@ -31,6 +39,7 @@ internal sealed class JellyfinLibraryScan(JellyfinApi api)
             {
                 throw;
             }
+
             return;
         }
 

@@ -18,12 +18,23 @@ using ProjectionEntry = global::TransmissionStreaming.Core.Projection.Projection
 public sealed class ProjectionFilesCleanupTests
 {
     [Theory, AutoMoqData]
-    internal void Should_RemoveOnlyThisEntriesGeneratedFilesAndStagingFiles(ProjectionEntry source, StreamingOptions configuration, TemporaryDirectory directory,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options, ProjectionFiles sut)
+    internal void Should_RemoveOnlyThisEntriesGeneratedFilesAndStagingFiles(
+        ProjectionEntry source,
+        StreamingOptions configuration,
+        TemporaryDirectory directory,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        ProjectionFiles sut
+    )
     {
         // Arrange
         using var root = directory;
-        options.SetupGet(value => value.CurrentValue).Returns(configuration with { ProjectionRoot = root.Path, JellyfinPublicUrl = "http://jellyfin.invalid" });
+        options.SetupGet(value => value.CurrentValue).Returns(
+            configuration with
+            {
+                ProjectionRoot = root.Path,
+                JellyfinPublicUrl = "http://jellyfin.invalid"
+            }
+        );
         sut.EnsureReady();
         source.Identity.Kind = MediaKind.Movie;
         source.StreamPath = Path.Combine(root.Path, "movies", source.Id + ".strm");
@@ -50,13 +61,23 @@ public sealed class ProjectionFilesCleanupTests
     }
 
     [Theory, AutoMoqData]
-    internal void Should_LeaveAnAlreadyMissingRootAbsent(ProjectionEntry source, StreamingOptions configuration, TemporaryDirectory directory,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options, ProjectionFiles sut)
+    internal void Should_LeaveAnAlreadyMissingRootAbsent(
+        ProjectionEntry source,
+        StreamingOptions configuration,
+        TemporaryDirectory directory,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        ProjectionFiles sut
+    )
     {
         // Arrange
         using var root = directory;
         var missing = Path.Combine(root.Path, source.Id);
-        options.SetupGet(value => value.CurrentValue).Returns(configuration with { ProjectionRoot = missing });
+        options.SetupGet(value => value.CurrentValue).Returns(
+            configuration with
+            {
+                ProjectionRoot = missing
+            }
+        );
         source.StreamPath = Path.Combine(missing, source.Id + ".strm");
 
         // Act
@@ -67,12 +88,22 @@ public sealed class ProjectionFilesCleanupTests
     }
 
     [Theory, AutoMoqData]
-    internal void Should_RequireTheRootsOwnershipMarkerBeforeDeletingFiles(ProjectionEntry source, StreamingOptions configuration, TemporaryDirectory directory,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options, ProjectionFiles sut)
+    internal void Should_RequireTheRootsOwnershipMarkerBeforeDeletingFiles(
+        ProjectionEntry source,
+        StreamingOptions configuration,
+        TemporaryDirectory directory,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        ProjectionFiles sut
+    )
     {
         // Arrange
         using var root = directory;
-        options.SetupGet(value => value.CurrentValue).Returns(configuration with { ProjectionRoot = root.Path });
+        options.SetupGet(value => value.CurrentValue).Returns(
+            configuration with
+            {
+                ProjectionRoot = root.Path
+            }
+        );
         source.StreamPath = Path.Combine(root.Path, source.Id + ".strm");
         File.WriteAllText(source.StreamPath, source.SourceName);
 
@@ -85,13 +116,24 @@ public sealed class ProjectionFilesCleanupTests
     }
 
     [Theory, AutoMoqData]
-    internal void Should_RejectEscapingAndTraversalPaths(ProjectionEntry source, StreamingOptions configuration, TemporaryDirectory directory, TemporaryDirectory outside,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options, ProjectionFiles sut)
+    internal void Should_RejectEscapingAndTraversalPaths(
+        ProjectionEntry source,
+        StreamingOptions configuration,
+        TemporaryDirectory directory,
+        TemporaryDirectory outside,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        ProjectionFiles sut
+    )
     {
         // Arrange
         using var root = directory;
         using var external = outside;
-        options.SetupGet(value => value.CurrentValue).Returns(configuration with { ProjectionRoot = root.Path });
+        options.SetupGet(value => value.CurrentValue).Returns(
+            configuration with
+            {
+                ProjectionRoot = root.Path
+            }
+        );
         sut.EnsureReady();
         var outsideFile = Path.Combine(external.Path, source.Id + ".strm");
         var insideFile = Path.Combine(root.Path, source.Id + ".strm");
@@ -115,13 +157,24 @@ public sealed class ProjectionFilesCleanupTests
     }
 
     [Theory, AutoMoqData]
-    internal void Should_RejectDirectorySymlinksBelowTheOwnedRoot(ProjectionEntry source, StreamingOptions configuration, TemporaryDirectory directory, TemporaryDirectory outside,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options, ProjectionFiles sut)
+    internal void Should_RejectDirectorySymlinksBelowTheOwnedRoot(
+        ProjectionEntry source,
+        StreamingOptions configuration,
+        TemporaryDirectory directory,
+        TemporaryDirectory outside,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        ProjectionFiles sut
+    )
     {
         // Arrange
         using var root = directory;
         using var external = outside;
-        options.SetupGet(value => value.CurrentValue).Returns(configuration with { ProjectionRoot = root.Path });
+        options.SetupGet(value => value.CurrentValue).Returns(
+            configuration with
+            {
+                ProjectionRoot = root.Path
+            }
+        );
         sut.EnsureReady();
         var original = Path.Combine(external.Path, source.Id + ".strm");
         File.WriteAllText(original, source.SourceName);
@@ -138,14 +191,24 @@ public sealed class ProjectionFilesCleanupTests
     }
 
     [Theory, AutoMoqData]
-    internal void Should_ValidateEveryTargetBeforeDeletingTheFirstFile(ProjectionEntry source, StreamingOptions configuration, TemporaryDirectory directory,
+    internal void Should_ValidateEveryTargetBeforeDeletingTheFirstFile(
+        ProjectionEntry source,
+        StreamingOptions configuration,
+        TemporaryDirectory directory,
         TemporaryDirectory outside,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options, ProjectionFiles sut)
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        ProjectionFiles sut
+    )
     {
         // Arrange
         using var root = directory;
         using var external = outside;
-        options.SetupGet(value => value.CurrentValue).Returns(configuration with { ProjectionRoot = root.Path });
+        options.SetupGet(value => value.CurrentValue).Returns(
+            configuration with
+            {
+                ProjectionRoot = root.Path
+            }
+        );
         sut.EnsureReady();
         source.StreamPath = Path.Combine(root.Path, "movies", source.Id + ".strm");
         var metadata = Path.ChangeExtension(source.StreamPath, ".nfo");
@@ -166,19 +229,35 @@ public sealed class ProjectionFilesCleanupTests
     }
 
     [Theory, AutoMoqData]
-    internal void Should_RejectASymbolicLinkAsTheProjectionRoot(ProjectionEntry source, StreamingOptions configuration, TemporaryDirectory directory, TemporaryDirectory outside,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options, ProjectionFiles sut)
+    internal void Should_RejectASymbolicLinkAsTheProjectionRoot(
+        ProjectionEntry source,
+        StreamingOptions configuration,
+        TemporaryDirectory directory,
+        TemporaryDirectory outside,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        ProjectionFiles sut
+    )
     {
         // Arrange
         using var root = directory;
         using var external = outside;
-        options.SetupGet(value => value.CurrentValue).Returns(configuration with { ProjectionRoot = external.Path });
+        options.SetupGet(value => value.CurrentValue).Returns(
+            configuration with
+            {
+                ProjectionRoot = external.Path
+            }
+        );
         sut.EnsureReady();
         var original = Path.Combine(external.Path, source.Id + ".strm");
         File.WriteAllText(original, source.SourceName);
         var alias = Path.Combine(root.Path, source.Id);
         Directory.CreateSymbolicLink(alias, external.Path);
-        options.SetupGet(value => value.CurrentValue).Returns(configuration with { ProjectionRoot = alias });
+        options.SetupGet(value => value.CurrentValue).Returns(
+            configuration with
+            {
+                ProjectionRoot = alias
+            }
+        );
         source.StreamPath = Path.Combine(alias, Path.GetFileName(original));
 
         // Act
@@ -190,12 +269,22 @@ public sealed class ProjectionFilesCleanupTests
     }
 
     [Theory, AutoMoqData]
-    internal void Should_NeverTreatAnActualMediaPayloadAsAStreamFile(ProjectionEntry source, StreamingOptions configuration, TemporaryDirectory directory,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options, ProjectionFiles sut)
+    internal void Should_NeverTreatAnActualMediaPayloadAsAStreamFile(
+        ProjectionEntry source,
+        StreamingOptions configuration,
+        TemporaryDirectory directory,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        ProjectionFiles sut
+    )
     {
         // Arrange
         using var root = directory;
-        options.SetupGet(value => value.CurrentValue).Returns(configuration with { ProjectionRoot = root.Path });
+        options.SetupGet(value => value.CurrentValue).Returns(
+            configuration with
+            {
+                ProjectionRoot = root.Path
+            }
+        );
         sut.EnsureReady();
         source.StreamPath = Path.Combine(root.Path, "movies", source.Id + ".mkv");
         File.WriteAllText(source.StreamPath, source.SourceName);
@@ -209,10 +298,20 @@ public sealed class ProjectionFilesCleanupTests
     }
 
     private sealed class AutoMoqDataAttribute() : AutoDataAttribute(() =>
-    {
-        var fixture = new Fixture { RepeatCount = 1 };
-        fixture.Customize(new AutoMoqCustomization { ConfigureMembers = true, GenerateDelegates = true });
-        fixture.Register<IMediaPathMapper>(() => fixture.Create<PhysicalMediaPathMapper>());
-        return fixture;
-    });
+        {
+            var fixture = new Fixture
+            {
+                RepeatCount = 1
+            };
+            fixture.Customize(
+                new AutoMoqCustomization
+                {
+                    ConfigureMembers = true,
+                    GenerateDelegates = true
+                }
+            );
+            fixture.Register<IMediaPathMapper>(() => fixture.Create<PhysicalMediaPathMapper>());
+            return fixture;
+        }
+    );
 }

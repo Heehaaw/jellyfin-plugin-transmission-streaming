@@ -14,27 +14,47 @@ using Xunit;
 public sealed class CopyProgressiveMediaTests
 {
     private sealed class AutoMoqDataAttribute() : AutoDataAttribute(() =>
-    {
-        var fixture = new Fixture { RepeatCount = 1 };
-        fixture.Customize(new AutoMoqCustomization { ConfigureMembers = true, GenerateDelegates = true });
-        fixture.Register<Stream>(() => new MemoryStream());
-        fixture.Customize<ProgressiveReadOptions>(composer => composer
-            .With(value => value.BufferSize, 4096)
-            .With(value => value.PollInterval, TimeSpan.FromSeconds(1))
-            .With(value => value.StallTimeout, TimeSpan.FromMinutes(2)));
-        fixture.Register(() => new ObservableFakeTimeProvider());
-        fixture.Register<TimeProvider>(() => fixture.Create<ObservableFakeTimeProvider>());
-        return fixture;
-    });
+        {
+            var fixture = new Fixture
+            {
+                RepeatCount = 1
+            };
+            fixture.Customize(
+                new AutoMoqCustomization
+                {
+                    ConfigureMembers = true,
+                    GenerateDelegates = true
+                }
+            );
+            fixture.Register<Stream>(() => new MemoryStream());
+            fixture.Customize<ProgressiveReadOptions>(composer => composer
+                .With(value => value.BufferSize, 4096)
+                .With(value => value.PollInterval, TimeSpan.FromSeconds(1))
+                .With(value => value.StallTimeout, TimeSpan.FromMinutes(2))
+            );
+            fixture.Register(() => new ObservableFakeTimeProvider());
+            fixture.Register<TimeProvider>(() => fixture.Create<ObservableFakeTimeProvider>());
+            return fixture;
+        }
+    );
 
     [Theory, AutoMoqData]
     internal async Task Should_WaitForVerifiedPieces(
-        InMemoryMedia media, ProgressiveReadState generated,
-        [Frozen] Mock<IMediator> mediator, [Frozen] Mock<IMediaFiles> files, [Frozen] ObservableFakeTimeProvider clock, CopyProgressiveMedia.Command command,
-        CopyProgressiveMedia.Handler sut)
+        InMemoryMedia media,
+        ProgressiveReadState generated,
+        [Frozen] Mock<IMediator> mediator,
+        [Frozen] Mock<IMediaFiles> files,
+        [Frozen] ObservableFakeTimeProvider clock,
+        CopyProgressiveMedia.Command command,
+        CopyProgressiveMedia.Handler sut
+    )
     {
         // Arrange
-        command = command with { Offset = 0, Count = media.Content.Length };
+        command = command with
+        {
+            Offset = 0,
+            Count = media.Content.Length
+        };
         var options = command.Options;
         var output = (MemoryStream)command.Destination;
         media.SetupReads(files);
@@ -49,7 +69,12 @@ public sealed class CopyProgressiveMediaTests
             DiskWritesSafe = true
         };
         mediator.SetupSequence(x => x.Send(It.IsAny<IQuery<ProgressiveReadState>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(state).ReturnsAsync(state with { Pieces = [0x80] });
+            .ReturnsAsync(state).ReturnsAsync(
+                state with
+                {
+                    Pieces = [0x80]
+                }
+            );
         options.PollInterval = TimeSpan.FromSeconds(1);
 
         // Act
@@ -65,11 +90,20 @@ public sealed class CopyProgressiveMediaTests
 
     [Theory, AutoMoqData]
     internal async Task Should_RespectGlobalPieceOffsets(
-        InMemoryMedia media, ProgressiveReadState generated,
-        [Frozen] Mock<IMediator> mediator, [Frozen] Mock<IMediaFiles> files, CopyProgressiveMedia.Command command, CopyProgressiveMedia.Handler sut)
+        InMemoryMedia media,
+        ProgressiveReadState generated,
+        [Frozen] Mock<IMediator> mediator,
+        [Frozen] Mock<IMediaFiles> files,
+        CopyProgressiveMedia.Command command,
+        CopyProgressiveMedia.Handler sut
+    )
     {
         // Arrange
-        command = command with { Offset = 0, Count = media.Content.Length };
+        command = command with
+        {
+            Offset = 0,
+            Count = media.Content.Length
+        };
         var output = (MemoryStream)command.Destination;
         media.SetupReads(files);
         var state = generated with
@@ -93,11 +127,20 @@ public sealed class CopyProgressiveMediaTests
 
     [Theory, AutoMoqData]
     internal async Task Should_CancelWithoutServingUnavailableBytes(
-        InMemoryMedia media, ProgressiveReadState generated,
-        [Frozen] Mock<IMediator> mediator, [Frozen] Mock<IMediaFiles> files, CopyProgressiveMedia.Command command, CopyProgressiveMedia.Handler sut)
+        InMemoryMedia media,
+        ProgressiveReadState generated,
+        [Frozen] Mock<IMediator> mediator,
+        [Frozen] Mock<IMediaFiles> files,
+        CopyProgressiveMedia.Command command,
+        CopyProgressiveMedia.Handler sut
+    )
     {
         // Arrange
-        command = command with { Offset = 0, Count = media.Content.Length };
+        command = command with
+        {
+            Offset = 0,
+            Count = media.Content.Length
+        };
         var options = command.Options;
         var output = (MemoryStream)command.Destination;
         media.SetupReads(files);
@@ -127,11 +170,21 @@ public sealed class CopyProgressiveMediaTests
 
     [Theory, AutoMoqData]
     internal async Task Should_SwitchBackingFileDuringPlayback(
-        InMemoryMedia media, string importedPath, ProgressiveReadState generated,
-        [Frozen] Mock<IMediator> mediator, [Frozen] Mock<IMediaFiles> files, CopyProgressiveMedia.Command command, CopyProgressiveMedia.Handler sut)
+        InMemoryMedia media,
+        string importedPath,
+        ProgressiveReadState generated,
+        [Frozen] Mock<IMediator> mediator,
+        [Frozen] Mock<IMediaFiles> files,
+        CopyProgressiveMedia.Command command,
+        CopyProgressiveMedia.Handler sut
+    )
     {
         // Arrange
-        command = command with { Offset = 0, Count = media.Content.Length };
+        command = command with
+        {
+            Offset = 0,
+            Count = media.Content.Length
+        };
         var output = (MemoryStream)command.Destination;
         media.SetupReads(files);
         media.SetupReads(files, importedPath);
@@ -146,7 +199,13 @@ public sealed class CopyProgressiveMediaTests
             DiskWritesSafe = true
         };
         mediator.SetupSequence(x => x.Send(It.IsAny<IQuery<ProgressiveReadState>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(state).ReturnsAsync(state with { Path = importedPath, Complete = true });
+            .ReturnsAsync(state).ReturnsAsync(
+                state with
+                {
+                    Path = importedPath,
+                    Complete = true
+                }
+            );
 
         // Act
         await sut.Handle(command, CancellationToken.None);
@@ -158,14 +217,28 @@ public sealed class CopyProgressiveMediaTests
 
     [Theory, AutoMoqData]
     internal async Task Should_RefuseUnsafeWriteCache(
-        InMemoryMedia media, ProgressiveReadState generated,
-        [Frozen] Mock<IMediator> mediator, [Frozen] Mock<IMediaFiles> files, CopyProgressiveMedia.Command command, CopyProgressiveMedia.Handler sut)
+        InMemoryMedia media,
+        ProgressiveReadState generated,
+        [Frozen] Mock<IMediator> mediator,
+        [Frozen] Mock<IMediaFiles> files,
+        CopyProgressiveMedia.Command command,
+        CopyProgressiveMedia.Handler sut
+    )
     {
         // Arrange
-        command = command with { Offset = 0, Count = media.Content.Length };
+        command = command with
+        {
+            Offset = 0,
+            Count = media.Content.Length
+        };
         var output = (MemoryStream)command.Destination;
         media.SetupReads(files);
-        var state = generated with { Path = media.Path, Length = media.Content.Length, DiskWritesSafe = false };
+        var state = generated with
+        {
+            Path = media.Path,
+            Length = media.Content.Length,
+            DiskWritesSafe = false
+        };
         mediator.Setup(value => value.Send(It.IsAny<IQuery<ProgressiveReadState>>(), It.IsAny<CancellationToken>())).ReturnsAsync(state);
 
         // Act
@@ -178,12 +251,21 @@ public sealed class CopyProgressiveMediaTests
 
     [Theory, AutoMoqData]
     internal async Task Should_TimeoutWhenPiecesNeverArrive(
-        InMemoryMedia media, ProgressiveReadState generated,
-        [Frozen] Mock<IMediator> mediator, [Frozen] Mock<IMediaFiles> files, [Frozen] ObservableFakeTimeProvider clock, CopyProgressiveMedia.Command command,
-        CopyProgressiveMedia.Handler sut)
+        InMemoryMedia media,
+        ProgressiveReadState generated,
+        [Frozen] Mock<IMediator> mediator,
+        [Frozen] Mock<IMediaFiles> files,
+        [Frozen] ObservableFakeTimeProvider clock,
+        CopyProgressiveMedia.Command command,
+        CopyProgressiveMedia.Handler sut
+    )
     {
         // Arrange
-        command = command with { Offset = 0, Count = media.Content.Length };
+        command = command with
+        {
+            Offset = 0,
+            Count = media.Content.Length
+        };
         var options = command.Options;
         var output = (MemoryStream)command.Destination;
         media.SetupReads(files);
@@ -217,12 +299,22 @@ public sealed class CopyProgressiveMediaTests
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_ResetStallDeadlineAfterWritingBytes(InMemoryMedia media, ProgressiveReadState generated,
-        [Frozen] Mock<IMediator> mediator, [Frozen] Mock<IMediaFiles> files, [Frozen] ObservableFakeTimeProvider clock, CopyProgressiveMedia.Command command,
-        CopyProgressiveMedia.Handler sut)
+    internal async Task Should_ResetStallDeadlineAfterWritingBytes(
+        InMemoryMedia media,
+        ProgressiveReadState generated,
+        [Frozen] Mock<IMediator> mediator,
+        [Frozen] Mock<IMediaFiles> files,
+        [Frozen] ObservableFakeTimeProvider clock,
+        CopyProgressiveMedia.Command command,
+        CopyProgressiveMedia.Handler sut
+    )
     {
         // Arrange
-        command = command with { Offset = 0, Count = media.Content.Length };
+        command = command with
+        {
+            Offset = 0,
+            Count = media.Content.Length
+        };
         var options = command.Options;
         var output = (MemoryStream)command.Destination;
         media.SetupReads(files);
@@ -237,7 +329,10 @@ public sealed class CopyProgressiveMediaTests
             Complete = false,
             DiskWritesSafe = true
         };
-        var firstPiece = unavailable with { Pieces = [0x80] };
+        var firstPiece = unavailable with
+        {
+            Pieces = [0x80]
+        };
         var reads = 0;
         mediator.Setup(value => value.Send(It.IsAny<IQuery<ProgressiveReadState>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(() => ++reads == 1 ? unavailable : firstPiece);
@@ -265,19 +360,36 @@ public sealed class CopyProgressiveMediaTests
 
     [Theory, AutoMoqData]
     internal async Task Should_WaitForTheBackingFileToBecomeVisible(
-        InMemoryMedia media, ProgressiveReadState generated, [Frozen] Mock<IMediator> mediator, [Frozen] Mock<IMediaFiles> files,
-        [Frozen] ObservableFakeTimeProvider clock, CopyProgressiveMedia.Command command, CopyProgressiveMedia.Handler sut)
+        InMemoryMedia media,
+        ProgressiveReadState generated,
+        [Frozen] Mock<IMediator> mediator,
+        [Frozen] Mock<IMediaFiles> files,
+        [Frozen] ObservableFakeTimeProvider clock,
+        CopyProgressiveMedia.Command command,
+        CopyProgressiveMedia.Handler sut
+    )
     {
         // Arrange
-        command = command with { Offset = 0, Count = media.Content.Length };
+        command = command with
+        {
+            Offset = 0,
+            Count = media.Content.Length
+        };
         var options = command.Options;
         var output = (MemoryStream)command.Destination;
-        var state = generated with { Path = media.Path, Length = media.Content.Length, Complete = true, DiskWritesSafe = true };
+        var state = generated with
+        {
+            Path = media.Path,
+            Length = media.Content.Length,
+            Complete = true,
+            DiskWritesSafe = true
+        };
         mediator.Setup(value => value.Send(It.IsAny<IQuery<ProgressiveReadState>>(), It.IsAny<CancellationToken>())).ReturnsAsync(state);
         var attempts = 0;
         files.Setup(value => value.ReadAsync(media.Path, It.IsAny<Memory<byte>>(), It.IsAny<long>(), It.IsAny<CancellationToken>()))
             .Returns((string _, Memory<byte> buffer, long offset, CancellationToken cancellationToken) =>
-                ++attempts == 1 ? ValueTask.FromResult(0) : media.ReadAsync(buffer, offset, cancellationToken));
+                ++attempts == 1 ? ValueTask.FromResult(0) : media.ReadAsync(buffer, offset, cancellationToken)
+            );
         options.PollInterval = TimeSpan.FromSeconds(1);
 
         // Act
@@ -291,13 +403,29 @@ public sealed class CopyProgressiveMediaTests
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_IsolateTheSessionForEachCopy(InMemoryMedia media, ProgressiveReadState generated,
-        [Frozen] Mock<IMediator> mediator, [Frozen] Mock<IMediaFiles> files, CopyProgressiveMedia.Command command, CopyProgressiveMedia.Handler sut)
+    internal async Task Should_IsolateTheSessionForEachCopy(
+        InMemoryMedia media,
+        ProgressiveReadState generated,
+        [Frozen] Mock<IMediator> mediator,
+        [Frozen] Mock<IMediaFiles> files,
+        CopyProgressiveMedia.Command command,
+        CopyProgressiveMedia.Handler sut
+    )
     {
         // Arrange
-        command = command with { Offset = 0, Count = media.Content.Length };
+        command = command with
+        {
+            Offset = 0,
+            Count = media.Content.Length
+        };
         media.SetupReads(files);
-        var state = generated with { Path = media.Path, Length = media.Content.Length, Complete = true, DiskWritesSafe = true };
+        var state = generated with
+        {
+            Path = media.Path,
+            Length = media.Content.Length,
+            Complete = true,
+            DiskWritesSafe = true
+        };
         var sessions = new List<PlaybackSession>();
         mediator.Setup(value => value.Send(It.IsAny<IQuery<ProgressiveReadState>>(), It.IsAny<CancellationToken>()))
             .Callback((IQuery<ProgressiveReadState> query, CancellationToken _) => sessions.Add(((GetPlaybackState.Query)query).Playback))

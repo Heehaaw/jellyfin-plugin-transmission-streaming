@@ -16,22 +16,38 @@ internal sealed class JellyfinLibrary(JellyfinApi api, string administrator, str
             AutomaticallyRefreshMetadataAfterScan = false,
             EnableChapterImageExtraction = false,
             EnableTrickplayImageExtraction = false,
-            TypeOptions = new[] { new { Type = "Movie", MetadataFetchers = Array.Empty<string>(), ImageFetchers = Array.Empty<string>() } }
+            TypeOptions = new[]
+            {
+                new
+                {
+                    Type = "Movie",
+                    MetadataFetchers = Array.Empty<string>(),
+                    ImageFetchers = Array.Empty<string>()
+                }
+            }
         };
         var query = $"name={Uri.EscapeDataString(name)}&collectionType=movies&refreshLibrary=false&paths={Uri.EscapeDataString(path)}";
         // A refresh requested during an existing scan can be dropped before the new root is included.
-        await api.RequestAsync($"/Library/VirtualFolders?{query}", new { LibraryOptions = options });
+        await api.RequestAsync(
+            path: $"/Library/VirtualFolders?{query}",
+            body: new
+            {
+                LibraryOptions = options
+            }
+        );
         await new JellyfinLibraryScan(api).StartAfterFolderChangeAsync();
     }
 
     public async Task<JsonNode?> FindAsync(bool projected)
     {
         var result = await api.RequestAsync($"/Items?userId={administrator}&Recursive=true&IncludeItemTypes=Movie&Fields=Path");
-        return JellyfinApi.Field(result, "Items")!.AsArray().FirstOrDefault(item =>
-        {
-            var path = JellyfinApi.Field(item, "Path")?.GetValue<string>() ?? "";
-            return projected ? path.EndsWith(".strm", StringComparison.Ordinal) : path.EndsWith(sourceName, StringComparison.Ordinal);
-        });
+        var items = JellyfinApi.Field(result, "Items")!.AsArray();
+        return items.FirstOrDefault(item =>
+            {
+                var path = JellyfinApi.Field(item, "Path")?.GetValue<string>() ?? "";
+                return projected ? path.EndsWith(".strm", StringComparison.Ordinal) : path.EndsWith(sourceName, StringComparison.Ordinal);
+            }
+        );
     }
 
     public async Task<string> WaitForItemAsync(bool projected = true)

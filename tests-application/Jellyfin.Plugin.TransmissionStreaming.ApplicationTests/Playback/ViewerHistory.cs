@@ -11,9 +11,19 @@ internal sealed class ViewerHistory(string itemId, IReadOnlyDictionary<string, J
 
     public static async Task<ViewerHistory> SaveAsync(JellyfinTestServer server, string itemId, WatchState[] states)
     {
-        var viewer = await server.Api.RequestAsync("/Users/New", new { Name = "second-viewer", Password = "Disposable-viewer-only-123!" });
+        var viewer = await server.Api.RequestAsync(
+            path: "/Users/New",
+            body: new
+            {
+                Name = "second-viewer",
+                Password = "Disposable-viewer-only-123!"
+            }
+        );
         var secondUser = JellyfinApi.Value<string>(viewer, "Id");
-        var users = new[] { server.Administrator, secondUser };
+        var users = new[]
+        {
+            server.Administrator, secondUser
+        };
         var before = new Dictionary<string, JsonNode?>();
         foreach (var (user, state) in users.Zip(states))
         {

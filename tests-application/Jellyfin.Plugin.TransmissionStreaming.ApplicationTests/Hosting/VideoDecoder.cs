@@ -9,8 +9,14 @@ internal sealed class VideoDecoder(IContainer container)
 
     public Task<string> FileHashAsync(string path, CancellationToken cancellationToken)
     {
-        return HashAsync([Binary, "-hide_banner", "-loglevel", "error", "-i", path,
-            "-map", "0:v:0", "-f", "hash", "-hash", "sha256", "-"], cancellationToken);
+        return HashAsync(
+            arguments:
+            [
+                Binary, "-hide_banner", "-loglevel", "error", "-i", path,
+                "-map", "0:v:0", "-f", "hash", "-hash", "sha256", "-"
+            ],
+            cancellationToken: cancellationToken
+        );
     }
 
     public Task<string> StreamHashAsync(string projectionPath, CancellationToken cancellationToken)
@@ -18,9 +24,9 @@ internal sealed class VideoDecoder(IContainer container)
         // Exec arguments appear in container diagnostics. Read the capability inside the shell
         // so neither Testcontainers nor an assertion failure can print the stream secret.
         const string decode = """
-            IFS= read -r stream_url < "$1"
-            exec /usr/lib/jellyfin-ffmpeg/ffmpeg -hide_banner -loglevel error -i "$stream_url" -map 0:v:0 -f hash -hash sha256 -
-            """;
+                              IFS= read -r stream_url < "$1"
+                              exec /usr/lib/jellyfin-ffmpeg/ffmpeg -hide_banner -loglevel error -i "$stream_url" -map 0:v:0 -f hash -hash sha256 -
+                              """;
         return HashAsync(["/bin/sh", "-c", decode, "decode", projectionPath], cancellationToken);
     }
 
@@ -32,6 +38,7 @@ internal sealed class VideoDecoder(IContainer container)
             // FFmpeg errors may include its input URL, so retain only a sanitized outcome.
             throw new InvalidOperationException($"Synthetic media decoding failed (exit {result.ExitCode}).");
         }
+
         return result.Stdout.Trim();
     }
 }

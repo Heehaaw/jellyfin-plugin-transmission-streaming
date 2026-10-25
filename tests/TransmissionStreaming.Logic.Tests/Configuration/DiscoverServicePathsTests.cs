@@ -15,16 +15,28 @@ using Xunit;
 public sealed class DiscoverServicePathsTests
 {
     [Theory, AutoMoqData]
-    internal async Task Should_PairALoneArrRootWithItsLibraryType(DiscoverySource source,
-        [Frozen] Mock<IServicePathDiscovery> discovery, [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
-        [Frozen] Mock<IMediaLibraryLocations> libraries, DiscoverServicePaths.Handler sut)
+    internal async Task Should_PairALoneArrRootWithItsLibraryType(
+        DiscoverySource source,
+        [Frozen] Mock<IServicePathDiscovery> discovery,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        [Frozen] Mock<IMediaLibraryLocations> libraries,
+        DiscoverServicePaths.Handler sut
+    )
     {
         // Arrange
-        var query = source.Query with { Service = MediaService.Radarr };
+        var query = source.Query with
+        {
+            Service = MediaService.Radarr
+        };
         var root = source.Paths.LibraryRoots[0];
         var local = source.LocalFolders[0];
         discovery.Setup(value => value.DiscoverAsync(query.Service, query.Connection, It.IsAny<CancellationToken>())).ReturnsAsync(source.Paths);
-        options.SetupGet(value => value.CurrentValue).Returns(source.Options with { PathMappings = [] });
+        options.SetupGet(value => value.CurrentValue).Returns(
+            source.Options with
+            {
+                PathMappings = []
+            }
+        );
         libraries.Setup(value => value.GetServicePaths(query.Service)).Returns([local]);
 
         // Act
@@ -38,14 +50,24 @@ public sealed class DiscoverServicePathsTests
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_PreserveASavedManualOverride(DiscoverySource source,
-        [Frozen] Mock<IServicePathDiscovery> discovery, [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options, DiscoverServicePaths.Handler sut)
+    internal async Task Should_PreserveASavedManualOverride(
+        DiscoverySource source,
+        [Frozen] Mock<IServicePathDiscovery> discovery,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        DiscoverServicePaths.Handler sut
+    )
     {
         // Arrange
         var mapping = source.Options.PathMappings[0];
         mapping.Service = MediaService.Sonarr;
-        var query = source.Query with { Service = mapping.Service };
-        var paths = source.Paths with { LibraryRoots = [mapping.RemoteRoot] };
+        var query = source.Query with
+        {
+            Service = mapping.Service
+        };
+        var paths = source.Paths with
+        {
+            LibraryRoots = [mapping.RemoteRoot]
+        };
         discovery.Setup(value => value.DiscoverAsync(query.Service, query.Connection, It.IsAny<CancellationToken>())).ReturnsAsync(paths);
         options.SetupGet(value => value.CurrentValue).Returns(source.Options);
 
@@ -57,15 +79,30 @@ public sealed class DiscoverServicePathsTests
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_LeaveAmbiguousLocalMountsForManualEntry(DiscoverySource source,
-        [Frozen] Mock<IServicePathDiscovery> discovery, [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
-        [Frozen] Mock<IMediaLibraryLocations> libraries, DiscoverServicePaths.Handler sut)
+    internal async Task Should_LeaveAmbiguousLocalMountsForManualEntry(
+        DiscoverySource source,
+        [Frozen] Mock<IServicePathDiscovery> discovery,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        [Frozen] Mock<IMediaLibraryLocations> libraries,
+        DiscoverServicePaths.Handler sut
+    )
     {
         // Arrange
-        var query = source.Query with { Service = MediaService.Sonarr };
-        var candidates = new[] { source.LocalFolders[0], source.LocalFolders[0] + "/other" };
+        var query = source.Query with
+        {
+            Service = MediaService.Sonarr
+        };
+        var candidates = new[]
+        {
+            source.LocalFolders[0], source.LocalFolders[0] + "/other"
+        };
         discovery.Setup(value => value.DiscoverAsync(query.Service, query.Connection, It.IsAny<CancellationToken>())).ReturnsAsync(source.Paths);
-        options.SetupGet(value => value.CurrentValue).Returns(source.Options with { PathMappings = [] });
+        options.SetupGet(value => value.CurrentValue).Returns(
+            source.Options with
+            {
+                PathMappings = []
+            }
+        );
         libraries.Setup(value => value.GetServicePaths(query.Service)).Returns(candidates);
 
         // Act
@@ -76,17 +113,39 @@ public sealed class DiscoverServicePathsTests
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_CombineTransmissionDownloadAndIncompleteFolders(DiscoverySource source,
-        [Frozen] Mock<IServicePathDiscovery> discovery, [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
-        [Frozen] Mock<IMediator> paths, DiscoverServicePaths.Handler sut)
+    internal async Task Should_CombineTransmissionDownloadAndIncompleteFolders(
+        DiscoverySource source,
+        [Frozen] Mock<IServicePathDiscovery> discovery,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        [Frozen] Mock<IMediator> paths,
+        DiscoverServicePaths.Handler sut
+    )
     {
         // Arrange
-        var query = source.Query with { Service = MediaService.Transmission };
-        var upstream = source.Paths with { DownloadDirectories = [source.Paths.DownloadDirectory!] };
-        var expected = new[] { upstream.DownloadDirectory, upstream.IncompleteDirectory };
+        var query = source.Query with
+        {
+            Service = MediaService.Transmission
+        };
+        var upstream = source.Paths with
+        {
+            DownloadDirectories = [source.Paths.DownloadDirectory!]
+        };
+        var expected = new[]
+        {
+            upstream.DownloadDirectory, upstream.IncompleteDirectory
+        };
         discovery.Setup(value => value.DiscoverAsync(query.Service, query.Connection, It.IsAny<CancellationToken>())).ReturnsAsync(upstream);
-        options.SetupGet(value => value.CurrentValue).Returns(source.Options with { PathMappings = [] });
-        paths.Setup(value => value.Send(It.Is<MapServicePath.Query>(request => request.Service == query.Service && request.Path == upstream.DownloadDirectory!), It.IsAny<CancellationToken>())).Returns(ValueTask.FromResult<string?>(source.LocalFolders[0]));
+        options.SetupGet(value => value.CurrentValue).Returns(
+            source.Options with
+            {
+                PathMappings = []
+            }
+        );
+        paths.Setup(value => value.Send(
+                query: It.Is<MapServicePath.Query>(request => request.Service == query.Service && request.Path == upstream.DownloadDirectory!),
+                cancellationToken: It.IsAny<CancellationToken>()
+            )
+        ).Returns(ValueTask.FromResult<string?>(source.LocalFolders[0]));
 
         // Act
         var result = await sut.Handle(query, CancellationToken.None);
@@ -97,22 +156,41 @@ public sealed class DiscoverServicePathsTests
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_OmitAChildCoveredByItsParent(DiscoverySource source,
-        [Frozen] Mock<IServicePathDiscovery> discovery, [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
-        [Frozen] Mock<IMediator> mediator, [Frozen] Mock<IMediaPathMapper> physicalPaths, DiscoverServicePaths.Handler sut)
+    internal async Task Should_OmitAChildCoveredByItsParent(
+        DiscoverySource source,
+        [Frozen] Mock<IServicePathDiscovery> discovery,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        [Frozen] Mock<IMediator> mediator,
+        [Frozen] Mock<IMediaPathMapper> physicalPaths,
+        DiscoverServicePaths.Handler sut
+    )
     {
         // Arrange
-        var query = source.Query with { Service = MediaService.Transmission };
+        var query = source.Query with
+        {
+            Service = MediaService.Transmission
+        };
         var parent = source.Paths.DownloadDirectory!;
         var suffix = source.Paths.IncompleteDirectory!;
         var child = parent + suffix;
         var localParent = source.LocalFolders[0];
         var localChild = localParent + suffix;
-        var paths = source.Paths with { DownloadDirectories = [parent, child], IncompleteDirectory = null };
+        var paths = source.Paths with
+        {
+            DownloadDirectories = [parent, child],
+            IncompleteDirectory = null
+        };
         discovery.Setup(value => value.DiscoverAsync(query.Service, query.Connection, It.IsAny<CancellationToken>())).ReturnsAsync(paths);
-        options.SetupGet(value => value.CurrentValue).Returns(source.Options with { PathMappings = [] });
-        mediator.Setup(value => value.Send(It.Is<MapServicePath.Query>(request => request.Path == parent), It.IsAny<CancellationToken>())).Returns(ValueTask.FromResult<string?>(localParent));
-        mediator.Setup(value => value.Send(It.Is<MapServicePath.Query>(request => request.Path == child), It.IsAny<CancellationToken>())).Returns(ValueTask.FromResult<string?>(localChild));
+        options.SetupGet(value => value.CurrentValue).Returns(
+            source.Options with
+            {
+                PathMappings = []
+            }
+        );
+        mediator.Setup(value => value.Send(It.Is<MapServicePath.Query>(request => request.Path == parent), It.IsAny<CancellationToken>()))
+            .Returns(ValueTask.FromResult<string?>(localParent));
+        mediator.Setup(value => value.Send(It.Is<MapServicePath.Query>(request => request.Path == child), It.IsAny<CancellationToken>()))
+            .Returns(ValueTask.FromResult<string?>(localChild));
         physicalPaths.Setup(value => value.Map(child, parent, localParent)).Returns(localChild);
 
         // Act
@@ -124,21 +202,33 @@ public sealed class DiscoverServicePathsTests
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_KeepASavedChildWithADifferentLocalTarget(DiscoverySource source,
-        [Frozen] Mock<IServicePathDiscovery> discovery, [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
-        [Frozen] Mock<IMediator> mediator, DiscoverServicePaths.Handler sut)
+    internal async Task Should_KeepASavedChildWithADifferentLocalTarget(
+        DiscoverySource source,
+        [Frozen] Mock<IServicePathDiscovery> discovery,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        [Frozen] Mock<IMediator> mediator,
+        DiscoverServicePaths.Handler sut
+    )
     {
         // Arrange
-        var query = source.Query with { Service = MediaService.Transmission };
+        var query = source.Query with
+        {
+            Service = MediaService.Transmission
+        };
         var parent = source.Paths.DownloadDirectory!;
         var child = parent + source.Paths.IncompleteDirectory!;
         var saved = source.Options.PathMappings[0];
         saved.Service = query.Service;
         saved.RemoteRoot = child;
-        var paths = source.Paths with { DownloadDirectories = [parent, child], IncompleteDirectory = null };
+        var paths = source.Paths with
+        {
+            DownloadDirectories = [parent, child],
+            IncompleteDirectory = null
+        };
         discovery.Setup(value => value.DiscoverAsync(query.Service, query.Connection, It.IsAny<CancellationToken>())).ReturnsAsync(paths);
         options.SetupGet(value => value.CurrentValue).Returns(source.Options);
-        mediator.Setup(value => value.Send(It.Is<MapServicePath.Query>(request => request.Path == parent), It.IsAny<CancellationToken>())).Returns(ValueTask.FromResult<string?>(source.LocalFolders[0]));
+        mediator.Setup(value => value.Send(It.Is<MapServicePath.Query>(request => request.Path == parent), It.IsAny<CancellationToken>()))
+            .Returns(ValueTask.FromResult<string?>(source.LocalFolders[0]));
 
         // Act
         var result = await sut.Handle(query, CancellationToken.None);
@@ -149,21 +239,40 @@ public sealed class DiscoverServicePathsTests
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_KeepAChildWhenTheParentCannotTranslateIt(DiscoverySource source,
-        [Frozen] Mock<IServicePathDiscovery> discovery, [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
-        [Frozen] Mock<IMediator> mediator, [Frozen] Mock<IMediaPathMapper> physicalPaths, DiscoverServicePaths.Handler sut)
+    internal async Task Should_KeepAChildWhenTheParentCannotTranslateIt(
+        DiscoverySource source,
+        [Frozen] Mock<IServicePathDiscovery> discovery,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        [Frozen] Mock<IMediator> mediator,
+        [Frozen] Mock<IMediaPathMapper> physicalPaths,
+        DiscoverServicePaths.Handler sut
+    )
     {
         // Arrange
-        var query = source.Query with { Service = MediaService.Transmission };
+        var query = source.Query with
+        {
+            Service = MediaService.Transmission
+        };
         var parent = source.Paths.DownloadDirectory!;
         var suffix = source.Paths.IncompleteDirectory!;
         var child = parent + suffix;
         var localParent = source.LocalFolders[0];
-        var paths = source.Paths with { DownloadDirectories = [parent, child], IncompleteDirectory = null };
+        var paths = source.Paths with
+        {
+            DownloadDirectories = [parent, child],
+            IncompleteDirectory = null
+        };
         discovery.Setup(value => value.DiscoverAsync(query.Service, query.Connection, It.IsAny<CancellationToken>())).ReturnsAsync(paths);
-        options.SetupGet(value => value.CurrentValue).Returns(source.Options with { PathMappings = [] });
-        mediator.Setup(value => value.Send(It.Is<MapServicePath.Query>(request => request.Path == parent), It.IsAny<CancellationToken>())).Returns(ValueTask.FromResult<string?>(localParent));
-        mediator.Setup(value => value.Send(It.Is<MapServicePath.Query>(request => request.Path == child), It.IsAny<CancellationToken>())).Returns(ValueTask.FromResult<string?>(localParent + suffix));
+        options.SetupGet(value => value.CurrentValue).Returns(
+            source.Options with
+            {
+                PathMappings = []
+            }
+        );
+        mediator.Setup(value => value.Send(It.Is<MapServicePath.Query>(request => request.Path == parent), It.IsAny<CancellationToken>()))
+            .Returns(ValueTask.FromResult<string?>(localParent));
+        mediator.Setup(value => value.Send(It.Is<MapServicePath.Query>(request => request.Path == child), It.IsAny<CancellationToken>()))
+            .Returns(ValueTask.FromResult<string?>(localParent + suffix));
         physicalPaths.Setup(value => value.Map(child, parent, localParent)).Returns((string?)null);
 
         // Act
@@ -174,15 +283,27 @@ public sealed class DiscoverServicePathsTests
     }
 
     private sealed class AutoMoqDataAttribute() : AutoDataAttribute(() =>
-    {
-        var fixture = new Fixture { RepeatCount = 1 };
-        fixture.Customize(new AutoMoqCustomization { ConfigureMembers = true, GenerateDelegates = true });
-        // All discovered folders must be absolute; generated labels keep different mounts distinct.
-        fixture.Register(() => "/" + fixture.Create<Guid>().ToString("N"));
-        fixture.Customize<Mock<IMediator>>(composer => composer.Do(mock =>
-            mock.Setup(value => value.Send(It.IsAny<IQuery<string?>>(), It.IsAny<CancellationToken>())).Returns(ValueTask.FromResult<string?>(null))));
-        return fixture;
-    });
+        {
+            var fixture = new Fixture
+            {
+                RepeatCount = 1
+            };
+            fixture.Customize(
+                new AutoMoqCustomization
+                {
+                    ConfigureMembers = true,
+                    GenerateDelegates = true
+                }
+            );
+            // All discovered folders must be absolute; generated labels keep different mounts distinct.
+            fixture.Register(() => "/" + fixture.Create<Guid>().ToString("N"));
+            fixture.Customize<Mock<IMediator>>(composer => composer.Do(mock =>
+                    mock.Setup(value => value.Send(It.IsAny<IQuery<string?>>(), It.IsAny<CancellationToken>())).Returns(ValueTask.FromResult<string?>(null))
+                )
+            );
+            return fixture;
+        }
+    );
 }
 
 public sealed record DiscoverySource(DiscoverServicePaths.Query Query, DiscoveredServicePaths Paths, StreamingOptions Options, string[] LocalFolders);

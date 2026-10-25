@@ -61,13 +61,19 @@ internal sealed class JellyfinContainer : IAsyncDisposable
     {
         var relative = Path.GetRelativePath(mediaRoot, Path.Combine(workspace, MediaFileName)).Replace(Path.DirectorySeparatorChar, '/');
         var remotePath = "/data/" + relative;
-        var generated = await container.ExecAsync([
-            "/usr/lib/jellyfin-ffmpeg/ffmpeg", "-hide_banner", "-loglevel", "error", "-f", "lavfi", "-i", "testsrc2=size=320x180:rate=24",
-            "-t", MediaDuration.TotalSeconds.ToString(System.Globalization.CultureInfo.InvariantCulture), "-c:v", "libx264", "-preset", "ultrafast", "-an", "-y", remotePath], cancellationToken);
+        var generated = await container.ExecAsync(
+            command:
+            [
+                "/usr/lib/jellyfin-ffmpeg/ffmpeg", "-hide_banner", "-loglevel", "error", "-f", "lavfi", "-i", "testsrc2=size=320x180:rate=24",
+                "-t", MediaDuration.TotalSeconds.ToString(System.Globalization.CultureInfo.InvariantCulture), "-c:v", "libx264", "-preset", "ultrafast", "-an", "-y", remotePath
+            ],
+            ct: cancellationToken
+        );
         if (generated.ExitCode != 0)
         {
             throw new InvalidOperationException("Could not generate synthetic test video.");
         }
+
         return await File.ReadAllBytesAsync(Path.Combine(workspace, MediaFileName), cancellationToken);
     }
 
@@ -90,12 +96,15 @@ internal sealed class JellyfinContainer : IAsyncDisposable
         }
 
         var settings = Directory.CreateDirectory(Path.Combine(configuration, "config")).FullName;
-        File.WriteAllText(Path.Combine(settings, "network.xml"), """
-            <NetworkConfiguration>
-                <EnableAutoDiscovery>false</EnableAutoDiscovery>
-                <EnableUPnP>false</EnableUPnP>
-                <EnableIPv6>false</EnableIPv6>
-            </NetworkConfiguration>
-            """);
+        File.WriteAllText(
+            path: Path.Combine(settings, "network.xml"),
+            contents: """
+                      <NetworkConfiguration>
+                          <EnableAutoDiscovery>false</EnableAutoDiscovery>
+                          <EnableUPnP>false</EnableUPnP>
+                          <EnableIPv6>false</EnableIPv6>
+                      </NetworkConfiguration>
+                      """
+        );
     }
 }

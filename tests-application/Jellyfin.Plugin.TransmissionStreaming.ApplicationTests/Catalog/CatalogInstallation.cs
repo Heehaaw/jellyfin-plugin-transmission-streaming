@@ -19,7 +19,12 @@ internal sealed class CatalogInstallation(DownloadServices containers) : IAsyncD
     public PluginBundle Bundle => PluginBundle.BuildOutput;
     public string InstalledDirectory => Path.Combine(workspace!, "jellyfin", "plugins", Bundle.FolderName);
     public JellyfinApi Api => api!;
-    public string? DebugOutputDirectory { get; private set; }
+
+    public string? DebugOutputDirectory
+    {
+        get;
+        private set;
+    }
 
     public async Task StartAsync(CatalogSource source, CancellationToken cancellationToken, bool corruptChecksum = false, Uri? repository = null)
     {
@@ -27,23 +32,34 @@ internal sealed class CatalogInstallation(DownloadServices containers) : IAsyncD
         {
             throw new ArgumentException("An external test repository must use HTTPS without credentials or query parameters.");
         }
+
         if (corruptChecksum && repository is not null)
         {
             throw new ArgumentException("The checksum rejection scenario requires the controlled local catalog.");
         }
+
         await PrepareAsync(source, cancellationToken);
         if (repository is null)
         {
             catalog = new CatalogServer(containers, scenario!, corruptChecksum);
             await catalog.StartAsync(cancellationToken);
         }
+
         repositoryUrl = repository ?? catalog!.ManifestUrl;
         await StartJellyfinAsync(cancellationToken);
         // Replace defaults so normal tests make no external catalog requests.
-        await api!.RequestAsync("/Repositories", new[]
-        {
-            new { Name = source.RepositoryName, Url = repositoryUrl.AbsoluteUri, Enabled = true }
-        }).WaitAsync(cancellationToken);
+        await api!.RequestAsync(
+            path: "/Repositories",
+            body: new[]
+            {
+                new
+                {
+                    Name = source.RepositoryName,
+                    Url = repositoryUrl.AbsoluteUri,
+                    Enabled = true
+                }
+            }
+        ).WaitAsync(cancellationToken);
     }
 
     public async Task StartDevelopmentAsync(CatalogSource source, CancellationToken cancellationToken)
@@ -59,7 +75,7 @@ internal sealed class CatalogInstallation(DownloadServices containers) : IAsyncD
         scenario = await containers.BeginScenarioAsync(cancellationToken);
         workspace = scenario.Workspace;
         var baseline = await TestContext.Current.GetFixture<JellyfinBaseline>()
-            ?? throw new InvalidOperationException("Register the Jellyfin baseline assembly fixture.");
+                       ?? throw new InvalidOperationException("Register the Jellyfin baseline assembly fixture.");
         baseline.Populate(Path.Combine(workspace, "jellyfin"));
         server = new JellyfinContainer(workspace, containers.Network, installPlugin: false, containers.Workspace);
     }
@@ -74,16 +90,28 @@ internal sealed class CatalogInstallation(DownloadServices containers) : IAsyncD
     public async Task<string> AddEmptyMediaLibrariesAsync(CancellationToken cancellationToken)
     {
         var root = Path.Combine(workspace!, "media");
-        foreach (var (name, type, folder) in new[] { ("Movies", "movies", "movies"), ("Shows", "tvshows", "series") })
+        foreach (var (name, type, folder) in new[]
+                 {
+                     ("Movies", "movies", "movies"), ("Shows", "tvshows", "series")
+                 })
         {
             var local = Directory.CreateDirectory(Path.Combine(root, folder)).FullName;
             var remote = scenario!.RemotePath(local);
             var query = $"name={name}&collectionType={type}&refreshLibrary=false&paths={Uri.EscapeDataString(remote)}";
-            await api!.RequestAsync("/Library/VirtualFolders?" + query, new
-            {
-                LibraryOptions = new { EnableRealtimeMonitor = false, EnableInternetProviders = false, SaveLocalMetadata = false }
-            }).WaitAsync(cancellationToken);
+            await api!.RequestAsync(
+                path: "/Library/VirtualFolders?" + query,
+                body: new
+                {
+                    LibraryOptions = new
+                    {
+                        EnableRealtimeMonitor = false,
+                        EnableInternetProviders = false,
+                        SaveLocalMetadata = false
+                    }
+                }
+            ).WaitAsync(cancellationToken);
         }
+
         return scenario!.RemotePath(root);
     }
 
@@ -94,8 +122,16 @@ internal sealed class CatalogInstallation(DownloadServices containers) : IAsyncD
 
     public Task InstallAsync(CancellationToken cancellationToken)
     {
-        var path = $"/Packages/Installed/{Uri.EscapeDataString(Bundle.Name)}?assemblyGuid={Bundle.Id}&version={Bundle.Version}&repositoryUrl={Uri.EscapeDataString(repositoryUrl!.AbsoluteUri)}";
-        return api!.RequestAsync(path, new { }).WaitAsync(cancellationToken);
+        var packageName = Uri.EscapeDataString(Bundle.Name);
+        var repositoryAddress = Uri.EscapeDataString(repositoryUrl!.AbsoluteUri);
+        var path = $"/Packages/Installed/{packageName}?assemblyGuid={Bundle.Id}&version={Bundle.Version}"
+                   + $"&repositoryUrl={repositoryAddress}";
+        return api!.RequestAsync(
+            path: path,
+            body: new
+            {
+            }
+        ).WaitAsync(cancellationToken);
     }
 
     public async Task RestartAsync(CancellationToken cancellationToken)

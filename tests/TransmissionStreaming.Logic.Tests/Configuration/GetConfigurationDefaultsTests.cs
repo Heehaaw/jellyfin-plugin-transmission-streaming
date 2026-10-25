@@ -14,19 +14,35 @@ using Xunit;
 public sealed class GetConfigurationDefaultsTests
 {
     [Theory, AutoMoqData]
-    internal async Task Should_RequestInferenceForMissingLocalPaths(StreamingOptions source, GetConfigurationDefaults.Query query,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options, [Frozen] Mock<IMediaLibraryLocations> libraries,
-        [Frozen] Mock<IMediator> mediator, GetConfigurationDefaults.Handler sut)
+    internal async Task Should_RequestInferenceForMissingLocalPaths(
+        StreamingOptions source,
+        GetConfigurationDefaults.Query query,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        [Frozen] Mock<IMediaLibraryLocations> libraries,
+        [Frozen] Mock<IMediator> mediator,
+        GetConfigurationDefaults.Handler sut
+    )
     {
         // Arrange
         var media = Path.Combine(source.StateDirectory, "media");
         string[] folders = [Path.Combine(media, "movies"), Path.Combine(media, "shows")];
         var projection = Path.Combine(source.StateDirectory, "library");
-        options.SetupGet(value => value.CurrentValue).Returns(source with { ProjectionRoot = "", LocalMediaRoot = "" });
+        options.SetupGet(value => value.CurrentValue).Returns(
+            source with
+            {
+                ProjectionRoot = "",
+                LocalMediaRoot = ""
+            }
+        );
         libraries.Setup(value => value.GetPaths()).Returns(folders);
-        mediator.Setup(value => value.Send(It.Is<IQuery<string?>>(request => request is InferMediaRoot.Query
-                                                                             && ((InferMediaRoot.Query)request).ProjectionRoot == projection &&
-                                                                             ((InferMediaRoot.Query)request).LibraryPaths == folders), CancellationToken.None))
+        mediator.Setup(value => value.Send(
+                    query: It.Is<IQuery<string?>>(request => request is InferMediaRoot.Query
+                                                             && ((InferMediaRoot.Query)request).ProjectionRoot == projection &&
+                                                             ((InferMediaRoot.Query)request).LibraryPaths == folders
+                    ),
+                    cancellationToken: CancellationToken.None
+                )
+            )
             .Returns(ValueTask.FromResult<string?>(media));
 
         // Act
@@ -38,9 +54,14 @@ public sealed class GetConfigurationDefaultsTests
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_PreserveExplicitPathsWithoutInspectingLibraries(StreamingOptions source, GetConfigurationDefaults.Query query,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options, [Frozen] Mock<IMediaLibraryLocations> libraries,
-        [Frozen] Mock<IMediator> mediator, GetConfigurationDefaults.Handler sut)
+    internal async Task Should_PreserveExplicitPathsWithoutInspectingLibraries(
+        StreamingOptions source,
+        GetConfigurationDefaults.Query query,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        [Frozen] Mock<IMediaLibraryLocations> libraries,
+        [Frozen] Mock<IMediator> mediator,
+        GetConfigurationDefaults.Handler sut
+    )
     {
         // Arrange
         options.SetupGet(value => value.CurrentValue).Returns(source);
@@ -56,12 +77,23 @@ public sealed class GetConfigurationDefaultsTests
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_KeepTheOwnedFolderWhenInferenceIsInconclusive(StreamingOptions source, GetConfigurationDefaults.Query query,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options, [Frozen] Mock<IMediaLibraryLocations> libraries,
-        [Frozen] Mock<IMediator> mediator, GetConfigurationDefaults.Handler sut)
+    internal async Task Should_KeepTheOwnedFolderWhenInferenceIsInconclusive(
+        StreamingOptions source,
+        GetConfigurationDefaults.Query query,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        [Frozen] Mock<IMediaLibraryLocations> libraries,
+        [Frozen] Mock<IMediator> mediator,
+        GetConfigurationDefaults.Handler sut
+    )
     {
         // Arrange
-        options.SetupGet(value => value.CurrentValue).Returns(source with { ProjectionRoot = " ", LocalMediaRoot = "" });
+        options.SetupGet(value => value.CurrentValue).Returns(
+            source with
+            {
+                ProjectionRoot = " ",
+                LocalMediaRoot = ""
+            }
+        );
         libraries.Setup(value => value.GetPaths()).Returns([]);
         mediator.Setup(value => value.Send(It.IsAny<IQuery<string?>>(), It.IsAny<CancellationToken>())).Returns(ValueTask.FromResult<string?>(null));
 
@@ -75,10 +107,20 @@ public sealed class GetConfigurationDefaultsTests
     }
 
     private sealed class AutoMoqDataAttribute() : AutoDataAttribute(() =>
-    {
-        var fixture = new Fixture { RepeatCount = 1 };
-        fixture.Customize(new AutoMoqCustomization { ConfigureMembers = true, GenerateDelegates = true });
-        fixture.Customize<StreamingOptions>(composer => composer.With(value => value.StateDirectory, () => Path.Combine(Path.GetTempPath(), fixture.Create<string>())));
-        return fixture;
-    });
+        {
+            var fixture = new Fixture
+            {
+                RepeatCount = 1
+            };
+            fixture.Customize(
+                new AutoMoqCustomization
+                {
+                    ConfigureMembers = true,
+                    GenerateDelegates = true
+                }
+            );
+            fixture.Customize<StreamingOptions>(composer => composer.With(value => value.StateDirectory, () => Path.Combine(Path.GetTempPath(), fixture.Create<string>())));
+            return fixture;
+        }
+    );
 }

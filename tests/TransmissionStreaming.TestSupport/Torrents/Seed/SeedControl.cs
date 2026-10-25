@@ -12,21 +12,58 @@ internal sealed class SeedScenario : IDisposable
     {
         Configuration = configuration;
         Media = media;
-        State = new SeedState(0, null, false, configuration.Hash, false);
+        State = new SeedState
+        (
+            Allowed: 0,
+            ImportedPath: null,
+            Failure: false,
+            HistoryHash: configuration.Hash,
+            Episode: false
+        );
         CancellationToken = lifetime.Token;
     }
 
-    public object Gate { get; } = new();
-    public string? PeerFailure { get; set; }
-    public SeedConfiguration Configuration { get; }
-    public byte[] Media { get; }
+    public object Gate
+    {
+        get;
+    } = new();
+
+    public string? PeerFailure
+    {
+        get;
+        set;
+    }
+
+    public SeedConfiguration Configuration
+    {
+        get;
+    }
+
+    public byte[] Media
+    {
+        get;
+    }
+
     public int PieceCount => (Media.Length + Configuration.PieceSize - 1) / Configuration.PieceSize;
-    public SeedState State { get; set; }
-    public CancellationToken CancellationToken { get; }
+
+    public SeedState State
+    {
+        get;
+        set;
+    }
+
+    public CancellationToken CancellationToken
+    {
+        get;
+    }
 
     public void Dispose()
     {
-        if (Interlocked.Exchange(ref disposed, 1) == 0)
+        if (Interlocked.Exchange
+            (
+                location1: ref disposed,
+                value: 1
+            ) == 0)
         {
             lifetime.Cancel();
             lifetime.Dispose();
@@ -36,14 +73,34 @@ internal sealed class SeedScenario : IDisposable
 
 internal sealed class SeedControl(SeedConfiguration configuration, byte[] media) : IDisposable
 {
-    private SeedScenario current = new(configuration, media);
+    private SeedScenario current = new
+    (
+        configuration: configuration,
+        media: media
+    );
+
     public SeedScenario Current => Volatile.Read(ref current);
-    public string? CatalogRoot { get; set; }
+
+    public string? CatalogRoot
+    {
+        get;
+        set;
+    }
 
     public void Reset(SeedConfiguration next, byte[] bytes)
     {
         // A peer keeps one immutable scenario. Reset cancels its reads before another torrent can borrow the server.
-        Interlocked.Exchange(ref current, new SeedScenario(next, bytes)).Dispose();
+        var replacement = new SeedScenario
+        (
+            configuration: next,
+            media: bytes
+        );
+        var previous = Interlocked.Exchange
+        (
+            location1: ref current,
+            value: replacement
+        );
+        previous.Dispose();
         CatalogRoot = null;
     }
 

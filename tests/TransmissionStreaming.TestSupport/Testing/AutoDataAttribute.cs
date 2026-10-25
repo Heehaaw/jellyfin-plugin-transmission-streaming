@@ -14,7 +14,7 @@ public abstract class AutoDataAttribute(Func<IFixture> createFixture) : DataAttr
     public override async ValueTask<IReadOnlyCollection<ITheoryDataRow>> GetData(MethodInfo testMethod, DisposalTracker disposalTracker)
     {
         var containers = await TestContext.Current.GetFixture<DownloadServices>()
-            ?? throw new InvalidOperationException("Register DownloadServices as an xUnit assembly fixture.");
+                         ?? throw new InvalidOperationException("Register DownloadServices as an xUnit assembly fixture.");
         var fixture = createFixture();
         fixture.Inject(containers);
         var context = new SpecimenContext(fixture);

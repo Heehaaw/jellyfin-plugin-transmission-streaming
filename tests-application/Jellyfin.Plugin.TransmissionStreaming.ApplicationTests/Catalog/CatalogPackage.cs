@@ -29,6 +29,7 @@ internal static class CatalogPackage
         {
             checksum = (checksum[0] == '0' ? "1" : "0") + checksum[1..];
         }
+
         var metadata = JsonNode.Parse(File.ReadAllText(Path.Combine(bundle.Directory, "meta.json")));
         var manifest = new[]
         {

@@ -23,6 +23,7 @@ internal static class DevelopmentInstall
                 return directory.FullName;
             }
         }
+
         throw new DirectoryNotFoundException("The local development installation test must run from the repository checkout.");
     }
 
@@ -40,6 +41,7 @@ internal static class DevelopmentInstall
         {
             start.ArgumentList.Add(argument);
         }
+
         using var process = Process.Start(start) ?? throw new InvalidOperationException("Could not start the .NET installation command.");
         var output = process.StandardOutput.ReadToEndAsync(cancellationToken);
         var errors = process.StandardError.ReadToEndAsync(cancellationToken);
@@ -49,15 +51,17 @@ internal static class DevelopmentInstall
         }
         catch (OperationCanceledException)
         {
-            process.Kill(entireProcessTree: true);
+            process.Kill(true);
             throw;
         }
+
         var text = await output;
         var errorText = await errors;
         if (process.ExitCode != 0)
         {
             throw new InvalidOperationException($"Development installation command failed ({process.ExitCode}).\n{text}\n{errorText}");
         }
+
         return text;
     }
 }

@@ -21,6 +21,7 @@ internal static class ContainerDiagnostics
         {
             return "Container was not created.";
         }
+
         try
         {
             var logs = await container.GetLogsAsync(ct: cancellationToken).ConfigureAwait(false);

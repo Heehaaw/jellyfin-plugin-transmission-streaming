@@ -21,8 +21,17 @@ public sealed class ServicePathDiscoveryTests(JellyfinTestServer sut, ITestOutpu
         configuration["Enabled"] = false;
         configuration["TransmissionUrl"] = "http://unconfigured.invalid/transmission/rpc";
         await sut.Api.RequestAsync(configurationPath, configuration);
-        var transmission = source with { Url = sut.Swarm.ContainerRpcUrl.AbsoluteUri, Username = "", Password = "" };
-        var radarr = source with { Url = sut.Arr.ContainerUrl.AbsoluteUri, ApiKey = sut.Arr.Key };
+        var transmission = source with
+        {
+            Url = sut.Swarm.ContainerRpcUrl.AbsoluteUri,
+            Username = "",
+            Password = ""
+        };
+        var radarr = source with
+        {
+            Url = sut.Arr.ContainerUrl.AbsoluteUri,
+            ApiKey = sut.Arr.Key
+        };
         var manualRoot = sut.ImportedMoviesPath + "/" + source.Username;
 
         try
@@ -58,11 +67,21 @@ public sealed class ServicePathDiscoveryTests(JellyfinTestServer sut, ITestOutpu
     }
 
     private sealed class AutoMoqDataAttribute() : AutoDataAttribute(() =>
-    {
-        var fixture = new Fixture { RepeatCount = 1 };
-        fixture.Customize(new AutoMoqCustomization { ConfigureMembers = true, GenerateDelegates = true });
-        return fixture;
-    });
+        {
+            var fixture = new Fixture
+            {
+                RepeatCount = 1
+            };
+            fixture.Customize(
+                new AutoMoqCustomization
+                {
+                    ConfigureMembers = true,
+                    GenerateDelegates = true
+                }
+            );
+            return fixture;
+        }
+    );
 }
 
 public sealed record ServiceConnectionSource(string Url, string Username, string Password, string ApiKey);

@@ -12,8 +12,12 @@ using Xunit;
 public sealed class ConfigureStreamingOptionsTests
 {
     [Theory, AutoMoqData]
-    internal void Should_MapTheCurrentConfiguration(PluginConfiguration source, StreamingOptions target,
-        [Frozen] Mock<IPluginSettings> settings, ConfigureStreamingOptions sut)
+    internal void Should_MapTheCurrentConfiguration(
+        PluginConfiguration source,
+        StreamingOptions target,
+        [Frozen] Mock<IPluginSettings> settings,
+        ConfigureStreamingOptions sut
+    )
     {
         // Arrange
         settings.SetupGet(value => value.Configuration).Returns(source);
@@ -27,8 +31,13 @@ public sealed class ConfigureStreamingOptionsTests
     }
 
     [Theory, AutoMoqData]
-    internal void Should_KeepPreviousSnapshotsIndependentOfHostSettings(PluginConfiguration source, StreamingOptions before, StreamingOptions after,
-        [Frozen] Mock<IPluginSettings> settings, ConfigureStreamingOptions sut)
+    internal void Should_KeepPreviousSnapshotsIndependentOfHostSettings(
+        PluginConfiguration source,
+        StreamingOptions before,
+        StreamingOptions after,
+        [Frozen] Mock<IPluginSettings> settings,
+        ConfigureStreamingOptions sut
+    )
     {
         // Arrange
         settings.SetupGet(value => value.Configuration).Returns(source);
@@ -49,9 +58,19 @@ public sealed class ConfigureStreamingOptionsTests
     }
 
     private sealed class AutoMoqDataAttribute() : AutoDataAttribute(() =>
-    {
-        var fixture = new Fixture { RepeatCount = 1 };
-        fixture.Customize(new AutoMoqCustomization { ConfigureMembers = true, GenerateDelegates = true });
-        return fixture;
-    });
+        {
+            var fixture = new Fixture
+            {
+                RepeatCount = 1
+            };
+            fixture.Customize(
+                new AutoMoqCustomization
+                {
+                    ConfigureMembers = true,
+                    GenerateDelegates = true
+                }
+            );
+            return fixture;
+        }
+    );
 }

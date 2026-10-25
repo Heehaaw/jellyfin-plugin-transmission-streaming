@@ -11,31 +11,62 @@ internal static class BitTorrentPeer
             while (!cancellationToken.IsCancellationRequested)
             {
                 var peer = await listener.AcceptTcpClientAsync(cancellationToken);
-                _ = ServeAsync(peer, control.Current, cancellationToken);
+                _ = ServeAsync
+                (
+                    peer: peer,
+                    scenario: control.Current,
+                    stoppingToken: cancellationToken
+                );
             }
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
-        catch (SocketException) when (cancellationToken.IsCancellationRequested) { }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+        catch (SocketException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
     }
 
     private static async Task ServeAsync(TcpClient peer, SeedScenario scenario, CancellationToken stoppingToken)
     {
-        using var lifetime = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken, scenario.CancellationToken);
+        using var lifetime = CancellationTokenSource.CreateLinkedTokenSource
+        (
+            token1: stoppingToken,
+            token2: scenario.CancellationToken
+        );
         var cancellationToken = lifetime.Token;
         using (peer)
         {
             try
             {
                 var stream = peer.GetStream();
-                if (!await BitTorrentProtocol.HandshakeAsync(stream, scenario.Configuration.Hash, cancellationToken))
+                var accepted = await BitTorrentProtocol.HandshakeAsync
+                (
+                    stream: stream,
+                    hash: scenario.Configuration.Hash,
+                    cancellationToken: cancellationToken
+                );
+                if (!accepted)
                 {
                     return;
                 }
-                await BitTorrentTransfer.CopyAsync(stream, scenario, cancellationToken);
+
+                await BitTorrentTransfer.CopyAsync
+                (
+                    stream: stream,
+                    control: scenario,
+                    cancellationToken: cancellationToken
+                );
             }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
-            catch (IOException) { }
-            catch (SocketException) { }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+            }
+            catch (IOException)
+            {
+            }
+            catch (SocketException)
+            {
+            }
             catch (Exception exception)
             {
                 scenario.PeerFailure = $"Controlled peer failed ({exception.GetType().Name}).";

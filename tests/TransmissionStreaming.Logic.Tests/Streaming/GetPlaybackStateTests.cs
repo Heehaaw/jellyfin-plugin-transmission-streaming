@@ -20,9 +20,14 @@ using Xunit;
 public sealed class GetPlaybackStateTests
 {
     [Theory, AutoMoqData]
-    internal async Task Should_ThrottleStoreAndRpcRefreshesAtTheMonotonicBoundary(SourceScenario source,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options, [Frozen] Mock<IProjectionStore> store,
-        [Frozen] Mock<ITransmissionClient> client, [Frozen] Mock<TimeProvider> clock, GetPlaybackState.Handler sut)
+    internal async Task Should_ThrottleStoreAndRpcRefreshesAtTheMonotonicBoundary(
+        SourceScenario source,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        [Frozen] Mock<IProjectionStore> store,
+        [Frozen] Mock<ITransmissionClient> client,
+        [Frozen] Mock<TimeProvider> clock,
+        GetPlaybackState.Handler sut
+    )
     {
         // Arrange
         source.SetUp(options, store, client);
@@ -32,7 +37,11 @@ public sealed class GetPlaybackStateTests
 
         // Act
         var initial = await sut.Handle(source.Query, CancellationToken.None);
-        for (var index = 0; index < 10; index++) await sut.Handle(source.Query, CancellationToken.None);
+        for (var index = 0; index < 10; index++)
+        {
+            await sut.Handle(source.Query, CancellationToken.None);
+        }
+
         timestamp = interval.Ticks - 1;
         await sut.Handle(source.Query, CancellationToken.None);
         var callsBeforeBoundary = store.Invocations.Count;
@@ -50,9 +59,13 @@ public sealed class GetPlaybackStateTests
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_CacheAnAbsentTorrentUntilTheNextRefresh(SourceScenario source,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options, [Frozen] Mock<IProjectionStore> store,
-        [Frozen] Mock<ITransmissionClient> client, GetPlaybackState.Handler sut)
+    internal async Task Should_CacheAnAbsentTorrentUntilTheNextRefresh(
+        SourceScenario source,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        [Frozen] Mock<IProjectionStore> store,
+        [Frozen] Mock<ITransmissionClient> client,
+        GetPlaybackState.Handler sut
+    )
     {
         // Arrange
         source.SetUp(options, store, client);
@@ -72,9 +85,15 @@ public sealed class GetPlaybackStateTests
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_MapAndFindRenamedIncompleteFiles(SourceScenario source,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options, [Frozen] Mock<IProjectionStore> store, [Frozen] Mock<ITransmissionClient> client,
-        [Frozen] Mock<IMediator> mediator, [Frozen] Mock<IMediaFiles> files, GetPlaybackState.Handler sut)
+    internal async Task Should_MapAndFindRenamedIncompleteFiles(
+        SourceScenario source,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        [Frozen] Mock<IProjectionStore> store,
+        [Frozen] Mock<ITransmissionClient> client,
+        [Frozen] Mock<IMediator> mediator,
+        [Frozen] Mock<IMediaFiles> files,
+        GetPlaybackState.Handler sut
+    )
     {
         // Arrange
         source.SetUp(options, store, client);
@@ -99,17 +118,25 @@ public sealed class GetPlaybackStateTests
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_PlayAnImportedEpisodeWithoutContactingTransmission(SourceScenario source,
-        [Frozen] Mock<IProjectionStore> store, [Frozen] Mock<ITransmissionClient> client,
-        [Frozen] Mock<IMediator> mediator, [Frozen] Mock<IMediaFiles> files, GetPlaybackState.Handler sut)
+    internal async Task Should_PlayAnImportedEpisodeWithoutContactingTransmission(
+        SourceScenario source,
+        [Frozen] Mock<IProjectionStore> store,
+        [Frozen] Mock<ITransmissionClient> client,
+        [Frozen] Mock<IMediator> mediator,
+        [Frozen] Mock<IMediaFiles> files,
+        GetPlaybackState.Handler sut
+    )
     {
         // Arrange
         var entry = source.Query.Playback.Entry;
         entry.Identity.Kind = MediaKind.Episode;
         entry.CompletedPath = Path.Combine(source.Configuration.LocalMediaRoot, source.Torrent.Files[0].Name);
         store.Setup(value => value.Get(entry.Id)).Returns(entry);
-        mediator.Setup(value => value.Send(It.Is<ValidateLocalMediaPath.Query>(query => query.Service == MediaService.Sonarr && query.Path == entry.CompletedPath),
-                It.IsAny<CancellationToken>()))
+        mediator.Setup(value => value.Send(
+                    query: It.Is<ValidateLocalMediaPath.Query>(query => query.Service == MediaService.Sonarr && query.Path == entry.CompletedPath),
+                    cancellationToken: It.IsAny<CancellationToken>()
+                )
+            )
             .Returns(ValueTask.FromResult<string?>(entry.CompletedPath));
         files.Setup(value => value.HasLength(entry.CompletedPath, entry.Length)).Returns(true);
 
@@ -123,16 +150,24 @@ public sealed class GetPlaybackStateTests
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_FollowAnImportAfterPlaybackHasStarted(SourceScenario source,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options, [Frozen] Mock<IProjectionStore> store, [Frozen] Mock<ITransmissionClient> client,
-        [Frozen] Mock<IMediator> mediator, [Frozen] Mock<IMediaFiles> files, [Frozen] Mock<TimeProvider> clock, GetPlaybackState.Handler sut)
+    internal async Task Should_FollowAnImportAfterPlaybackHasStarted(
+        SourceScenario source,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        [Frozen] Mock<IProjectionStore> store,
+        [Frozen] Mock<ITransmissionClient> client,
+        [Frozen] Mock<IMediator> mediator,
+        [Frozen] Mock<IMediaFiles> files,
+        [Frozen] Mock<TimeProvider> clock,
+        GetPlaybackState.Handler sut
+    )
     {
         // Arrange
         source.SetUp(options, store, client);
         var entry = source.Query.Playback.Entry;
         var imported = Path.Combine(source.Configuration.LocalMediaRoot, source.Torrent.Files[0].Name);
         mediator.Setup(value =>
-                value.Send(It.Is<ValidateLocalMediaPath.Query>(query => query.Service == MediaService.Radarr && query.Path == imported), It.IsAny<CancellationToken>()))
+                value.Send(It.Is<ValidateLocalMediaPath.Query>(query => query.Service == MediaService.Radarr && query.Path == imported), It.IsAny<CancellationToken>())
+            )
             .Returns(ValueTask.FromResult<string?>(imported));
         files.Setup(value => value.HasLength(imported, entry.Length)).Returns(true);
         await sut.Handle(source.Query, CancellationToken.None);
@@ -149,9 +184,14 @@ public sealed class GetPlaybackStateTests
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_RetainVerifiedMetadataWhenTheTorrentIsRemoved(SourceScenario source,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options, [Frozen] Mock<IProjectionStore> store,
-        [Frozen] Mock<ITransmissionClient> client, [Frozen] Mock<TimeProvider> clock, GetPlaybackState.Handler sut)
+    internal async Task Should_RetainVerifiedMetadataWhenTheTorrentIsRemoved(
+        SourceScenario source,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        [Frozen] Mock<IProjectionStore> store,
+        [Frozen] Mock<ITransmissionClient> client,
+        [Frozen] Mock<TimeProvider> clock,
+        GetPlaybackState.Handler sut
+    )
     {
         // Arrange
         source.SetUp(options, store, client);
@@ -170,13 +210,24 @@ public sealed class GetPlaybackStateTests
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_RefreshEachPlaybackIndependently(SourceScenario source, GetPlaybackState.Query other,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options, [Frozen] Mock<IProjectionStore> store,
-        [Frozen] Mock<ITransmissionClient> client, GetPlaybackState.Handler sut)
+    internal async Task Should_RefreshEachPlaybackIndependently(
+        SourceScenario source,
+        GetPlaybackState.Query other,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        [Frozen] Mock<IProjectionStore> store,
+        [Frozen] Mock<ITransmissionClient> client,
+        GetPlaybackState.Handler sut
+    )
     {
         // Arrange
         source.SetUp(options, store, client);
-        other = other with { Playback = other.Playback with { Entry = source.Query.Playback.Entry } };
+        other = other with
+        {
+            Playback = other.Playback with
+            {
+                Entry = source.Query.Playback.Entry
+            }
+        };
 
         // Act
         await sut.Handle(source.Query, CancellationToken.None);
@@ -189,9 +240,13 @@ public sealed class GetPlaybackStateTests
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_RefuseAChangedReleaseLength(SourceScenario source,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options, [Frozen] Mock<IProjectionStore> store,
-        [Frozen] Mock<ITransmissionClient> client, GetPlaybackState.Handler sut)
+    internal async Task Should_RefuseAChangedReleaseLength(
+        SourceScenario source,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        [Frozen] Mock<IProjectionStore> store,
+        [Frozen] Mock<ITransmissionClient> client,
+        GetPlaybackState.Handler sut
+    )
     {
         // Arrange
         source.SetUp(options, store, client);
@@ -205,9 +260,13 @@ public sealed class GetPlaybackStateTests
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_RefuseMalformedPieceMaps(SourceScenario source,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options, [Frozen] Mock<IProjectionStore> store,
-        [Frozen] Mock<ITransmissionClient> client, GetPlaybackState.Handler sut)
+    internal async Task Should_RefuseMalformedPieceMaps(
+        SourceScenario source,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        [Frozen] Mock<IProjectionStore> store,
+        [Frozen] Mock<ITransmissionClient> client,
+        GetPlaybackState.Handler sut
+    )
     {
         // Arrange
         source.SetUp(options, store, client);
@@ -234,20 +293,32 @@ public sealed class GetPlaybackStateTests
     }
 
     private sealed class AutoMoqDataAttribute() : AutoDataAttribute(() =>
-    {
-        var fixture = new Fixture { RepeatCount = 1 };
-        fixture.Customize(new AutoMoqCustomization { ConfigureMembers = true, GenerateDelegates = true });
-        fixture.Customize<Projection>(composer => composer.With(value => value.FileIndex, 0).With(value => value.CompletedPath, (string?)null));
-        fixture.Customize<MediaIdentity>(composer => composer.With(value => value.Kind, MediaKind.Movie));
-        fixture.Customize<PlaybackSession>(composer => composer.OmitAutoProperties());
-        fixture.Customize<TorrentSnapshot>(composer => composer.With(value => value.Pieces, Convert.ToBase64String(fixture.Create<byte[]>())));
-        fixture.Customize<Mock<TimeProvider>>(composer => composer.Do(clock =>
         {
-            clock.SetupGet(value => value.TimestampFrequency).Returns(TimeSpan.TicksPerSecond);
-            clock.Setup(value => value.GetTimestamp()).Returns(0);
-        }));
-        fixture.Register<TimeProvider>(() => fixture.Create<Mock<TimeProvider>>().Object);
-        fixture.Customize<Mock<IMediaFiles>>(composer => composer.Do(files => files.Setup(value => value.Exists(It.IsAny<string>())).Returns(false)));
-        return fixture;
-    });
+            var fixture = new Fixture
+            {
+                RepeatCount = 1
+            };
+            fixture.Customize(
+                new AutoMoqCustomization
+                {
+                    ConfigureMembers = true,
+                    GenerateDelegates = true
+                }
+            );
+            fixture.Customize<Projection>(composer => composer.With(value => value.FileIndex, 0).With(value => value.CompletedPath, (string?)null));
+            fixture.Customize<MediaIdentity>(composer => composer.With(value => value.Kind, MediaKind.Movie));
+            fixture.Customize<PlaybackSession>(composer => composer.OmitAutoProperties());
+            fixture.Customize<TorrentSnapshot>(composer => composer.With(value => value.Pieces, Convert.ToBase64String(fixture.Create<byte[]>())));
+            fixture.Customize<Mock<TimeProvider>>(composer => composer.Do(clock =>
+                    {
+                        clock.SetupGet(value => value.TimestampFrequency).Returns(TimeSpan.TicksPerSecond);
+                        clock.Setup(value => value.GetTimestamp()).Returns(0);
+                    }
+                )
+            );
+            fixture.Register<TimeProvider>(() => fixture.Create<Mock<TimeProvider>>().Object);
+            fixture.Customize<Mock<IMediaFiles>>(composer => composer.Do(files => files.Setup(value => value.Exists(It.IsAny<string>())).Returns(false)));
+            return fixture;
+        }
+    );
 }

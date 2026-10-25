@@ -15,8 +15,13 @@ using Xunit;
 public sealed class PrioritizePlaybackTests
 {
     [Theory, AutoMoqData]
-    internal async Task Should_PrioritizeTheGlobalPieceContainingThePlaybackOffset(PrioritizePlayback.Command source, StreamingOptions configuration,
-        [Frozen] Mock<ITransmissionClient> client, [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options, PrioritizePlayback.Handler sut)
+    internal async Task Should_PrioritizeTheGlobalPieceContainingThePlaybackOffset(
+        PrioritizePlayback.Command source,
+        StreamingOptions configuration,
+        [Frozen] Mock<ITransmissionClient> client,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        PrioritizePlayback.Handler sut
+    )
     {
         // Arrange
         var torrent = source.Playback.Torrent!;
@@ -30,15 +35,27 @@ public sealed class PrioritizePlaybackTests
         await sut.Handle(source, CancellationToken.None);
 
         // Assert
-        client.Verify(value => value.SetSequentialStartAsync(It.Is<TransmissionConnection>(connection => connection.Url == configuration.TransmissionUrl
-                                                                                                         && connection.Username == configuration.TransmissionUsername &&
-                                                                                                         connection.Password == configuration.TransmissionPassword),
-            source.Playback.Entry.TorrentHash, expectedPiece, CancellationToken.None), Times.Once);
+        client.Verify(
+            expression: value => value.SetSequentialStartAsync(
+                connection: It.Is<TransmissionConnection>(connection =>
+                    connection.Url == configuration.TransmissionUrl
+                    && connection.Username == configuration.TransmissionUsername &&
+                    connection.Password == configuration.TransmissionPassword
+                ),
+                hash: source.Playback.Entry.TorrentHash,
+                piece: expectedPiece,
+                cancellationToken: CancellationToken.None
+            ),
+            times: Times.Once
+        );
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_SkipTorrentsWithoutSequentialMode(PrioritizePlayback.Command source,
-        [Frozen] Mock<ITransmissionClient> client, PrioritizePlayback.Handler sut)
+    internal async Task Should_SkipTorrentsWithoutSequentialMode(
+        PrioritizePlayback.Command source,
+        [Frozen] Mock<ITransmissionClient> client,
+        PrioritizePlayback.Handler sut
+    )
     {
         // Arrange
         source.Playback.Torrent!.SequentialDownload = false;
@@ -51,8 +68,11 @@ public sealed class PrioritizePlaybackTests
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_SkipPlaybackWithoutTorrentMetadata(PrioritizePlayback.Command source,
-        [Frozen] Mock<ITransmissionClient> client, PrioritizePlayback.Handler sut)
+    internal async Task Should_SkipPlaybackWithoutTorrentMetadata(
+        PrioritizePlayback.Command source,
+        [Frozen] Mock<ITransmissionClient> client,
+        PrioritizePlayback.Handler sut
+    )
     {
         // Arrange
         source.Playback.Torrent = null;
@@ -65,8 +85,11 @@ public sealed class PrioritizePlaybackTests
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_SkipAnInvalidFileIndex(PrioritizePlayback.Command source,
-        [Frozen] Mock<ITransmissionClient> client, PrioritizePlayback.Handler sut)
+    internal async Task Should_SkipAnInvalidFileIndex(
+        PrioritizePlayback.Command source,
+        [Frozen] Mock<ITransmissionClient> client,
+        PrioritizePlayback.Handler sut
+    )
     {
         // Arrange
         source.Playback.Torrent!.SequentialDownload = true;
@@ -80,10 +103,20 @@ public sealed class PrioritizePlaybackTests
     }
 
     private sealed class AutoMoqDataAttribute() : AutoDataAttribute(() =>
-    {
-        var fixture = new Fixture { RepeatCount = 1 };
-        fixture.Customize(new AutoMoqCustomization { ConfigureMembers = true, GenerateDelegates = true });
-        fixture.Customize<Projection>(composer => composer.With(value => value.FileIndex, 0));
-        return fixture;
-    });
+        {
+            var fixture = new Fixture
+            {
+                RepeatCount = 1
+            };
+            fixture.Customize(
+                new AutoMoqCustomization
+                {
+                    ConfigureMembers = true,
+                    GenerateDelegates = true
+                }
+            );
+            fixture.Customize<Projection>(composer => composer.With(value => value.FileIndex, 0));
+            return fixture;
+        }
+    );
 }

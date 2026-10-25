@@ -16,31 +16,44 @@ internal sealed class StreamingScenario(string workspace, JellyfinApi api, Torre
 
     public async Task ConfigureAsync(bool enabled = true, int waitSeconds = 5)
     {
-        await api.RequestAsync($"/Plugins/{PluginBundle.BuildOutput.Id}/Configuration", new
-        {
-            Enabled = enabled,
-            TransmissionUrl = swarm.ContainerRpcUrl.ToString(),
-            RadarrUrl = arr.ContainerUrl.ToString(),
-            RadarrApiKey = arr.Key,
-            SonarrUrl = "",
-            SonarrApiKey = "",
-            TransmissionUsername = "",
-            TransmissionPassword = "",
-            // Deliberately unrelated fallback roots prove that playback uses each service's explicit mapping.
-            RemoteMediaRoot = "/unused-legacy",
-            LocalMediaRoot = "/unused-legacy",
-            PathMappings = new[]
+        await api.RequestAsync(
+            path: $"/Plugins/{PluginBundle.BuildOutput.Id}/Configuration",
+            body: new
             {
-                new { Service = 0, RemoteRoot, LocalRoot = RemoteRoot },
-                new { Service = 1, RemoteRoot = "/arr/library", LocalRoot = swarm.RemotePath(Path.Combine(workspace, ImportedDirectory)) }
-            },
-            ProjectionRoot = swarm.RemotePath(LocalProjection),
-            JellyfinPublicUrl = JellyfinContainer.InternalAddress.ToString(),
-            PollSeconds = 2,
-            PieceWaitSeconds = waitSeconds,
-            PrioritizePlayback = true,
-            ShowDownloadStatus = true
-        });
+                Enabled = enabled,
+                TransmissionUrl = swarm.ContainerRpcUrl.ToString(),
+                RadarrUrl = arr.ContainerUrl.ToString(),
+                RadarrApiKey = arr.Key,
+                SonarrUrl = "",
+                SonarrApiKey = "",
+                TransmissionUsername = "",
+                TransmissionPassword = "",
+                // Deliberately unrelated fallback roots prove that playback uses each service's explicit mapping.
+                RemoteMediaRoot = "/unused-legacy",
+                LocalMediaRoot = "/unused-legacy",
+                PathMappings = new[]
+                {
+                    new
+                    {
+                        Service = 0,
+                        RemoteRoot,
+                        LocalRoot = RemoteRoot
+                    },
+                    new
+                    {
+                        Service = 1,
+                        RemoteRoot = "/arr/library",
+                        LocalRoot = swarm.RemotePath(Path.Combine(workspace, ImportedDirectory))
+                    }
+                },
+                ProjectionRoot = swarm.RemotePath(LocalProjection),
+                JellyfinPublicUrl = JellyfinContainer.InternalAddress.ToString(),
+                PollSeconds = 2,
+                PieceWaitSeconds = waitSeconds,
+                PrioritizePlayback = true,
+                ShowDownloadStatus = true
+            }
+        );
         var saved = await api.RequestAsync("/TransmissionStreaming/status");
         if (JellyfinApi.Value<bool>(saved, "Enabled") != enabled)
         {
@@ -51,13 +64,16 @@ internal sealed class StreamingScenario(string workspace, JellyfinApi api, Torre
     public async Task<string> WaitForStreamAsync()
     {
         string? path = null;
-        await TestWait.UntilAsync(() =>
-        {
-            path = Directory.Exists(LocalProjection)
-                ? Directory.EnumerateFiles(LocalProjection, "*.strm", SearchOption.AllDirectories).FirstOrDefault()
-                : null;
-            return Task.FromResult(path is not null);
-        }, "automatic download discovery");
+        await TestWait.UntilAsync(
+            probe: () =>
+            {
+                path = Directory.Exists(LocalProjection)
+                    ? Directory.EnumerateFiles(LocalProjection, "*.strm", SearchOption.AllDirectories).FirstOrDefault()
+                    : null;
+                return Task.FromResult(path is not null);
+            },
+            description: "automatic download discovery"
+        );
         return (await File.ReadAllTextAsync(path!)).Trim();
     }
 
@@ -75,13 +91,16 @@ internal sealed class StreamingScenario(string workspace, JellyfinApi api, Torre
     public async Task<JsonNode> WaitForCompletionAsync(string projectionId)
     {
         JsonNode? completed = null;
-        await TestWait.UntilAsync(async () =>
-        {
-            var status = await api.RequestAsync("/TransmissionStreaming/status");
-            completed = JellyfinApi.Field(status, "Completed")!.AsArray()
-                .FirstOrDefault(entry => JellyfinApi.Value<string>(entry, "Id") == projectionId);
-            return completed is not null;
-        }, "native library handoff and completion archive");
+        await TestWait.UntilAsync(
+            probe: async () =>
+            {
+                var status = await api.RequestAsync("/TransmissionStreaming/status");
+                completed = JellyfinApi.Field(status, "Completed")!.AsArray()
+                    .FirstOrDefault(entry => JellyfinApi.Value<string>(entry, "Id") == projectionId);
+                return completed is not null;
+            },
+            description: "native library handoff and completion archive"
+        );
         return completed!;
     }
 
@@ -100,10 +119,13 @@ internal sealed class StreamingScenario(string workspace, JellyfinApi api, Torre
         }
 
         await arr.PublishImportAsync(RemoteImportedFile, CancellationToken.None);
-        await TestWait.UntilAsync(async () =>
-        {
-            var status = await api.RequestAsync("/TransmissionStreaming/status");
-            return JellyfinApi.Field(status, "Entries")!.AsArray().Any(entry => JellyfinApi.Value<string>(entry, "Status") == "Complete");
-        }, "exact arr import while seeding");
+        await TestWait.UntilAsync(
+            probe: async () =>
+            {
+                var status = await api.RequestAsync("/TransmissionStreaming/status");
+                return JellyfinApi.Field(status, "Entries")!.AsArray().Any(entry => JellyfinApi.Value<string>(entry, "Status") == "Complete");
+            },
+            description: "exact arr import while seeding"
+        );
     }
 }

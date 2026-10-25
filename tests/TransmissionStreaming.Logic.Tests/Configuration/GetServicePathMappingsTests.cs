@@ -13,13 +13,20 @@ using Xunit;
 public sealed class GetServicePathMappingsTests
 {
     [Theory, AutoMoqData]
-    internal async Task Should_SelectOnlyTheRequestedService(StreamingOptions source, GetServicePathMappings.Query query,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options, GetServicePathMappings.Handler sut)
+    internal async Task Should_SelectOnlyTheRequestedService(
+        StreamingOptions source,
+        GetServicePathMappings.Query query,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        GetServicePathMappings.Handler sut
+    )
     {
         // Arrange
         source.PathMappings[0].Service = MediaService.Transmission;
         source.PathMappings[1].Service = MediaService.Radarr;
-        query = query with { Service = source.PathMappings[0].Service };
+        query = query with
+        {
+            Service = source.PathMappings[0].Service
+        };
         options.SetupGet(value => value.CurrentValue).Returns(source);
 
         // Act
@@ -30,11 +37,20 @@ public sealed class GetServicePathMappingsTests
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_UseTheSharedFallbackWhenNoServiceMappingsExist(StreamingOptions source, GetServicePathMappings.Query query,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options, GetServicePathMappings.Handler sut)
+    internal async Task Should_UseTheSharedFallbackWhenNoServiceMappingsExist(
+        StreamingOptions source,
+        GetServicePathMappings.Query query,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        GetServicePathMappings.Handler sut
+    )
     {
         // Arrange
-        options.SetupGet(value => value.CurrentValue).Returns(source with { PathMappings = [] });
+        options.SetupGet(value => value.CurrentValue).Returns(
+            source with
+            {
+                PathMappings = []
+            }
+        );
 
         // Act
         var result = await sut.Handle(query, CancellationToken.None);
@@ -47,14 +63,23 @@ public sealed class GetServicePathMappingsTests
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_NotReplaceIncompleteExplicitRowsWithTheFallback(StreamingOptions source, GetServicePathMappings.Query query,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options, GetServicePathMappings.Handler sut)
+    internal async Task Should_NotReplaceIncompleteExplicitRowsWithTheFallback(
+        StreamingOptions source,
+        GetServicePathMappings.Query query,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        GetServicePathMappings.Handler sut
+    )
     {
         // Arrange
         var mapping = source.PathMappings[0];
         mapping.Service = query.Service;
         mapping.LocalRoot = "";
-        options.SetupGet(value => value.CurrentValue).Returns(source with { PathMappings = [mapping] });
+        options.SetupGet(value => value.CurrentValue).Returns(
+            source with
+            {
+                PathMappings = [mapping]
+            }
+        );
 
         // Act
         var result = await sut.Handle(query, CancellationToken.None);
@@ -64,9 +89,19 @@ public sealed class GetServicePathMappingsTests
     }
 
     private sealed class AutoMoqDataAttribute() : AutoDataAttribute(() =>
-    {
-        var fixture = new Fixture { RepeatCount = 2 };
-        fixture.Customize(new AutoMoqCustomization { ConfigureMembers = true, GenerateDelegates = true });
-        return fixture;
-    });
+        {
+            var fixture = new Fixture
+            {
+                RepeatCount = 2
+            };
+            fixture.Customize(
+                new AutoMoqCustomization
+                {
+                    ConfigureMembers = true,
+                    GenerateDelegates = true
+                }
+            );
+            return fixture;
+        }
+    );
 }

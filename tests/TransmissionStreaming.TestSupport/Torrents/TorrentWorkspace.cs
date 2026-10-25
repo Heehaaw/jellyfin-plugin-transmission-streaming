@@ -4,7 +4,13 @@ using System.Text.Json;
 
 internal sealed record TorrentWorkspace(string SeedRoot, TorrentMetainfo Metainfo)
 {
-    public static async Task<TorrentWorkspace> PrepareAsync(string workspace, byte[] media, string fileName, CancellationToken cancellationToken, string remoteRoot = SwarmSettings.RemoteRoot)
+    public static async Task<TorrentWorkspace> PrepareAsync(
+        string workspace,
+        byte[] media,
+        string fileName,
+        CancellationToken cancellationToken,
+        string remoteRoot = SwarmSettings.RemoteRoot
+    )
     {
         if (media.Length <= SwarmSettings.PieceSize * 2 || Path.GetFileName(fileName) != fileName)
         {
@@ -19,18 +25,24 @@ internal sealed record TorrentWorkspace(string SeedRoot, TorrentMetainfo Metainf
         var settingsRoot = Directory.CreateDirectory(Path.Combine(workspace, ".transmission")).FullName;
         var metainfo = TorrentMetainfo.Create(media, fileName, SwarmSettings.PieceSize);
         await File.WriteAllBytesAsync(Path.Combine(seedRoot, "reference.mkv"), media, cancellationToken).ConfigureAwait(false);
-        await File.WriteAllTextAsync(Path.Combine(seedRoot, "seed.json"), JsonSerializer.Serialize(new
-        {
-            hash = metainfo.Hash,
-            pieceSize = SwarmSettings.PieceSize,
-            fileName,
-            title = Path.GetFileNameWithoutExtension(fileName),
-            httpPort = SwarmSettings.HttpPort,
-            peerPort = SwarmSettings.PeerPort,
-            host = SwarmSettings.SeedHost,
-            arrKey = SwarmSettings.ArrKey,
-            completedRoot = remoteRoot + "/" + SwarmSettings.CompletedDirectory
-        }), cancellationToken).ConfigureAwait(false);
+        await File.WriteAllTextAsync(
+            path: Path.Combine(seedRoot, "seed.json"),
+            contents: JsonSerializer.Serialize(
+                new
+                {
+                    hash = metainfo.Hash,
+                    pieceSize = SwarmSettings.PieceSize,
+                    fileName,
+                    title = Path.GetFileNameWithoutExtension(fileName),
+                    httpPort = SwarmSettings.HttpPort,
+                    peerPort = SwarmSettings.PeerPort,
+                    host = SwarmSettings.SeedHost,
+                    arrKey = SwarmSettings.ArrKey,
+                    completedRoot = remoteRoot + "/" + SwarmSettings.CompletedDirectory
+                }
+            ),
+            cancellationToken: cancellationToken
+        ).ConfigureAwait(false);
         await File.WriteAllTextAsync(Path.Combine(settingsRoot, "settings.json"), JsonSerializer.Serialize(DaemonConfiguration()), cancellationToken).ConfigureAwait(false);
         return new TorrentWorkspace(seedRoot, metainfo);
     }

@@ -16,9 +16,15 @@ using Xunit;
 public sealed class GetStatusTests
 {
     [Theory, AutoMoqData]
-    internal async Task Should_ReportDiscoveryAndActivePlayback(StatusScenario source, CompletedProjection completed,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options, [Frozen] Mock<IDiscoveryStatus> discovery,
-        [Frozen] Mock<IProjectionStore> store, [Frozen] Mock<IStreamActivity> activity, GetStatus.Handler sut)
+    internal async Task Should_ReportDiscoveryAndActivePlayback(
+        StatusScenario source,
+        CompletedProjection completed,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        [Frozen] Mock<IDiscoveryStatus> discovery,
+        [Frozen] Mock<IProjectionStore> store,
+        [Frozen] Mock<IStreamActivity> activity,
+        GetStatus.Handler sut
+    )
     {
         // Arrange
         options.SetupGet(value => value.CurrentValue).Returns(source.Options);
@@ -45,8 +51,11 @@ public sealed class GetStatusTests
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_CancelBeforeReadingState(GetStatus.Query source,
-        [Frozen] Mock<IProjectionStore> store, GetStatus.Handler sut)
+    internal async Task Should_CancelBeforeReadingState(
+        GetStatus.Query source,
+        [Frozen] Mock<IProjectionStore> store,
+        GetStatus.Handler sut
+    )
     {
         // Arrange
         using var cancellation = new CancellationTokenSource();
@@ -61,11 +70,21 @@ public sealed class GetStatusTests
     }
 
     private sealed class AutoMoqDataAttribute() : AutoDataAttribute(() =>
-    {
-        var fixture = new Fixture { RepeatCount = 1 };
-        fixture.Customize(new AutoMoqCustomization { ConfigureMembers = true, GenerateDelegates = true });
-        return fixture;
-    });
+        {
+            var fixture = new Fixture
+            {
+                RepeatCount = 1
+            };
+            fixture.Customize(
+                new AutoMoqCustomization
+                {
+                    ConfigureMembers = true,
+                    GenerateDelegates = true
+                }
+            );
+            return fixture;
+        }
+    );
 }
 
 public sealed record StatusScenario(GetStatus.Query Query, StreamingOptions Options, DiscoveryStatus Discovery, Projection Entry, int Readers);

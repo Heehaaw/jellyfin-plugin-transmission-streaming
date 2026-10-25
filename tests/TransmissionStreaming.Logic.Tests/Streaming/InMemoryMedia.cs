@@ -6,8 +6,15 @@ using TransmissionStreaming.Core.Filesystem;
 /// <summary>Generated media bytes exposed through the filesystem port, without touching a physical directory.</summary>
 internal sealed class InMemoryMedia(string path, byte[] seed)
 {
-    public string Path { get; } = path;
-    public byte[] Content { get; } = Enumerable.Range(0, 4096).Select(index => seed[index % seed.Length]).ToArray();
+    public string Path
+    {
+        get;
+    } = path;
+
+    public byte[] Content
+    {
+        get;
+    } = Enumerable.Range(0, 4096).Select(index => seed[index % seed.Length]).ToArray();
 
     public void SetupReads(Mock<IMediaFiles> files, string? backingPath = null)
     {

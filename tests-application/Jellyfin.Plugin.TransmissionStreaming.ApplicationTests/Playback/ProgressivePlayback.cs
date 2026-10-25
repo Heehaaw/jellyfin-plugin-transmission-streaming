@@ -6,12 +6,25 @@ using System.Net;
 using System.Net.Http.Headers;
 
 /// <summary>Captures byte delivery and decoding while the controlled seed withholds later pieces.</summary>
-internal sealed record ProgressivePlayback(HttpStatusCode HeadStatus, long? Length, HttpStatusCode RangeStatus,
-    long? RangeLength, byte[] FirstPiece, byte[] FullVideo, bool ReaderWaited, bool DecoderWaited,
-    string ReferenceFrames, string StreamedFrames)
+internal sealed record ProgressivePlayback(
+    HttpStatusCode HeadStatus,
+    long? Length,
+    HttpStatusCode RangeStatus,
+    long? RangeLength,
+    byte[] FirstPiece,
+    byte[] FullVideo,
+    bool ReaderWaited,
+    bool DecoderWaited,
+    string ReferenceFrames,
+    string StreamedFrames
+)
 {
-    public static async Task<ProgressivePlayback> CaptureAsync(JellyfinTestServer server, HttpClient client, string url,
-        CancellationToken cancellationToken)
+    public static async Task<ProgressivePlayback> CaptureAsync(
+        JellyfinTestServer server,
+        HttpClient client,
+        string url,
+        CancellationToken cancellationToken
+    )
     {
         using var available = new HttpRequestMessage(HttpMethod.Get, url);
         available.Headers.Range = new RangeHeaderValue(0, server.Swarm.PieceSize - 1);
@@ -37,9 +50,18 @@ internal sealed record ProgressivePlayback(HttpStatusCode HeadStatus, long? Leng
         await received.WriteAsync(prefix, cancellationToken);
         await received.WriteAsync(nextByte.AsMemory(0, firstAfterWait), cancellationToken);
         await body.CopyToAsync(received, cancellationToken);
-        return new ProgressivePlayback(head.StatusCode, head.Content.Headers.ContentLength, range.StatusCode,
-            range.Content.Headers.ContentRange?.Length, firstPiece, received.ToArray(), readerWaited,
-            decoderWaited, referenceFrames, streamedFrames);
+        return new ProgressivePlayback(
+            HeadStatus: head.StatusCode,
+            Length: head.Content.Headers.ContentLength,
+            RangeStatus: range.StatusCode,
+            RangeLength: range.Content.Headers.ContentRange?.Length,
+            FirstPiece: firstPiece,
+            FullVideo: received.ToArray(),
+            ReaderWaited: readerWaited,
+            DecoderWaited: decoderWaited,
+            ReferenceFrames: referenceFrames,
+            StreamedFrames: streamedFrames
+        );
     }
 
     public void ShouldMatch(byte[] expected, int pieceSize)

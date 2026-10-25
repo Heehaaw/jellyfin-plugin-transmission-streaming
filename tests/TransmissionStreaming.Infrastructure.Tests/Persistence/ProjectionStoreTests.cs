@@ -19,8 +19,12 @@ public sealed class ProjectionStoreTests
     private const int HistoryLimit = 20;
 
     [Theory, AutoMoqData]
-    internal void Should_RestoreTheCompleteProjectionAcrossStoreInstances(ProjectionEntry source, TemporaryDirectory directory,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options, ProjectionStore sut)
+    internal void Should_RestoreTheCompleteProjectionAcrossStoreInstances(
+        ProjectionEntry source,
+        TemporaryDirectory directory,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        ProjectionStore sut
+    )
     {
         // Arrange
         using var root = directory;
@@ -47,7 +51,12 @@ public sealed class ProjectionStoreTests
         var importedPath = source.CompletedPath;
         source.CompletedPath = null;
         sut.Save(source);
-        var imported = source with { CompletedPath = importedPath, Status = "Complete", Progress = 1 };
+        var imported = source with
+        {
+            CompletedPath = importedPath,
+            Status = "Complete",
+            Progress = 1
+        };
 
         // Act
         sut.Save(imported);
@@ -80,7 +89,10 @@ public sealed class ProjectionStoreTests
     {
         // Arrange
         using var root = directory;
-        var retained = source with { Id = source.Id + "-retained" };
+        var retained = source with
+        {
+            Id = source.Id + "-retained"
+        };
         source.Id += "' OR 1=1 --";
         sut.Save(source);
         sut.Save(retained);
@@ -95,13 +107,23 @@ public sealed class ProjectionStoreTests
     }
 
     [Theory, AutoMoqData]
-    internal void Should_ArchiveTheHandoffAndRetireOnlyItsActiveProjection(ProjectionEntry active, CompletedProjection source,
-        TemporaryDirectory directory, ProjectionStore sut)
+    internal void Should_ArchiveTheHandoffAndRetireOnlyItsActiveProjection(
+        ProjectionEntry active,
+        CompletedProjection source,
+        TemporaryDirectory directory,
+        ProjectionStore sut
+    )
     {
         // Arrange
         using var root = directory;
-        source = source with { Id = active.Id };
-        var retained = active with { Id = active.Id + "-retained" };
+        source = source with
+        {
+            Id = active.Id
+        };
+        var retained = active with
+        {
+            Id = active.Id + "-retained"
+        };
         sut.Save(active);
         sut.Save(retained);
 
@@ -115,8 +137,12 @@ public sealed class ProjectionStoreTests
     }
 
     [Theory, AutoMoqData]
-    internal void Should_RestoreCompletionHistoryAfterReopening(CompletedProjection source, TemporaryDirectory directory,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options, ProjectionStore sut)
+    internal void Should_RestoreCompletionHistoryAfterReopening(
+        CompletedProjection source,
+        TemporaryDirectory directory,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        ProjectionStore sut
+    )
     {
         // Arrange
         using var root = directory;
@@ -136,7 +162,11 @@ public sealed class ProjectionStoreTests
         // Arrange
         using var root = directory;
         sut.Complete(source, HistoryLimit);
-        var updated = source with { Title = source.Title + " updated", CompletedAt = source.CompletedAt.AddMinutes(1) };
+        var updated = source with
+        {
+            Title = source.Title + " updated",
+            CompletedAt = source.CompletedAt.AddMinutes(1)
+        };
 
         // Act
         sut.Complete(source, HistoryLimit);
@@ -147,18 +177,29 @@ public sealed class ProjectionStoreTests
     }
 
     [Theory, AutoMoqData]
-    internal void Should_RetainOnlyTheNewestBoundedHistoryInUtcOrder(Generator<CompletedProjection> source,
-        TemporaryDirectory directory, ProjectionStore sut)
+    internal void Should_RetainOnlyTheNewestBoundedHistoryInUtcOrder(
+        Generator<CompletedProjection> source,
+        TemporaryDirectory directory,
+        ProjectionStore sut
+    )
     {
         // Arrange
         using var root = directory;
         var entries = source.Take(HistoryLimit + 3)
-            .Select((entry, index) => entry with { CompletedAt = entry.CompletedAt.ToOffset(TimeSpan.FromHours(index % 2 == 0 ? 13 : -11)) }).ToArray();
+            .Select((entry, index) => entry with
+                {
+                    CompletedAt = entry.CompletedAt.ToOffset(TimeSpan.FromHours(index % 2 == 0 ? 13 : -11))
+                }
+            ).ToArray();
         var expected = entries.OrderByDescending(entry => entry.CompletedAt)
             .ThenByDescending(entry => entry.Id, StringComparer.Ordinal).Take(HistoryLimit).ToArray();
 
         // Act
-        foreach (var entry in entries) sut.Complete(entry, HistoryLimit);
+        foreach (var entry in entries)
+        {
+            sut.Complete(entry, HistoryLimit);
+        }
+
         var result = sut.Completed();
 
         // Assert
@@ -166,14 +207,26 @@ public sealed class ProjectionStoreTests
     }
 
     [Theory, AutoMoqData]
-    internal void Should_RollBackHistoryWhenActiveRetirementFails(ProjectionEntry active, CompletedProjection source,
-        TemporaryDirectory directory, ProjectionStore sut)
+    internal void Should_RollBackHistoryWhenActiveRetirementFails(
+        ProjectionEntry active,
+        CompletedProjection source,
+        TemporaryDirectory directory,
+        ProjectionStore sut
+    )
     {
         // Arrange
         using var root = directory;
-        source = source with { Id = active.Id };
+        source = source with
+        {
+            Id = active.Id
+        };
         sut.Save(active);
-        using var connection = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = Path.Combine(root.Path, "projections.db") }.ToString());
+        using var connection = new SqliteConnection(
+            new SqliteConnectionStringBuilder
+            {
+                DataSource = Path.Combine(root.Path, "projections.db")
+            }.ToString()
+        );
         connection.Open();
         using var trigger = connection.CreateCommand();
         trigger.CommandText = "CREATE TRIGGER refuse_retirement BEFORE DELETE ON projections BEGIN SELECT RAISE(ABORT, 'Retirement unavailable'); END;";
@@ -189,14 +242,26 @@ public sealed class ProjectionStoreTests
     }
 
     private sealed class AutoMoqDataAttribute() : AutoDataAttribute(() =>
-    {
-        var fixture = new Fixture { RepeatCount = 1 };
-        fixture.Customize(new AutoMoqCustomization { ConfigureMembers = true, GenerateDelegates = true });
-        fixture.Register(() => new Generator<CompletedProjection>(fixture));
-        var directory = fixture.Freeze<TemporaryDirectory>();
-        fixture.Customize<StreamingOptions>(composer => composer.With(value => value.StateDirectory, directory.Path));
-        fixture.Customize<Mock<IOptionsMonitor<StreamingOptions>>>(composer => composer.Do(mock =>
-            mock.SetupGet(value => value.CurrentValue).Returns(fixture.Create<StreamingOptions>())));
-        return fixture;
-    });
+        {
+            var fixture = new Fixture
+            {
+                RepeatCount = 1
+            };
+            fixture.Customize(
+                new AutoMoqCustomization
+                {
+                    ConfigureMembers = true,
+                    GenerateDelegates = true
+                }
+            );
+            fixture.Register(() => new Generator<CompletedProjection>(fixture));
+            var directory = fixture.Freeze<TemporaryDirectory>();
+            fixture.Customize<StreamingOptions>(composer => composer.With(value => value.StateDirectory, directory.Path));
+            fixture.Customize<Mock<IOptionsMonitor<StreamingOptions>>>(composer => composer.Do(mock =>
+                    mock.SetupGet(value => value.CurrentValue).Returns(fixture.Create<StreamingOptions>())
+                )
+            );
+            return fixture;
+        }
+    );
 }

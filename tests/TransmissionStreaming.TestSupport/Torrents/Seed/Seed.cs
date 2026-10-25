@@ -18,20 +18,57 @@ using TransmissionStreaming.TestSupport.Torrents.Seed;
 
 // HTTP controls decide which pieces the peer advertises. Transmission still owns
 // the transfer, hash verification, disk cache, and incomplete-to-completed move.
-var configuration = JsonSerializer.Deserialize<SeedConfiguration>(File.ReadAllText("/fixture/seed.json"),
-    new JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
+var json = File.ReadAllText("/fixture/seed.json");
+var options = new JsonSerializerOptions
+{
+    PropertyNameCaseInsensitive = true
+};
+var configuration = JsonSerializer.Deserialize<SeedConfiguration>
+(
+    json: json,
+    options: options
+)!;
 var media = File.ReadAllBytes("/fixture/reference.mkv");
-using var control = new SeedControl(configuration, media);
+using var control = new SeedControl
+(
+    configuration: configuration,
+    media: media
+);
 var builder = WebApplication.CreateBuilder(args);
 builder.Logging.ClearProviders();
 var app = builder.Build();
 
-using var listener = new TcpListener(IPAddress.Any, configuration.PeerPort);
+using var listener = new TcpListener
+(
+    localaddr: IPAddress.Any,
+    port: configuration.PeerPort
+);
 listener.Start();
 using var stopListener = app.Lifetime.ApplicationStopping.Register(listener.Stop);
-_ = BitTorrentPeer.AcceptAsync(listener, control, app.Lifetime.ApplicationStopping);
-TrackerEndpoints.Map(app, control);
-ControlEndpoints.Map(app, control);
-ArrEndpoints.Map(app, control);
-CatalogEndpoints.Map(app, control);
+_ = BitTorrentPeer.AcceptAsync
+(
+    listener: listener,
+    control: control,
+    cancellationToken: app.Lifetime.ApplicationStopping
+);
+TrackerEndpoints.Map
+(
+    app: app,
+    control: control
+);
+ControlEndpoints.Map
+(
+    app: app,
+    control: control
+);
+ArrEndpoints.Map
+(
+    app: app,
+    owner: control
+);
+CatalogEndpoints.Map
+(
+    app: app,
+    control: control
+);
 await app.RunAsync($"http://0.0.0.0:{configuration.HttpPort}");

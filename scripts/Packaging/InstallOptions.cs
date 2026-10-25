@@ -12,6 +12,7 @@ internal sealed record InstallOptions(string PluginsDirectory, string Configurat
             {
                 throw new ArgumentException("Each installation option needs a value.");
             }
+
             switch (arguments[index])
             {
                 case "--plugins-dir":
@@ -24,10 +25,16 @@ internal sealed record InstallOptions(string PluginsDirectory, string Configurat
                     throw new ArgumentException("Usage: Install.cs --plugins-dir PLUGINS_DIRECTORY [--configuration Debug|Release]");
             }
         }
+
         if (pluginsDirectory is null || string.IsNullOrWhiteSpace(configuration))
         {
             throw new ArgumentException("An explicit --plugins-dir and a nonempty build configuration are required.");
         }
-        return new InstallOptions(pluginsDirectory, configuration);
+
+        return new InstallOptions
+        (
+            PluginsDirectory: pluginsDirectory,
+            Configuration: configuration
+        );
     }
 }

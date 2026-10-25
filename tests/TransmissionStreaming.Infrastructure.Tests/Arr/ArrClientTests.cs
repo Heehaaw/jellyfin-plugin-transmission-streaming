@@ -17,12 +17,24 @@ using Xunit;
 public sealed class ArrClientTests
 {
     [Theory, AutoMoqData]
-    internal async Task Should_ReadDistinctConfiguredLibraryRoots(ArrConnection connection, RootFolder root,
-        [Frozen] TestHttpHandler handler, ArrClient sut)
+    internal async Task Should_ReadDistinctConfiguredLibraryRoots(
+        ArrConnection connection,
+        RootFolder root,
+        [Frozen] TestHttpHandler handler,
+        ArrClient sut
+    )
     {
         // Arrange
-        var missing = root with { Path = " " };
-        handler.Respond = _ => Response(new[] { root, missing, root });
+        var missing = root with
+        {
+            Path = " "
+        };
+        handler.Respond = _ => Response(
+            new[]
+            {
+                root, missing, root
+            }
+        );
 
         // Act
         var result = await sut.GetRootFoldersAsync(connection, CancellationToken.None);
@@ -36,15 +48,23 @@ public sealed class ArrClientTests
 
     [Theory, AutoMoqData]
     internal async Task Should_DiscoverMovieFromMatchingDownload(
-        WireScenario source, [Frozen] TestHttpHandler handler, ArrClient sut)
+        WireScenario source,
+        [Frozen] TestHttpHandler handler,
+        ArrClient sut
+    )
     {
         // Arrange
         PrepareMovie(source);
         handler.Respond = _ => Response(source.Queue);
 
         // Act
-        var result = await sut.FindDownloadAsync(source.Connection, MediaKind.Movie,
-            source.Identity.DownloadHash.ToLowerInvariant(), source.Identity.OriginalFileName, CancellationToken.None);
+        var result = await sut.FindDownloadAsync(
+            connection: source.Connection,
+            kind: MediaKind.Movie,
+            hash: source.Identity.DownloadHash.ToLowerInvariant(),
+            filename: source.Identity.OriginalFileName,
+            cancellationToken: CancellationToken.None
+        );
 
         // Assert
         result.Should().NotBeNull();
@@ -57,7 +77,10 @@ public sealed class ArrClientTests
 
     [Theory, AutoMoqData]
     internal async Task Should_ReadEveryQueuePage(
-        WireScenario source, [Frozen] TestHttpHandler handler, ArrClient sut)
+        WireScenario source,
+        [Frozen] TestHttpHandler handler,
+        ArrClient sut
+    )
     {
         // Arrange
         PrepareMovie(source);
@@ -65,8 +88,13 @@ public sealed class ArrClientTests
         handler.Respond = _ => Response(source.Queue);
 
         // Act
-        var result = await sut.FindDownloadAsync(source.Connection, MediaKind.Movie,
-            source.Identity.DownloadHash, source.Identity.OriginalFileName, CancellationToken.None);
+        var result = await sut.FindDownloadAsync(
+            connection: source.Connection,
+            kind: MediaKind.Movie,
+            hash: source.Identity.DownloadHash,
+            filename: source.Identity.OriginalFileName,
+            cancellationToken: CancellationToken.None
+        );
 
         // Assert
         result!.MovieId.Should().Be(source.Identity.MovieId);
@@ -76,7 +104,10 @@ public sealed class ArrClientTests
 
     [Theory, AutoMoqData]
     internal async Task Should_RejectAmbiguousMovieMapping(
-        WireScenario source, [Frozen] TestHttpHandler handler, ArrClient sut)
+        WireScenario source,
+        [Frozen] TestHttpHandler handler,
+        ArrClient sut
+    )
     {
         // Arrange
         PrepareMovie(source);
@@ -88,8 +119,13 @@ public sealed class ArrClientTests
         handler.Respond = _ => Response(source.Queue);
 
         // Act
-        var result = await sut.FindDownloadAsync(source.Connection, MediaKind.Movie,
-            source.Identity.DownloadHash, source.Identity.OriginalFileName, CancellationToken.None);
+        var result = await sut.FindDownloadAsync(
+            connection: source.Connection,
+            kind: MediaKind.Movie,
+            hash: source.Identity.DownloadHash,
+            filename: source.Identity.OriginalFileName,
+            cancellationToken: CancellationToken.None
+        );
 
         // Assert
         result.Should().BeNull();
@@ -97,16 +133,25 @@ public sealed class ArrClientTests
 
     [Theory, AutoMoqData]
     internal async Task Should_MapEpisodeFromSeasonPackFilename(
-        WireScenario source, [Frozen] TestHttpHandler handler, ArrClient sut)
+        WireScenario source,
+        [Frozen] TestHttpHandler handler,
+        ArrClient sut
+    )
     {
         // Arrange
         PrepareEpisode(source);
         handler.Respond = request => request.RequestUri!.AbsolutePath.EndsWith("/queue", StringComparison.Ordinal)
-            ? Response(source.Queue) : Response(source.Episodes);
+            ? Response(source.Queue)
+            : Response(source.Episodes);
 
         // Act
-        var result = await sut.FindDownloadAsync(source.Connection, MediaKind.Episode,
-            source.Identity.DownloadHash, source.Identity.OriginalFileName, CancellationToken.None);
+        var result = await sut.FindDownloadAsync(
+            connection: source.Connection,
+            kind: MediaKind.Episode,
+            hash: source.Identity.DownloadHash,
+            filename: source.Identity.OriginalFileName,
+            cancellationToken: CancellationToken.None
+        );
 
         // Assert
         result!.SeriesId.Should().Be(source.Identity.SeriesId);
@@ -118,7 +163,10 @@ public sealed class ArrClientTests
 
     [Theory, AutoMoqData]
     internal async Task Should_RejectMultiEpisodeFiles(
-        WireScenario source, [Frozen] TestHttpHandler handler, ArrClient sut)
+        WireScenario source,
+        [Frozen] TestHttpHandler handler,
+        ArrClient sut
+    )
     {
         // Arrange
         PrepareEpisode(source);
@@ -126,8 +174,13 @@ public sealed class ArrClientTests
         handler.Respond = _ => Response(source.Queue);
 
         // Act
-        var result = await sut.FindDownloadAsync(source.Connection, MediaKind.Episode,
-            source.Identity.DownloadHash, filename, CancellationToken.None);
+        var result = await sut.FindDownloadAsync(
+            connection: source.Connection,
+            kind: MediaKind.Episode,
+            hash: source.Identity.DownloadHash,
+            filename: filename,
+            cancellationToken: CancellationToken.None
+        );
 
         // Assert
         result.Should().BeNull();
@@ -136,17 +189,25 @@ public sealed class ArrClientTests
 
     [Theory, AutoMoqData]
     internal async Task Should_ResolveOnlyConfirmedImport(
-        WireScenario source, [Frozen] TestHttpHandler handler, ArrClient sut)
+        WireScenario source,
+        [Frozen] TestHttpHandler handler,
+        ArrClient sut
+    )
     {
         // Arrange
         PrepareMovie(source);
         PrepareImport(source);
         handler.Respond = request => request.RequestUri!.AbsolutePath.EndsWith("/history", StringComparison.Ordinal)
-            ? Response(source.History) : Response(source.File);
+            ? Response(source.History)
+            : Response(source.File);
 
         // Act
-        var result = await sut.FindImportedFileAsync(source.Connection, source.Identity,
-            source.File.Size, CancellationToken.None);
+        var result = await sut.FindImportedFileAsync(
+            connection: source.Connection,
+            identity: source.Identity,
+            expectedSize: source.File.Size,
+            cancellationToken: CancellationToken.None
+        );
 
         // Assert
         result.Should().Be(source.File.Path);
@@ -156,7 +217,10 @@ public sealed class ArrClientTests
 
     [Theory, AutoMoqData]
     internal async Task Should_RejectExistingFileWithoutMatchingImport(
-        WireScenario source, [Frozen] TestHttpHandler handler, ArrClient sut)
+        WireScenario source,
+        [Frozen] TestHttpHandler handler,
+        ArrClient sut
+    )
     {
         // Arrange
         PrepareMovie(source);
@@ -165,8 +229,12 @@ public sealed class ArrClientTests
         handler.Respond = _ => Response(source.History);
 
         // Act
-        var result = await sut.FindImportedFileAsync(source.Connection, source.Identity,
-            source.File.Size, CancellationToken.None);
+        var result = await sut.FindImportedFileAsync(
+            connection: source.Connection,
+            identity: source.Identity,
+            expectedSize: source.File.Size,
+            cancellationToken: CancellationToken.None
+        );
 
         // Assert
         result.Should().BeNull();
@@ -175,7 +243,10 @@ public sealed class ArrClientTests
 
     [Theory, AutoMoqData]
     internal async Task Should_RejectChangedFileSize(
-        WireScenario source, [Frozen] TestHttpHandler handler, ArrClient sut)
+        WireScenario source,
+        [Frozen] TestHttpHandler handler,
+        ArrClient sut
+    )
     {
         // Arrange
         PrepareMovie(source);
@@ -183,11 +254,16 @@ public sealed class ArrClientTests
         var expectedSize = source.File.Size;
         source.File.Size++;
         handler.Respond = request => request.RequestUri!.AbsolutePath.EndsWith("/history", StringComparison.Ordinal)
-            ? Response(source.History) : Response(source.File);
+            ? Response(source.History)
+            : Response(source.File);
 
         // Act
-        var result = await sut.FindImportedFileAsync(source.Connection, source.Identity,
-            expectedSize, CancellationToken.None);
+        var result = await sut.FindImportedFileAsync(
+            connection: source.Connection,
+            identity: source.Identity,
+            expectedSize: expectedSize,
+            cancellationToken: CancellationToken.None
+        );
 
         // Assert
         result.Should().BeNull();
@@ -195,7 +271,10 @@ public sealed class ArrClientTests
 
     [Theory, AutoMoqData]
     internal async Task Should_RejectAnotherFileWithinSameTorrent(
-        WireScenario source, [Frozen] TestHttpHandler handler, ArrClient sut)
+        WireScenario source,
+        [Frozen] TestHttpHandler handler,
+        ArrClient sut
+    )
     {
         // Arrange
         PrepareMovie(source);
@@ -204,8 +283,12 @@ public sealed class ArrClientTests
         handler.Respond = _ => Response(source.History);
 
         // Act
-        var result = await sut.FindImportedFileAsync(source.Connection, source.Identity,
-            source.File.Size, CancellationToken.None);
+        var result = await sut.FindImportedFileAsync(
+            connection: source.Connection,
+            identity: source.Identity,
+            expectedSize: source.File.Size,
+            cancellationToken: CancellationToken.None
+        );
 
         // Assert
         result.Should().BeNull();
@@ -214,14 +297,22 @@ public sealed class ArrClientTests
 
     [Theory, AutoMoqData]
     internal async Task Should_IgnoreSampleVideos(
-        WireScenario source, [Frozen] TestHttpHandler handler, ArrClient sut)
+        WireScenario source,
+        [Frozen] TestHttpHandler handler,
+        ArrClient sut
+    )
     {
         // Arrange
         var filename = source.Identity.Title + ".sample.mkv";
 
         // Act
-        var result = await sut.FindDownloadAsync(source.Connection, MediaKind.Movie,
-            source.Identity.DownloadHash, filename, CancellationToken.None);
+        var result = await sut.FindDownloadAsync(
+            connection: source.Connection,
+            kind: MediaKind.Movie,
+            hash: source.Identity.DownloadHash,
+            filename: filename,
+            cancellationToken: CancellationToken.None
+        );
 
         // Assert
         result.Should().BeNull();
@@ -230,17 +321,25 @@ public sealed class ArrClientTests
 
     [Theory, AutoMoqData]
     internal async Task Should_RejectFileRemovedAfterImport(
-        WireScenario source, [Frozen] TestHttpHandler handler, ArrClient sut)
+        WireScenario source,
+        [Frozen] TestHttpHandler handler,
+        ArrClient sut
+    )
     {
         // Arrange
         PrepareMovie(source);
         PrepareImport(source);
         handler.Respond = request => request.RequestUri!.AbsolutePath.EndsWith("/history", StringComparison.Ordinal)
-            ? Response(source.History) : new HttpResponseMessage(HttpStatusCode.NotFound);
+            ? Response(source.History)
+            : new HttpResponseMessage(HttpStatusCode.NotFound);
 
         // Act
-        var result = await sut.FindImportedFileAsync(source.Connection, source.Identity,
-            source.File.Size, CancellationToken.None);
+        var result = await sut.FindImportedFileAsync(
+            connection: source.Connection,
+            identity: source.Identity,
+            expectedSize: source.File.Size,
+            cancellationToken: CancellationToken.None
+        );
 
         // Assert
         result.Should().BeNull();
@@ -248,7 +347,10 @@ public sealed class ArrClientTests
 
     [Theory, AutoMoqData]
     internal async Task Should_ResolveConfirmedEpisodeImport(
-        WireScenario source, [Frozen] TestHttpHandler handler, ArrClient sut)
+        WireScenario source,
+        [Frozen] TestHttpHandler handler,
+        ArrClient sut
+    )
     {
         // Arrange
         PrepareEpisode(source);
@@ -257,11 +359,16 @@ public sealed class ArrClientTests
         handler.Respond = request => request.RequestUri!.AbsolutePath.EndsWith("/history", StringComparison.Ordinal)
             ? Response(source.History)
             : request.RequestUri.AbsolutePath.EndsWith("/episode", StringComparison.Ordinal)
-                ? Response(source.Episodes) : Response(source.File);
+                ? Response(source.Episodes)
+                : Response(source.File);
 
         // Act
-        var result = await sut.FindImportedFileAsync(source.Connection, source.Identity,
-            source.File.Size, CancellationToken.None);
+        var result = await sut.FindImportedFileAsync(
+            connection: source.Connection,
+            identity: source.Identity,
+            expectedSize: source.File.Size,
+            cancellationToken: CancellationToken.None
+        );
 
         // Assert
         result.Should().Be(source.File.Path);
@@ -269,7 +376,10 @@ public sealed class ArrClientTests
 
     [Theory, AutoMoqData]
     internal async Task Should_RejectEpisodeFileLinkedToAnotherEpisode(
-        WireScenario source, [Frozen] TestHttpHandler handler, ArrClient sut)
+        WireScenario source,
+        [Frozen] TestHttpHandler handler,
+        ArrClient sut
+    )
     {
         // Arrange
         PrepareEpisode(source);
@@ -279,11 +389,16 @@ public sealed class ArrClientTests
         handler.Respond = request => request.RequestUri!.AbsolutePath.EndsWith("/history", StringComparison.Ordinal)
             ? Response(source.History)
             : request.RequestUri.AbsolutePath.EndsWith("/episode", StringComparison.Ordinal)
-                ? Response(source.Episodes) : Response(source.File);
+                ? Response(source.Episodes)
+                : Response(source.File);
 
         // Act
-        var result = await sut.FindImportedFileAsync(source.Connection, source.Identity,
-            source.File.Size, CancellationToken.None);
+        var result = await sut.FindImportedFileAsync(
+            connection: source.Connection,
+            identity: source.Identity,
+            expectedSize: source.File.Size,
+            cancellationToken: CancellationToken.None
+        );
 
         // Assert
         result.Should().BeNull();
@@ -291,17 +406,26 @@ public sealed class ArrClientTests
 
     [Theory, AutoMoqData]
     internal async Task Should_AllowQualityFollowingEpisodeNumber(
-        WireScenario source, [Frozen] TestHttpHandler handler, ArrClient sut)
+        WireScenario source,
+        [Frozen] TestHttpHandler handler,
+        ArrClient sut
+    )
     {
         // Arrange
         PrepareEpisode(source);
         source.Identity.OriginalFileName = Path.GetFileNameWithoutExtension(source.Identity.OriginalFileName) + " - 1080p.mkv";
         handler.Respond = request => request.RequestUri!.AbsolutePath.EndsWith("/queue", StringComparison.Ordinal)
-            ? Response(source.Queue) : Response(source.Episodes);
+            ? Response(source.Queue)
+            : Response(source.Episodes);
 
         // Act
-        var result = await sut.FindDownloadAsync(source.Connection, MediaKind.Episode,
-            source.Identity.DownloadHash, source.Identity.OriginalFileName, CancellationToken.None);
+        var result = await sut.FindDownloadAsync(
+            connection: source.Connection,
+            kind: MediaKind.Episode,
+            hash: source.Identity.DownloadHash,
+            filename: source.Identity.OriginalFileName,
+            cancellationToken: CancellationToken.None
+        );
 
         // Assert
         result!.EpisodeId.Should().Be(source.Identity.EpisodeId);
@@ -359,15 +483,25 @@ public sealed class ArrClientTests
     }
 
     private sealed class AutoMoqDataAttribute() : AutoDataAttribute(() =>
-    {
-        var fixture = new Fixture { RepeatCount = 1 };
-        fixture.Customize(new AutoMoqCustomization { ConfigureMembers = true, GenerateDelegates = true });
-        fixture.Register<IArrTransport>(() => fixture.Create<ArrTransport>());
-        fixture.Register<IArrDownloadDiscovery>(() => fixture.Create<ArrDownloadDiscovery>());
-        fixture.Register<IArrImportResolver>(() => fixture.Create<ArrImportResolver>());
-        fixture.Customize<ArrConnection>(composer => composer.With(connection => connection.Url, "http://arr.invalid/"));
-        fixture.Customize<MediaIdentity>(composer => composer.With(identity => identity.OriginalFileName, () => fixture.Create<string>() + ".mkv"));
-        fixture.Register(() => new HttpClient(fixture.Create<TestHttpHandler>()));
-        return fixture;
-    });
+        {
+            var fixture = new Fixture
+            {
+                RepeatCount = 1
+            };
+            fixture.Customize(
+                new AutoMoqCustomization
+                {
+                    ConfigureMembers = true,
+                    GenerateDelegates = true
+                }
+            );
+            fixture.Register<IArrTransport>(() => fixture.Create<ArrTransport>());
+            fixture.Register<IArrDownloadDiscovery>(() => fixture.Create<ArrDownloadDiscovery>());
+            fixture.Register<IArrImportResolver>(() => fixture.Create<ArrImportResolver>());
+            fixture.Customize<ArrConnection>(composer => composer.With(connection => connection.Url, "http://arr.invalid/"));
+            fixture.Customize<MediaIdentity>(composer => composer.With(identity => identity.OriginalFileName, () => fixture.Create<string>() + ".mkv"));
+            fixture.Register(() => new HttpClient(fixture.Create<TestHttpHandler>()));
+            return fixture;
+        }
+    );
 }

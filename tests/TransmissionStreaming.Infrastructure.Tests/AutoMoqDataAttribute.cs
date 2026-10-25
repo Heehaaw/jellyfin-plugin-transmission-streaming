@@ -5,8 +5,18 @@ using AutoFixture.AutoMoq;
 using AutoFixture.Xunit2;
 
 internal sealed class AutoMoqDataAttribute() : AutoDataAttribute(() =>
-{
-    var fixture = new Fixture { RepeatCount = 1 };
-    fixture.Customize(new AutoMoqCustomization { ConfigureMembers = true, GenerateDelegates = true });
-    return fixture;
-});
+    {
+        var fixture = new Fixture
+        {
+            RepeatCount = 1
+        };
+        fixture.Customize(
+            new AutoMoqCustomization
+            {
+                ConfigureMembers = true,
+                GenerateDelegates = true
+            }
+        );
+        return fixture;
+    }
+);

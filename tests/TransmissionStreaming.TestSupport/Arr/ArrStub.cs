@@ -20,26 +20,62 @@ internal sealed class ArrStub(TorrentScenario swarm)
 
     public Task PublishImportAsync(string remotePath, CancellationToken cancellationToken)
     {
-        return swarm.ControlAsync("import", new { path = remotePath }, cancellationToken);
+        return swarm.ControlAsync(
+            operation: "import",
+            value: new
+            {
+                path = remotePath
+            },
+            cancellationToken: cancellationToken
+        );
     }
 
     public Task PublishUnrelatedImportAsync(string remotePath, string differentHash, CancellationToken cancellationToken)
     {
-        return swarm.ControlAsync("import", new { path = remotePath, hash = differentHash }, cancellationToken);
+        return swarm.ControlAsync(
+            operation: "import",
+            value: new
+            {
+                path = remotePath,
+                hash = differentHash
+            },
+            cancellationToken: cancellationToken
+        );
     }
 
     public Task SetEpisodeAsync(bool enabled, CancellationToken cancellationToken)
     {
-        return swarm.ControlAsync("episode", new { enabled }, cancellationToken);
+        return swarm.ControlAsync(
+            operation: "episode",
+            value: new
+            {
+                enabled
+            },
+            cancellationToken: cancellationToken
+        );
     }
 
     public Task SetRemovedAsync(bool enabled, CancellationToken cancellationToken)
     {
-        return swarm.ControlAsync("removed", new { enabled }, cancellationToken);
+        return swarm.ControlAsync(
+            operation: "removed",
+            value: new
+            {
+                enabled
+            },
+            cancellationToken: cancellationToken
+        );
     }
 
     public Task SetFailureAsync(bool enabled, CancellationToken cancellationToken)
     {
-        return swarm.ControlAsync("failure", new { enabled }, cancellationToken);
+        return swarm.ControlAsync(
+            operation: "failure",
+            value: new
+            {
+                enabled
+            },
+            cancellationToken: cancellationToken
+        );
     }
 }

@@ -6,20 +6,56 @@ internal sealed record PluginDescriptor(Guid Guid, string Name, string Descripti
 {
     public const string FileName = "meta.json";
     public string InstallDirectoryName => $"{Name}_{Version}";
-    public string ArchiveName => $"{string.Concat(Name.Where(char.IsLetterOrDigit))}_{Version}.zip";
+
+    public string ArchiveName
+    {
+        get
+        {
+            var nameCharacters = Name.Where(char.IsLetterOrDigit);
+            var name = string.Concat(nameCharacters);
+            return $"{name}_{Version}.zip";
+        }
+    }
 
     public static async Task<PluginDescriptor> ReadAsync(string path, CancellationToken cancellationToken)
     {
         await using var stream = File.OpenRead(path);
-        return await ReadAsync(stream, cancellationToken);
+        return await ReadAsync
+        (
+            stream: stream,
+            cancellationToken: cancellationToken
+        );
     }
 
     public static async Task<PluginDescriptor> ReadAsync(Stream stream, CancellationToken cancellationToken)
     {
-        var descriptor = await JsonSerializer.DeserializeAsync<PluginDescriptor>(stream, new JsonSerializerOptions(JsonSerializerDefaults.Web), cancellationToken)
-            ?? throw new InvalidDataException("Plugin metadata is empty.");
-        if (descriptor.Guid == Guid.Empty || !System.Version.TryParse(descriptor.Version, out _) || !System.Version.TryParse(descriptor.TargetAbi, out _)
-            || string.IsNullOrWhiteSpace(descriptor.Name) || descriptor.Name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0
+        var options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+        var descriptor = await JsonSerializer.DeserializeAsync<PluginDescriptor>
+                         (
+                             utf8Json: stream,
+                             options: options,
+                             cancellationToken: cancellationToken
+                         )
+                         ?? throw new InvalidDataException("Plugin metadata is empty.");
+        Validate(descriptor);
+        return descriptor;
+    }
+
+    private static void Validate(PluginDescriptor descriptor)
+    {
+        var validVersion = System.Version.TryParse
+        (
+            input: descriptor.Version,
+            result: out _
+        );
+        var validTargetAbi = System.Version.TryParse
+        (
+            input: descriptor.TargetAbi,
+            result: out _
+        );
+        var invalidNameCharacters = Path.GetInvalidFileNameChars();
+        if (descriptor.Guid == Guid.Empty || !validVersion || !validTargetAbi
+            || string.IsNullOrWhiteSpace(descriptor.Name) || descriptor.Name.IndexOfAny(invalidNameCharacters) >= 0
             || descriptor.Assemblies is not { Length: > 0 })
         {
             throw new InvalidDataException("Plugin metadata needs a valid name, version, target ABI, and assembly list.");
@@ -27,11 +63,15 @@ internal sealed record PluginDescriptor(Guid Guid, string Name, string Descripti
 
         foreach (var assembly in descriptor.Assemblies)
         {
-            if (Path.GetFileName(assembly) != assembly || !assembly.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
+            var hasDllExtension = assembly.EndsWith
+            (
+                value: ".dll",
+                comparisonType: StringComparison.OrdinalIgnoreCase
+            );
+            if (Path.GetFileName(assembly) != assembly || !hasDllExtension)
             {
                 throw new InvalidDataException("Plugin assembly entries must be plain DLL filenames.");
             }
         }
-        return descriptor;
     }
 }

@@ -2,6 +2,10 @@ namespace TransmissionStreaming.Packaging;
 
 internal sealed record PackageOptions(Uri? SourceUrl, Uri? PreviousManifestUrl, string? ReleaseTag, string? ArchivePath)
 {
+    private const string Usage = "Usage: Package.cs [--archive EXISTING_ZIP] [--source-url HTTPS_ZIP_URL] " +
+                                 "[--previous-manifest-url HTTPS_JSON_URL] [--release-tag VERSION_TAG]";
+    private const string VersionMismatch = "The release tag must match the version in plugin metadata.";
+
     public static PackageOptions Parse(string[] arguments)
     {
         Uri? source = null;
@@ -14,6 +18,7 @@ internal sealed record PackageOptions(Uri? SourceUrl, Uri? PreviousManifestUrl, 
             {
                 throw new ArgumentException("Each packaging option needs a value.");
             }
+
             switch (arguments[index])
             {
                 case "--archive":
@@ -21,10 +26,16 @@ internal sealed record PackageOptions(Uri? SourceUrl, Uri? PreviousManifestUrl, 
                     break;
                 case "--source-url":
                     source = HttpsUrl(arguments[index + 1]);
-                    if (!source.AbsolutePath.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) || source.Query.Length != 0 || source.Fragment.Length != 0)
+                    var hasZipExtension = source.AbsolutePath.EndsWith
+                    (
+                        value: ".zip",
+                        comparisonType: StringComparison.OrdinalIgnoreCase
+                    );
+                    if (!hasZipExtension || source.Query.Length != 0 || source.Fragment.Length != 0)
                     {
                         throw new ArgumentException("The source URL must end in .zip, without a query or fragment.");
                     }
+
                     break;
                 case "--previous-manifest-url":
                     previousManifest = HttpsUrl(arguments[index + 1]);
@@ -33,14 +44,38 @@ internal sealed record PackageOptions(Uri? SourceUrl, Uri? PreviousManifestUrl, 
                     releaseTag = arguments[index + 1];
                     break;
                 default:
-                    throw new ArgumentException("Usage: Package.cs [--archive EXISTING_ZIP] [--source-url HTTPS_ZIP_URL] [--previous-manifest-url HTTPS_JSON_URL] [--release-tag VERSION_TAG]");
+                    throw new ArgumentException(Usage);
             }
         }
+
         if (previousManifest is not null && source is null)
         {
             throw new ArgumentException("A previous manifest can only be merged when --source-url is supplied.");
         }
-        return new PackageOptions(source, previousManifest, releaseTag, archivePath);
+
+        return new PackageOptions
+        (
+            SourceUrl: source,
+            PreviousManifestUrl: previousManifest,
+            ReleaseTag: releaseTag,
+            ArchivePath: archivePath
+        );
+    }
+
+    private static Uri HttpsUrl(string value)
+    {
+        if (!Uri.TryCreate
+            (
+                uriString: value,
+                uriKind: UriKind.Absolute,
+                result: out var uri
+            )
+            || uri.Scheme != Uri.UriSchemeHttps || !string.IsNullOrEmpty(uri.UserInfo))
+        {
+            throw new ArgumentException("Package URLs must be absolute HTTPS URLs without embedded credentials.");
+        }
+
+        return uri;
     }
 
     public void ValidateVersion(string version)
@@ -49,24 +84,45 @@ internal sealed record PackageOptions(Uri? SourceUrl, Uri? PreviousManifestUrl, 
         {
             return;
         }
+
         var tagVersion = ReleaseTag.StartsWith('v') ? ReleaseTag[1..] : ReleaseTag;
-        if (!Version.TryParse(tagVersion, out var parsed) || Normalize(parsed) != Normalize(Version.Parse(version)))
+        if (!Version.TryParse
+            (
+                input: tagVersion,
+                result: out var parsed
+            )
+        )
         {
-            throw new ArgumentException("The release tag must match the version in plugin metadata.");
+            throw new ArgumentException(VersionMismatch);
+        }
+
+        var metadataVersion = Version.Parse(version);
+        var expected = Normalize(metadataVersion);
+        var supplied = Normalize(parsed);
+        if (supplied != expected)
+        {
+            throw new ArgumentException(VersionMismatch);
         }
     }
 
     private static Version Normalize(Version version)
     {
-        return new Version(version.Major, version.Minor, Math.Max(0, version.Build), Math.Max(0, version.Revision));
-    }
-
-    private static Uri HttpsUrl(string value)
-    {
-        if (!Uri.TryCreate(value, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps || !string.IsNullOrEmpty(uri.UserInfo))
-        {
-            throw new ArgumentException("Package URLs must be absolute HTTPS URLs without embedded credentials.");
-        }
-        return uri;
+        var build = Math.Max
+        (
+            val1: 0,
+            val2: version.Build
+        );
+        var revision = Math.Max
+        (
+            val1: 0,
+            val2: version.Revision
+        );
+        return new Version
+        (
+            major: version.Major,
+            minor: version.Minor,
+            build: build,
+            revision: revision
+        );
     }
 }

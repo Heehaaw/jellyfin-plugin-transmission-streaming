@@ -15,8 +15,11 @@ using Xunit;
 public sealed class ConfigurationControllerTests
 {
     [Theory, AutoMoqData]
-    internal async Task Should_ReturnTheInferredDefaults(ConfigurationDefaults source,
-        [Frozen] Mock<IMediator> mediator, ConfigurationController sut)
+    internal async Task Should_ReturnTheInferredDefaults(
+        ConfigurationDefaults source,
+        [Frozen] Mock<IMediator> mediator,
+        ConfigurationController sut
+    )
     {
         // Arrange
         mediator.Setup(value => value.Send(It.IsAny<GetConfigurationDefaults.Query>(), It.IsAny<CancellationToken>())).Returns(ValueTask.FromResult(source));
@@ -29,13 +32,20 @@ public sealed class ConfigurationControllerTests
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_DiscoverWithUnsavedConnectionDetails(ServiceConnection connection, ServicePathSuggestions source,
-        [Frozen] Mock<IMediator> mediator, ConfigurationController sut)
+    internal async Task Should_DiscoverWithUnsavedConnectionDetails(
+        ServiceConnection connection,
+        ServicePathSuggestions source,
+        [Frozen] Mock<IMediator> mediator,
+        ConfigurationController sut
+    )
     {
         // Arrange
         var service = MediaService.Transmission;
-        mediator.Setup(value => value.Send(It.Is<DiscoverServicePaths.Query>(query => query.Service == service && query.Connection == connection),
-            It.IsAny<CancellationToken>())).Returns(ValueTask.FromResult(source));
+        mediator.Setup(value => value.Send(
+                query: It.Is<DiscoverServicePaths.Query>(query => query.Service == service && query.Connection == connection),
+                cancellationToken: It.IsAny<CancellationToken>()
+            )
+        ).Returns(ValueTask.FromResult(source));
 
         // Act
         var result = await sut.Paths(service, connection, CancellationToken.None);
@@ -45,8 +55,11 @@ public sealed class ConfigurationControllerTests
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_HideUpstreamCredentialsOnFailure(ServiceConnection connection,
-        [Frozen] Mock<IMediator> mediator, ConfigurationController sut)
+    internal async Task Should_HideUpstreamCredentialsOnFailure(
+        ServiceConnection connection,
+        [Frozen] Mock<IMediator> mediator,
+        ConfigurationController sut
+    )
     {
         // Arrange
         mediator.Setup(value => value.Send(It.IsAny<DiscoverServicePaths.Query>(), It.IsAny<CancellationToken>()))
@@ -76,10 +89,20 @@ public sealed class ConfigurationControllerTests
     }
 
     private sealed class AutoMoqDataAttribute() : AutoDataAttribute(() =>
-    {
-        var fixture = new Fixture { RepeatCount = 1 };
-        fixture.Customize(new AutoMoqCustomization { ConfigureMembers = true, GenerateDelegates = true });
-        fixture.Customize<ConfigurationController>(composer => composer.OmitAutoProperties());
-        return fixture;
-    });
+        {
+            var fixture = new Fixture
+            {
+                RepeatCount = 1
+            };
+            fixture.Customize(
+                new AutoMoqCustomization
+                {
+                    ConfigureMembers = true,
+                    GenerateDelegates = true
+                }
+            );
+            fixture.Customize<ConfigurationController>(composer => composer.OmitAutoProperties());
+            return fixture;
+        }
+    );
 }

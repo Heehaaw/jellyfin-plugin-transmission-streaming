@@ -16,14 +16,31 @@ using TransmissionStreaming.Core.Filesystem;
 public sealed class ShouldIgnoreImportedFileTests
 {
     [Theory, AutoMoqData]
-    internal async Task Should_SuppressAnUnindexedNativeDuplicate(ShouldIgnoreImportedFile.Query source, Projection entry, LibraryItem projected, StreamingOptions configuration,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options, [Frozen] Mock<IProjectionStore> store,
-        [Frozen] Mock<IMediaFiles> files, [Frozen] Mock<IProjectionLibrary> library, ShouldIgnoreImportedFile.Handler sut)
+    internal async Task Should_SuppressAnUnindexedNativeDuplicate(
+        ShouldIgnoreImportedFile.Query source,
+        Projection entry,
+        LibraryItem projected,
+        StreamingOptions configuration,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        [Frozen] Mock<IProjectionStore> store,
+        [Frozen] Mock<IMediaFiles> files,
+        [Frozen] Mock<IProjectionLibrary> library,
+        ShouldIgnoreImportedFile.Handler sut
+    )
     {
         // Arrange
-        var query = source with { Path = entry.CompletedPath!, IsDirectory = false };
+        var query = source with
+        {
+            Path = entry.CompletedPath!,
+            IsDirectory = false
+        };
         entry.HandoffPending = false;
-        options.SetupGet(value => value.CurrentValue).Returns(configuration with { Enabled = true });
+        options.SetupGet(value => value.CurrentValue).Returns(
+            configuration with
+            {
+                Enabled = true
+            }
+        );
         store.Setup(value => value.All()).Returns([entry]);
         files.Setup(value => value.Exists(entry.StreamPath)).Returns(true);
         library.Setup(value => value.Find(entry.StreamPath)).Returns(projected);
@@ -37,14 +54,29 @@ public sealed class ShouldIgnoreImportedFileTests
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_AllowIndexingDuringHandoff(ShouldIgnoreImportedFile.Query source, Projection entry, StreamingOptions configuration,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options, [Frozen] Mock<IProjectionStore> store,
-        [Frozen] Mock<IProjectionLibrary> library, ShouldIgnoreImportedFile.Handler sut)
+    internal async Task Should_AllowIndexingDuringHandoff(
+        ShouldIgnoreImportedFile.Query source,
+        Projection entry,
+        StreamingOptions configuration,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        [Frozen] Mock<IProjectionStore> store,
+        [Frozen] Mock<IProjectionLibrary> library,
+        ShouldIgnoreImportedFile.Handler sut
+    )
     {
         // Arrange
-        var query = source with { Path = entry.CompletedPath!, IsDirectory = false };
+        var query = source with
+        {
+            Path = entry.CompletedPath!,
+            IsDirectory = false
+        };
         entry.HandoffPending = true;
-        options.SetupGet(value => value.CurrentValue).Returns(configuration with { Enabled = true });
+        options.SetupGet(value => value.CurrentValue).Returns(
+            configuration with
+            {
+                Enabled = true
+            }
+        );
         store.Setup(value => value.All()).Returns([entry]);
 
         // Act
@@ -56,14 +88,31 @@ public sealed class ShouldIgnoreImportedFileTests
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_KeepAnIndexedNativeItemVisibleUntilHistoryTransfer(ShouldIgnoreImportedFile.Query source, Projection entry, LibraryItem native, StreamingOptions configuration,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options, [Frozen] Mock<IProjectionStore> store,
-        [Frozen] Mock<IMediaFiles> files, [Frozen] Mock<IProjectionLibrary> library, ShouldIgnoreImportedFile.Handler sut)
+    internal async Task Should_KeepAnIndexedNativeItemVisibleUntilHistoryTransfer(
+        ShouldIgnoreImportedFile.Query source,
+        Projection entry,
+        LibraryItem native,
+        StreamingOptions configuration,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        [Frozen] Mock<IProjectionStore> store,
+        [Frozen] Mock<IMediaFiles> files,
+        [Frozen] Mock<IProjectionLibrary> library,
+        ShouldIgnoreImportedFile.Handler sut
+    )
     {
         // Arrange
-        var query = source with { Path = entry.CompletedPath!, IsDirectory = false };
+        var query = source with
+        {
+            Path = entry.CompletedPath!,
+            IsDirectory = false
+        };
         entry.HandoffPending = false;
-        options.SetupGet(value => value.CurrentValue).Returns(configuration with { Enabled = true });
+        options.SetupGet(value => value.CurrentValue).Returns(
+            configuration with
+            {
+                Enabled = true
+            }
+        );
         store.Setup(value => value.All()).Returns([entry]);
         files.Setup(value => value.Exists(entry.StreamPath)).Returns(true);
         library.Setup(value => value.Find(It.IsAny<string>())).Returns(native);
@@ -76,17 +125,41 @@ public sealed class ShouldIgnoreImportedFileTests
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_AllowDirectoriesAndDisabledProjections(ShouldIgnoreImportedFile.Query source, StreamingOptions configuration,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options, [Frozen] Mock<IProjectionStore> store, ShouldIgnoreImportedFile.Handler sut)
+    internal async Task Should_AllowDirectoriesAndDisabledProjections(
+        ShouldIgnoreImportedFile.Query source,
+        StreamingOptions configuration,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        [Frozen] Mock<IProjectionStore> store,
+        ShouldIgnoreImportedFile.Handler sut
+    )
     {
         // Arrange
-        options.SetupGet(value => value.CurrentValue).Returns(configuration with { Enabled = true });
-        var directory = source with { IsDirectory = true };
+        options.SetupGet(value => value.CurrentValue).Returns(
+            configuration with
+            {
+                Enabled = true
+            }
+        );
+        var directory = source with
+        {
+            IsDirectory = true
+        };
 
         // Act
         var directoryIgnored = await sut.Handle(directory, CancellationToken.None);
-        options.SetupGet(value => value.CurrentValue).Returns(configuration with { Enabled = false });
-        var disabledIgnored = await sut.Handle(source with { IsDirectory = false }, CancellationToken.None);
+        options.SetupGet(value => value.CurrentValue).Returns(
+            configuration with
+            {
+                Enabled = false
+            }
+        );
+        var disabledIgnored = await sut.Handle(
+            query: source with
+            {
+                IsDirectory = false
+            },
+            cancellationToken: CancellationToken.None
+        );
 
         // Assert
         directoryIgnored.Should().BeFalse();
@@ -95,14 +168,30 @@ public sealed class ShouldIgnoreImportedFileTests
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_AllowNativeMediaWithoutAUsableProjection(ShouldIgnoreImportedFile.Query source, Projection entry, StreamingOptions configuration,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options, [Frozen] Mock<IProjectionStore> store,
-        [Frozen] Mock<IMediaFiles> files, [Frozen] Mock<IProjectionLibrary> library, ShouldIgnoreImportedFile.Handler sut)
+    internal async Task Should_AllowNativeMediaWithoutAUsableProjection(
+        ShouldIgnoreImportedFile.Query source,
+        Projection entry,
+        StreamingOptions configuration,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        [Frozen] Mock<IProjectionStore> store,
+        [Frozen] Mock<IMediaFiles> files,
+        [Frozen] Mock<IProjectionLibrary> library,
+        ShouldIgnoreImportedFile.Handler sut
+    )
     {
         // Arrange
-        var query = source with { Path = entry.CompletedPath!, IsDirectory = false };
+        var query = source with
+        {
+            Path = entry.CompletedPath!,
+            IsDirectory = false
+        };
         entry.HandoffPending = false;
-        options.SetupGet(value => value.CurrentValue).Returns(configuration with { Enabled = true });
+        options.SetupGet(value => value.CurrentValue).Returns(
+            configuration with
+            {
+                Enabled = true
+            }
+        );
         store.Setup(value => value.All()).Returns([entry]);
         library.Setup(value => value.Find(entry.StreamPath)).Returns((LibraryItem?)null);
         files.Setup(value => value.Exists(entry.StreamPath)).Returns(true);
@@ -115,9 +204,19 @@ public sealed class ShouldIgnoreImportedFileTests
     }
 
     private sealed class AutoMoqDataAttribute() : AutoDataAttribute(() =>
-    {
-        var fixture = new Fixture { RepeatCount = 2 };
-        fixture.Customize(new AutoMoqCustomization { ConfigureMembers = true, GenerateDelegates = true });
-        return fixture;
-    });
+        {
+            var fixture = new Fixture
+            {
+                RepeatCount = 2
+            };
+            fixture.Customize(
+                new AutoMoqCustomization
+                {
+                    ConfigureMembers = true,
+                    GenerateDelegates = true
+                }
+            );
+            return fixture;
+        }
+    );
 }

@@ -19,11 +19,19 @@ using Xunit;
 public sealed class DiscoverDownloadsTests
 {
     [Theory, AutoMoqData]
-    internal async Task Should_CreateOnlyThePrimaryMovie(DiscoveryScenario source, SelectVideoFiles.Result selection,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options, [Frozen] Mock<ITransmissionClient> transmission,
-        [Frozen] Mock<IArrClient> arr, [Frozen] Mock<IProjectionStore> store,
-        [Frozen] Mock<IProjectionPaths> paths, [Frozen] Mock<IProjectionFiles> files,
-        [Frozen] Mock<IProjectionLibrary> library, [Frozen] Mock<IMediator> mediator, DiscoverDownloads.Handler sut)
+    internal async Task Should_CreateOnlyThePrimaryMovie(
+        DiscoveryScenario source,
+        SelectVideoFiles.Result selection,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        [Frozen] Mock<ITransmissionClient> transmission,
+        [Frozen] Mock<IArrClient> arr,
+        [Frozen] Mock<IProjectionStore> store,
+        [Frozen] Mock<IProjectionPaths> paths,
+        [Frozen] Mock<IProjectionFiles> files,
+        [Frozen] Mock<IProjectionLibrary> library,
+        [Frozen] Mock<IMediator> mediator,
+        DiscoverDownloads.Handler sut
+    )
     {
         // Arrange
         var extra = source.Torrent.Files[0];
@@ -32,16 +40,31 @@ public sealed class DiscoverDownloadsTests
         feature.Name += ".mkv";
         feature.Length += extra.Length;
         source.Identity.Kind = MediaKind.Movie;
-        options.SetupGet(value => value.CurrentValue).Returns(source.Options with { Enabled = true });
+        options.SetupGet(value => value.CurrentValue).Returns(
+            source.Options with
+            {
+                Enabled = true
+            }
+        );
         transmission.Setup(value => value.GetTorrentsAsync(It.IsAny<TransmissionConnection>(), It.IsAny<CancellationToken>())).ReturnsAsync([source.Torrent]);
-        arr.Setup(value => value.FindDownloadAsync(It.IsAny<ArrConnection>(), MediaKind.Movie,
-            source.Torrent.Hash, It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(source.Identity);
+        arr.Setup(value => value.FindDownloadAsync(
+                connection: It.IsAny<ArrConnection>(),
+                kind: MediaKind.Movie,
+                hash: source.Torrent.Hash,
+                filename: It.IsAny<string>(),
+                cancellationToken: It.IsAny<CancellationToken>()
+            )
+        ).ReturnsAsync(source.Identity);
         store.Setup(value => value.All()).Returns([]);
         paths.Setup(value => value.Id(source.Identity)).Returns(source.Existing.Id);
         paths.Setup(value => value.StreamPath(It.IsAny<string>(), source.Identity)).Returns(source.Existing.StreamPath);
         mediator.Setup(value => value.Send(It.IsAny<IQuery<string?>>(), It.IsAny<CancellationToken>())).Returns(ValueTask.FromResult<string?>(null));
         library.Setup(value => value.RefreshAsync(It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
-        var selected = selection with { PlayableIndexes = Enumerable.Range(0, source.Torrent.Files.Count).ToArray(), PrimaryMovieIndex = source.Torrent.Files.IndexOf(feature) };
+        var selected = selection with
+        {
+            PlayableIndexes = Enumerable.Range(0, source.Torrent.Files.Count).ToArray(),
+            PrimaryMovieIndex = source.Torrent.Files.IndexOf(feature)
+        };
         mediator.Setup(value => value.Send(It.Is<SelectVideoFiles.Query>(query => query.Files == source.Torrent.Files), It.IsAny<CancellationToken>()))
             .Returns(ValueTask.FromResult(selected));
         var saved = new List<Projection>();
@@ -56,21 +79,34 @@ public sealed class DiscoverDownloadsTests
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_KeepIdentityAcrossCompletion(DiscoveryScenario source,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options, [Frozen] Mock<ITransmissionClient> transmission,
-        [Frozen] Mock<IProjectionStore> store, [Frozen] Mock<IProjectionLibrary> library,
-        [Frozen] Mock<IMediator> mediator, DiscoverDownloads.Handler sut)
+    internal async Task Should_KeepIdentityAcrossCompletion(
+        DiscoveryScenario source,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        [Frozen] Mock<ITransmissionClient> transmission,
+        [Frozen] Mock<IProjectionStore> store,
+        [Frozen] Mock<IProjectionLibrary> library,
+        [Frozen] Mock<IMediator> mediator,
+        DiscoverDownloads.Handler sut
+    )
     {
         // Arrange
         source.Existing.CompletedPath = null;
         var id = source.Existing.Id;
         var secret = source.Existing.Secret;
         var streamPath = source.Existing.StreamPath;
-        options.SetupGet(value => value.CurrentValue).Returns(source.Options with { Enabled = true });
+        options.SetupGet(value => value.CurrentValue).Returns(
+            source.Options with
+            {
+                Enabled = true
+            }
+        );
         transmission.Setup(value => value.GetTorrentsAsync(It.IsAny<TransmissionConnection>(), It.IsAny<CancellationToken>())).ReturnsAsync([]);
         store.Setup(value => value.All()).Returns([source.Existing]);
-        mediator.Setup(value => value.Send(It.Is<IQuery<string?>>(query => query is ResolveImportedFile.Query),
-            It.IsAny<CancellationToken>())).Returns(ValueTask.FromResult<string?>(source.ImportedPath));
+        mediator.Setup(value => value.Send(
+                query: It.Is<IQuery<string?>>(query => query is ResolveImportedFile.Query),
+                cancellationToken: It.IsAny<CancellationToken>()
+            )
+        ).Returns(ValueTask.FromResult<string?>(source.ImportedPath));
 
         // Act
         await sut.Handle(source.Command, CancellationToken.None);
@@ -85,12 +121,21 @@ public sealed class DiscoverDownloadsTests
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_NotDiscoverWhenDisabled(DiscoveryScenario source,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options, [Frozen] Mock<ITransmissionClient> transmission,
-        [Frozen] Mock<IProjectionFiles> files, DiscoverDownloads.Handler sut)
+    internal async Task Should_NotDiscoverWhenDisabled(
+        DiscoveryScenario source,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        [Frozen] Mock<ITransmissionClient> transmission,
+        [Frozen] Mock<IProjectionFiles> files,
+        DiscoverDownloads.Handler sut
+    )
     {
         // Arrange
-        options.SetupGet(value => value.CurrentValue).Returns(source.Options with { Enabled = false });
+        options.SetupGet(value => value.CurrentValue).Returns(
+            source.Options with
+            {
+                Enabled = false
+            }
+        );
 
         // Act
         await sut.Handle(source.Command, CancellationToken.None);
@@ -101,15 +146,25 @@ public sealed class DiscoverDownloadsTests
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_ReportUnavailableDownloadWithoutLosingItsIdentity(DiscoveryScenario source,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options, [Frozen] Mock<ITransmissionClient> transmission,
-        [Frozen] Mock<IProjectionStore> store, [Frozen] Mock<IMediator> mediator, DiscoverDownloads.Handler sut)
+    internal async Task Should_ReportUnavailableDownloadWithoutLosingItsIdentity(
+        DiscoveryScenario source,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        [Frozen] Mock<ITransmissionClient> transmission,
+        [Frozen] Mock<IProjectionStore> store,
+        [Frozen] Mock<IMediator> mediator,
+        DiscoverDownloads.Handler sut
+    )
     {
         // Arrange
         source.Existing.CompletedPath = null;
         var previousProgress = source.Existing.Progress;
         const string unavailable = "Download unavailable";
-        options.SetupGet(value => value.CurrentValue).Returns(source.Options with { Enabled = true });
+        options.SetupGet(value => value.CurrentValue).Returns(
+            source.Options with
+            {
+                Enabled = true
+            }
+        );
         transmission.Setup(value => value.GetTorrentsAsync(It.IsAny<TransmissionConnection>(), It.IsAny<CancellationToken>())).ReturnsAsync([]);
         store.Setup(value => value.All()).Returns([source.Existing]);
         mediator.Setup(value => value.Send(It.IsAny<IQuery<string?>>(), It.IsAny<CancellationToken>())).Returns(ValueTask.FromResult<string?>(null));
@@ -124,9 +179,14 @@ public sealed class DiscoverDownloadsTests
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_ExposeDownloadErrorsForAnExistingStream(DiscoveryScenario source,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options, [Frozen] Mock<ITransmissionClient> transmission,
-        [Frozen] Mock<IProjectionStore> store, [Frozen] Mock<IMediator> mediator, DiscoverDownloads.Handler sut)
+    internal async Task Should_ExposeDownloadErrorsForAnExistingStream(
+        DiscoveryScenario source,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        [Frozen] Mock<ITransmissionClient> transmission,
+        [Frozen] Mock<IProjectionStore> store,
+        [Frozen] Mock<IMediator> mediator,
+        DiscoverDownloads.Handler sut
+    )
     {
         // Arrange
         source.Existing.CompletedPath = null;
@@ -134,7 +194,12 @@ public sealed class DiscoverDownloadsTests
         source.Existing.FileIndex = 0;
         source.Existing.Length = source.Torrent.Files[0].Length;
         const string failed = "Download error";
-        options.SetupGet(value => value.CurrentValue).Returns(source.Options with { Enabled = true });
+        options.SetupGet(value => value.CurrentValue).Returns(
+            source.Options with
+            {
+                Enabled = true
+            }
+        );
         transmission.Setup(value => value.GetTorrentsAsync(It.IsAny<TransmissionConnection>(), It.IsAny<CancellationToken>())).ReturnsAsync([source.Torrent]);
         store.Setup(value => value.All()).Returns([source.Existing]);
         mediator.Setup(value => value.Send(It.IsAny<IQuery<string?>>(), It.IsAny<CancellationToken>())).Returns(ValueTask.FromResult<string?>(null));
@@ -148,10 +213,17 @@ public sealed class DiscoverDownloadsTests
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_IgnoreDownloadsWithoutArrOwnership(DiscoveryScenario source, SelectVideoFiles.Result selection,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options, [Frozen] Mock<ITransmissionClient> transmission,
-        [Frozen] Mock<IArrClient> arr, [Frozen] Mock<IProjectionStore> store,
-        [Frozen] Mock<IProjectionFiles> files, [Frozen] Mock<IMediator> mediator, DiscoverDownloads.Handler sut)
+    internal async Task Should_IgnoreDownloadsWithoutArrOwnership(
+        DiscoveryScenario source,
+        SelectVideoFiles.Result selection,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        [Frozen] Mock<ITransmissionClient> transmission,
+        [Frozen] Mock<IArrClient> arr,
+        [Frozen] Mock<IProjectionStore> store,
+        [Frozen] Mock<IProjectionFiles> files,
+        [Frozen] Mock<IMediator> mediator,
+        DiscoverDownloads.Handler sut
+    )
     {
         // Arrange
         foreach (var file in source.Torrent.Files)
@@ -159,14 +231,26 @@ public sealed class DiscoverDownloadsTests
             file.Name += ".mkv";
         }
 
-        options.SetupGet(value => value.CurrentValue).Returns(source.Options with { Enabled = true });
+        options.SetupGet(value => value.CurrentValue).Returns(
+            source.Options with
+            {
+                Enabled = true
+            }
+        );
         transmission.Setup(value => value.GetTorrentsAsync(It.IsAny<TransmissionConnection>(), It.IsAny<CancellationToken>())).ReturnsAsync([source.Torrent]);
         store.Setup(value => value.All()).Returns([]);
         arr.Setup(value => value.FindDownloadAsync(It.IsAny<ArrConnection>(), It.IsAny<MediaKind>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((MediaIdentity?)null);
 
         mediator.Setup(value => value.Send(It.IsAny<SelectVideoFiles.Query>(), It.IsAny<CancellationToken>()))
-            .Returns(ValueTask.FromResult(selection with { PlayableIndexes = Enumerable.Range(0, source.Torrent.Files.Count).ToArray() }));
+            .Returns(
+                ValueTask.FromResult(
+                    selection with
+                    {
+                        PlayableIndexes = Enumerable.Range(0, source.Torrent.Files.Count).ToArray()
+                    }
+                )
+            );
 
         // Act
         await sut.Handle(source.Command, CancellationToken.None);
@@ -177,19 +261,35 @@ public sealed class DiscoverDownloadsTests
     }
 
     [Theory, AutoMoqData]
-    internal async Task Should_NotRewriteOrReconcileAPrunedProjection(DiscoveryScenario source,
-        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options, [Frozen] Mock<ITransmissionClient> transmission,
-        [Frozen] Mock<IProjectionStore> store, [Frozen] Mock<IProjectionFiles> files,
-        [Frozen] Mock<IProjectionLibrary> library, [Frozen] Mock<IMediator> mediator, DiscoverDownloads.Handler sut)
+    internal async Task Should_NotRewriteOrReconcileAPrunedProjection(
+        DiscoveryScenario source,
+        [Frozen] Mock<IOptionsMonitor<StreamingOptions>> options,
+        [Frozen] Mock<ITransmissionClient> transmission,
+        [Frozen] Mock<IProjectionStore> store,
+        [Frozen] Mock<IProjectionFiles> files,
+        [Frozen] Mock<IProjectionLibrary> library,
+        [Frozen] Mock<IMediator> mediator,
+        DiscoverDownloads.Handler sut
+    )
     {
         // Arrange
         source.Existing.CompletedPath = null;
-        options.SetupGet(value => value.CurrentValue).Returns(source.Options with { Enabled = true });
+        options.SetupGet(value => value.CurrentValue).Returns(
+            source.Options with
+            {
+                Enabled = true
+            }
+        );
         transmission.Setup(value => value.GetTorrentsAsync(It.IsAny<TransmissionConnection>(), It.IsAny<CancellationToken>())).ReturnsAsync([]);
         store.Setup(value => value.All()).Returns([source.Existing]);
         mediator.Setup(value => value.Send(It.IsAny<IQuery<string?>>(), It.IsAny<CancellationToken>())).Returns(ValueTask.FromResult<string?>(null));
-        mediator.Setup(value => value.Send(It.Is<PruneOrphanedProjection.Command>(command =>
-            command.Entry == source.Existing && !command.TorrentPresent), It.IsAny<CancellationToken>())).Returns(ValueTask.FromResult(true));
+        mediator.Setup(value => value.Send(
+                command: It.Is<PruneOrphanedProjection.Command>(command =>
+                    command.Entry == source.Existing && !command.TorrentPresent
+                ),
+                cancellationToken: It.IsAny<CancellationToken>()
+            )
+        ).Returns(ValueTask.FromResult(true));
 
         // Act
         await sut.Handle(source.Command, CancellationToken.None);
@@ -201,16 +301,29 @@ public sealed class DiscoverDownloadsTests
     }
 
     private sealed class AutoMoqDataAttribute() : AutoDataAttribute(() =>
-    {
-        var fixture = new Fixture { RepeatCount = 2 };
-        fixture.Customize(new AutoMoqCustomization { ConfigureMembers = true, GenerateDelegates = true });
-        fixture.Customize<SelectVideoFiles.Result>(composer =>
-            composer.With(value => value.PlayableIndexes, Array.Empty<int>()).With(value => value.PrimaryMovieIndex, (int?)null));
-        fixture.Customize<Mock<IMediator>>(composer => composer.Do(mock => mock
-            .Setup(value => value.Send(It.IsAny<SelectVideoFiles.Query>(), It.IsAny<CancellationToken>()))
-            .Returns(ValueTask.FromResult(fixture.Create<SelectVideoFiles.Result>()))));
-        return fixture;
-    });
+        {
+            var fixture = new Fixture
+            {
+                RepeatCount = 2
+            };
+            fixture.Customize(
+                new AutoMoqCustomization
+                {
+                    ConfigureMembers = true,
+                    GenerateDelegates = true
+                }
+            );
+            fixture.Customize<SelectVideoFiles.Result>(composer =>
+                composer.With(value => value.PlayableIndexes, Array.Empty<int>()).With(value => value.PrimaryMovieIndex, (int?)null)
+            );
+            fixture.Customize<Mock<IMediator>>(composer => composer.Do(mock => mock
+                    .Setup(value => value.Send(It.IsAny<SelectVideoFiles.Query>(), It.IsAny<CancellationToken>()))
+                    .Returns(ValueTask.FromResult(fixture.Create<SelectVideoFiles.Result>()))
+                )
+            );
+            return fixture;
+        }
+    );
 }
 
 public sealed record DiscoveryScenario(
@@ -219,4 +332,5 @@ public sealed record DiscoveryScenario(
     TorrentSnapshot Torrent,
     MediaIdentity Identity,
     Projection Existing,
-    string ImportedPath);
+    string ImportedPath
+);

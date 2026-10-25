@@ -14,8 +14,11 @@ using Xunit;
 public sealed class JellyfinMediaLibraryLocationsTests
 {
     [Theory, AutoMoqData]
-    internal void Should_UseMovieAndShowPathsWithoutAdoptingOtherLibraryTypes(MediaLibraries source,
-        [Frozen] Mock<ILibraryManager> library, JellyfinMediaLibraryLocations sut)
+    internal void Should_UseMovieAndShowPathsWithoutAdoptingOtherLibraryTypes(
+        MediaLibraries source,
+        [Frozen] Mock<ILibraryManager> library,
+        JellyfinMediaLibraryLocations sut
+    )
     {
         // Arrange
         source.Movies.CollectionType = CollectionTypeOptions.movies;
@@ -32,8 +35,11 @@ public sealed class JellyfinMediaLibraryLocationsTests
     }
 
     [Theory, AutoMoqData]
-    internal void Should_KeepServiceLibraryTypesSeparateAndIncludeDownloadLibraries(MediaLibraries source,
-        [Frozen] Mock<ILibraryManager> library, JellyfinMediaLibraryLocations sut)
+    internal void Should_KeepServiceLibraryTypesSeparateAndIncludeDownloadLibraries(
+        MediaLibraries source,
+        [Frozen] Mock<ILibraryManager> library,
+        JellyfinMediaLibraryLocations sut
+    )
     {
         // Arrange
         source.Movies.CollectionType = CollectionTypeOptions.movies;
@@ -54,12 +60,22 @@ public sealed class JellyfinMediaLibraryLocationsTests
     }
 
     private sealed class AutoMoqDataAttribute() : AutoDataAttribute(() =>
-    {
-        var fixture = new Fixture { RepeatCount = 1 };
-        fixture.Customize(new AutoMoqCustomization { ConfigureMembers = true, GenerateDelegates = true });
-        fixture.Customize<VirtualFolderInfo>(composer => composer.Without(value => value.LibraryOptions));
-        return fixture;
-    });
+        {
+            var fixture = new Fixture
+            {
+                RepeatCount = 1
+            };
+            fixture.Customize(
+                new AutoMoqCustomization
+                {
+                    ConfigureMembers = true,
+                    GenerateDelegates = true
+                }
+            );
+            fixture.Customize<VirtualFolderInfo>(composer => composer.Without(value => value.LibraryOptions));
+            return fixture;
+        }
+    );
 }
 
 public sealed record MediaLibraries(VirtualFolderInfo Movies, VirtualFolderInfo Shows, VirtualFolderInfo Other);
