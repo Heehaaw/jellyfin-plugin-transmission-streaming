@@ -61,7 +61,6 @@ public sealed class JellyfinTestServer(DownloadServices containers, JellyfinBase
             Arr = await ArrStub.StartAsync(workspace, containers.Network, Swarm, deadline.Token);
             ComposeAdapters();
             await downloads.ConfigureAsync();
-            await Swarm.AllowFirstPieceAsync(deadline.Token);
         }
         catch
         {
@@ -80,6 +79,7 @@ public sealed class JellyfinTestServer(DownloadServices containers, JellyfinBase
     {
         try
         {
+            await Swarm.AllowFirstPieceAsync(TestContext.Current.CancellationToken);
             return await downloads.WaitForStreamAsync();
         }
         catch (TimeoutException)

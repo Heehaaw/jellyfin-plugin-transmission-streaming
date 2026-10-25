@@ -15,11 +15,10 @@ public sealed class NativeHandoffTests(ITestOutputHelper output)
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
         deadline.CancelAfter(TimeSpan.FromMinutes(2));
         var cancellationToken = deadline.Token;
-        await sut.StartAsync(source, cancellationToken);
+        await sut.StartAsync(source, cancellationToken, completed: true);
         await sut.DiscoverAsync(source.Discover, cancellationToken);
         var original = sut.Store.All().Single();
         var sidecar = Path.ChangeExtension(original.StreamPath, ".nfo");
-        await sut.Swarm.AllowAllPiecesAsync(cancellationToken);
 
         try
         {

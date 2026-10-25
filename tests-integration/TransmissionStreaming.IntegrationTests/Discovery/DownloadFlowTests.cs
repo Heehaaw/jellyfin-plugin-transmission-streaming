@@ -96,10 +96,9 @@ public sealed class DownloadFlowTests(ITestOutputHelper output)
         {
             using var deadline = new CancellationTokenSource(TimeSpan.FromMinutes(2));
             var cancellationToken = deadline.Token;
-            await sut.StartAsync(source, cancellationToken);
+            await sut.StartAsync(source, cancellationToken, completed: true);
             await sut.DiscoverAsync(source.Discover, cancellationToken);
             var original = sut.Store.All().Single();
-            await sut.Swarm.AllowAllPiecesAsync(cancellationToken);
             var importedPath = await sut.ImportAsync(cancellationToken);
             await sut.Arr.PublishUnrelatedImportAsync(sut.Swarm.RemotePath(importedPath), unrelatedTorrent.ToString("N"), cancellationToken);
 
@@ -203,14 +202,13 @@ public sealed class DownloadFlowTests(ITestOutputHelper output)
             };
             var expectedSeason = 1;
             var expectedEpisode = 2;
-            await sut.StartAsync(episodeSource, cancellationToken);
+            await sut.StartAsync(episodeSource, cancellationToken, completed: true);
             sut.UseIndependentArrMounts();
             await sut.Arr.SetEpisodeAsync(true, cancellationToken);
 
             // Act
             await sut.DiscoverAsync(source.Discover, cancellationToken);
             var original = sut.Store.All().Single();
-            await sut.Swarm.AllowAllPiecesAsync(cancellationToken);
             var importedPath = await sut.ImportAsync(cancellationToken);
             await sut.DiscoverAsync(source.Discover, cancellationToken);
             await sut.Swarm.RemoveAsync(cancellationToken);

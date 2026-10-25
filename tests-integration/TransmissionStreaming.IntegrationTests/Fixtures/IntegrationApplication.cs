@@ -29,11 +29,11 @@ internal sealed class IntegrationApplication(DownloadServices containers) : IAsy
     public IProjectionStore Store => _provider!.GetRequiredService<IProjectionStore>();
     public string Workspace => _workspace!;
 
-    public async Task StartAsync(DownloadSource source, CancellationToken cancellationToken)
+    public async Task StartAsync(DownloadSource source, CancellationToken cancellationToken, bool completed = false)
     {
         try
         {
-            _swarm = await containers.OpenAsync(source.Media, source.FileName, cancellationToken).ConfigureAwait(false);
+            _swarm = await containers.OpenAsync(source.Media, source.FileName, cancellationToken, completed).ConfigureAwait(false);
             _workspace = _swarm.Workspace;
             Arr = await ArrStub.StartAsync(_workspace, containers.Network, _swarm, cancellationToken).ConfigureAwait(false);
             var settings = new StreamingOptions

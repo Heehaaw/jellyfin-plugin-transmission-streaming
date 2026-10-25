@@ -104,12 +104,12 @@ public sealed class DownloadServices : IAsyncLifetime
         }
     }
 
-    internal async Task<TorrentScenario> OpenAsync(byte[] media, string fileName, CancellationToken cancellationToken)
+    internal async Task<TorrentScenario> OpenAsync(byte[] media, string fileName, CancellationToken cancellationToken, bool completed = false)
     {
         var scenario = await BeginScenarioAsync(cancellationToken);
         try
         {
-            await scenario.AddAsync(media, fileName, cancellationToken);
+            await scenario.AddAsync(media, fileName, cancellationToken, completed);
             return scenario;
         }
         catch

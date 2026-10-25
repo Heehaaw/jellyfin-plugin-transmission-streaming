@@ -30,12 +30,18 @@ internal sealed class TorrentScenario(DownloadServices services, string workspac
         return services.RemotePath(localPath);
     }
 
-    public async Task AddAsync(byte[] media, string fileName, CancellationToken cancellationToken)
+    public async Task AddAsync(byte[] media, string fileName, CancellationToken cancellationToken, bool completed = false)
     {
         var files = await TorrentWorkspace.PrepareAsync(Workspace, media, fileName, cancellationToken, RemoteRoot);
         Hash = files.Metainfo.Hash;
         FileName = fileName;
         ExpectedBytes = media;
+        if (completed)
+        {
+            // Import-only cases need a real verified torrent, without repeating the peer-transfer scenarios.
+            await File.WriteAllBytesAsync(LocalDownloadPath, media, cancellationToken);
+        }
+
         await services.ControlAsync(
             operation: "scenario",
             value: new
@@ -58,10 +64,28 @@ internal sealed class TorrentScenario(DownloadServices services, string workspac
             {
                 metainfo = Convert.ToBase64String(files.Metainfo.Bytes),
                 download_dir = RemoteRoot + "/" + SwarmSettings.CompletedDirectory,
-                paused = false
+                paused = completed
             },
             cancellationToken: cancellationToken
         );
+        if (completed)
+        {
+            await VerifyCompleteAsync(cancellationToken);
+        }
+    }
+
+    private async Task VerifyCompleteAsync(CancellationToken cancellationToken)
+    {
+        var target = new
+        {
+            ids = new[]
+            {
+                Hash
+            }
+        };
+        await services.Rpc.CallAsync("torrent_verify", target, cancellationToken);
+        await Poll.UntilAsync(() => ProgressAsync(cancellationToken), state => state.Complete && !state.Checking, "Transmission to verify prepared media", cancellationToken);
+        await services.Rpc.CallAsync("torrent_start", target, cancellationToken);
     }
 
     public async Task AllowFirstPieceAsync(CancellationToken cancellationToken)
@@ -93,7 +117,7 @@ internal sealed class TorrentScenario(DownloadServices services, string workspac
                 },
                 fields = new[]
                 {
-                    "percent_done", "pieces", "download_dir", "sequential_download", "error_string"
+                    "percent_done", "pieces", "download_dir", "sequential_download", "error_string", "status"
                 }
             },
             cancellationToken: cancellationToken
@@ -102,9 +126,10 @@ internal sealed class TorrentScenario(DownloadServices services, string workspac
         return new TorrentProgress(
             PercentDone: torrent.GetProperty("percent_done").GetDouble(),
             Pieces: Convert.FromBase64String(torrent.GetProperty("pieces").GetString()!),
-            torrent.GetProperty("download_dir").GetString()!,
+            DownloadDirectory: torrent.GetProperty("download_dir").GetString()!,
             SequentialDownload: torrent.GetProperty("sequential_download").GetBoolean(),
-            torrent.GetProperty("error_string").GetString()!
+            Error: torrent.GetProperty("error_string").GetString()!,
+            Status: torrent.GetProperty("status").GetInt32()
         );
     }
 

@@ -59,13 +59,12 @@ public sealed class DiscoveryLifecycleTests(ITestOutputHelper output)
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
         deadline.CancelAfter(TimeSpan.FromMinutes(2));
         var cancellationToken = deadline.Token;
-        await sut.StartAsync(source, cancellationToken);
+        await sut.StartAsync(source, cancellationToken, completed: true);
         await sut.DiscoverAsync(source.Discover, cancellationToken);
         var original = sut.Store.All().Single();
         var unavailableStatus = "Download unavailable";
         var completeStatus = "Waiting for Jellyfin handoff";
         var completeProgress = 1d;
-        await sut.Swarm.AllowAllPiecesAsync(cancellationToken);
 
         try
         {
@@ -108,12 +107,11 @@ public sealed class DiscoveryLifecycleTests(ITestOutputHelper output)
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
         deadline.CancelAfter(TimeSpan.FromMinutes(2));
         var cancellationToken = deadline.Token;
-        await sut.StartAsync(source, cancellationToken);
+        await sut.StartAsync(source, cancellationToken, completed: true);
         await sut.DiscoverAsync(source.Discover, cancellationToken);
         var original = sut.Store.All().Single();
         var waitingStatus = "Waiting for import";
         var completedProgress = 1d;
-        await sut.Swarm.AllowAllPiecesAsync(cancellationToken);
 
         try
         {
