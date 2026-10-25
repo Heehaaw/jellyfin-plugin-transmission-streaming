@@ -10,6 +10,7 @@ using Jellyfin.Database.Implementations.Enums;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Library;
 using MediaBrowser.Model.Dlna;
+using MediaBrowser.Model.Dto;
 using MediaBrowser.Model.Entities;
 using MediaBrowser.Model.MediaInfo;
 using Microsoft.AspNetCore.Http;
@@ -28,7 +29,7 @@ internal sealed class HdrPlaybackFilter(
     [FromKeyedServices(typeof(SelectHdrMode))] ISender sender,
     HdrCapabilities capabilities,
     IHdrSessionStore sessions
-) : IAsyncResourceFilter, IAsyncResultFilter
+) : IAsyncResourceFilter, IAsyncActionFilter, IAsyncResultFilter
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -43,12 +44,23 @@ internal sealed class HdrPlaybackFilter(
     public async Task OnResourceExecutionAsync(ResourceExecutingContext context, ResourceExecutionDelegate next)
     {
         var request = context.HttpContext.Request;
-        if (HttpMethods.IsPost(request.Method) && request.Path.Value!.EndsWith("/Sessions/Playing/Stopped", StringComparison.OrdinalIgnoreCase))
+        if (HttpMethods.IsPost(request.Method) && IsPlaybackReport(request.Path.Value ?? ""))
         {
-            var stop = await ReadBodyAsync(request).ConfigureAwait(false);
-            if (stop is not null && Read<string>(stop, "PlaySessionId") is { } stoppedSession)
+            var report = await ReadBodyAsync(request).ConfigureAwait(false);
+            if (report is not null)
             {
-                sessions.Remove(HdrRequest.Session(context.HttpContext, stoppedSession));
+                if (request.Path.Value!.EndsWith("/Stopped", StringComparison.OrdinalIgnoreCase) && Read<string>(report, "PlaySessionId") is { } stoppedSession)
+                {
+                    sessions.Remove(HdrRequest.Session(context.HttpContext, stoppedSession));
+                }
+
+                if (HdrMediaSourceVariants.OriginalId(Read<string>(report, "MediaSourceId")) is { } reportedSourceId)
+                {
+                    // Native playback reporting still owns the original source's track selections and history.
+                    Set(report, "MediaSourceId", reportedSourceId);
+                    await ExecuteNativeAsync(context, next, report).ConfigureAwait(false);
+                    return;
+                }
             }
         }
 
@@ -80,15 +92,31 @@ internal sealed class HdrPlaybackFilter(
             return;
         }
 
-        var sourceId = Read<string>(body, "MediaSourceId") ?? item.Id.ToString("N");
-        var source = await sources.GetMediaSource(item, sourceId, Read<string>(body, "LiveStreamId"), true, request.HttpContext.RequestAborted).ConfigureAwait(false);
+        var sourceId = request.Query["MediaSourceId"].FirstOrDefault() ?? Read<string>(body, "MediaSourceId") ?? item.Id.ToString("N");
+        var originalId = HdrMediaSourceVariants.OriginalId(sourceId);
+        if (originalId is not null)
+        {
+            context.HttpContext.Items[HdrRequest.SourceKey] = sourceId;
+            sourceId = originalId;
+            Set(body, "MediaSourceId", originalId);
+        }
+
+        var liveStreamId = request.Query["LiveStreamId"].FirstOrDefault() ?? Read<string>(body, "LiveStreamId");
+        var source = await sources.GetMediaSource(
+            item: item,
+            mediaSourceId: sourceId,
+            liveStreamId: liveStreamId,
+            enablePathSubstitution: true,
+            cancellationToken: request.HttpContext.RequestAborted
+        ).ConfigureAwait(false);
         var profile = Get(body, "DeviceProfile")?.Deserialize<DeviceProfile>(JsonOptions);
-        var requested = request.Headers[HdrRequest.ModeHeader] == "true";
+        var requested = originalId is not null || request.Headers[HdrRequest.ModeHeader] == "true";
+        var allowTranscoding = bool.TryParse(request.Query["EnableTranscoding"], out var fromQuery) ? fromQuery : Read<bool?>(body, "EnableTranscoding") != false;
         var facts = new HdrPlaybackContext(
             Requested: requested,
             SourceIsSdr: source?.VideoStream?.VideoRange == VideoRange.SDR,
             ClientSupportsHdr: HdrCapabilities.ClientSupportsHdr(profile),
-            CanTranscode: user!.HasPermission(PermissionKind.EnableVideoPlaybackTranscoding) && Read<bool?>(body, "EnableTranscoding") != false,
+            CanTranscode: user!.HasPermission(PermissionKind.EnableVideoPlaybackTranscoding) && allowTranscoding,
             PipelineSupported: capabilities.PipelineSupported()
         );
         var decision = await sender.Send(new SelectHdrMode.Query(facts), request.HttpContext.RequestAborted).ConfigureAwait(false);
@@ -110,7 +138,20 @@ internal sealed class HdrPlaybackFilter(
         }
 
         PrepareHdrProfile(body, profile!);
-        // Rewrite before model binding, retaining native source, track, start-position and quality fields.
+        await ExecuteNativeAsync(context, next, body).ConfigureAwait(false);
+    }
+
+    private static bool IsPlaybackReport(string path)
+    {
+        return path.EndsWith("/Sessions/Playing", StringComparison.OrdinalIgnoreCase)
+               || path.EndsWith("/Sessions/Playing/Progress", StringComparison.OrdinalIgnoreCase)
+               || path.EndsWith("/Sessions/Playing/Stopped", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static async Task ExecuteNativeAsync(ResourceExecutingContext context, ResourceExecutionDelegate next, JsonObject body)
+    {
+        // Rewrite before model binding, retaining native tracks, position and quality. Restore the host-owned stream afterwards.
+        var request = context.HttpContext.Request;
         var original = request.Body;
         var originalLength = request.ContentLength;
         await using var replaced = new MemoryStream(JsonSerializer.SerializeToUtf8Bytes(body));
@@ -124,6 +165,33 @@ internal sealed class HdrPlaybackFilter(
         {
             request.Body = original;
             request.ContentLength = originalLength;
+        }
+    }
+
+    public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
+    {
+        if (context.HttpContext.Items[HdrRequest.NegotiationKey] is HdrPlaybackDecision { Enabled: true })
+        {
+            // MVC may already have captured legacy query value providers. Correct the bound arguments at their owning boundary.
+            if (context.HttpContext.Items[HdrRequest.SourceKey] is string selectedSource)
+            {
+                SetArgument(context, "mediaSourceId", HdrMediaSourceVariants.OriginalId(selectedSource));
+            }
+
+            SetArgument(context, "enableDirectPlay", false);
+            SetArgument(context, "enableDirectStream", false);
+            SetArgument(context, "allowVideoStreamCopy", false);
+        }
+
+        await next().ConfigureAwait(false);
+    }
+
+    private static void SetArgument(ActionExecutingContext context, string name, object? value)
+    {
+        var key = context.ActionArguments.Keys.FirstOrDefault(key => key.Equals(name, StringComparison.OrdinalIgnoreCase));
+        if (key is not null)
+        {
+            context.ActionArguments[key] = value;
         }
     }
 
@@ -162,10 +230,13 @@ internal sealed class HdrPlaybackFilter(
 
     public async Task OnResultExecutionAsync(ResultExecutingContext context, ResultExecutionDelegate next)
     {
+        AddItemChoices(context);
         if (context.HttpContext.Items[HdrRequest.NegotiationKey] is HdrPlaybackDecision decision)
         {
             context.HttpContext.Response.Headers[HdrRequest.AvailableHeader] = decision.Available ? "true" : "false";
             context.HttpContext.Response.Headers[HdrRequest.ReasonHeader] = decision.Reason ?? "";
+            var selectedSource = context.HttpContext.Items[HdrRequest.SourceKey] as string;
+            context.HttpContext.Response.Headers[HdrRequest.SourceHeader] = selectedSource is not null && decision.Enabled ? "true" : "false";
             if (decision.Enabled && context.Result is ObjectResult { Value: PlaybackInfoResponse playback } && playback.ErrorCode is null)
             {
                 foreach (var source in playback.MediaSources.Where(source => !string.IsNullOrEmpty(source.TranscodingUrl)))
@@ -174,9 +245,18 @@ internal sealed class HdrPlaybackFilter(
                     source.SupportsDirectStream = false;
                     source.SupportsTranscoding = true;
                     source.TranscodingUrl = HdrTranscodingUrl(source.TranscodingUrl!);
+                    if (selectedSource is not null)
+                    {
+                        source.Id = selectedSource;
+                        source.Name += " · " + HdrMediaSourceVariants.Label;
+                    }
                 }
 
                 sessions.Enable(HdrRequest.Session(context.HttpContext, playback.PlaySessionId));
+            }
+            else if (decision.Available && context.Result is ObjectResult { Value: PlaybackInfoResponse choices } && choices.ErrorCode is null)
+            {
+                choices.MediaSources = HdrMediaSourceVariants.AddChoices(choices.MediaSources);
             }
         }
         else if (context.Result is FileContentResult playlist
@@ -193,6 +273,24 @@ internal sealed class HdrPlaybackFilter(
         }
 
         await next().ConfigureAwait(false);
+    }
+
+    private void AddItemChoices(ResultExecutingContext context)
+    {
+        if (context.Result is not ObjectResult { Value: BaseItemDto { MediaSources.Length: > 0 } item })
+        {
+            return;
+        }
+
+        var userId = HdrRequest.UserId(context.HttpContext.User);
+        var user = userId == Guid.Empty ? null : users.GetUserById(userId);
+        if (user is null || !user.HasPermission(PermissionKind.EnableVideoPlaybackTranscoding) || !capabilities.PipelineSupported())
+        {
+            return;
+        }
+
+        item.MediaSources = HdrMediaSourceVariants.AddChoices(item.MediaSources).ToArray();
+        item.MediaSourceCount = item.MediaSources.Length;
     }
 
     internal static string HdrTranscodingUrl(string url)

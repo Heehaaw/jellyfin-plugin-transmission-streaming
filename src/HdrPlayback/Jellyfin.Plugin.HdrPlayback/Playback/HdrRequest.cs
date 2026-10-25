@@ -9,6 +9,8 @@ internal static class HdrRequest
     public const string ModeHeader = "X-Jellyfin-Hdr-Conversion";
     public const string AvailableHeader = "X-Jellyfin-Hdr-Available";
     public const string ReasonHeader = "X-Jellyfin-Hdr-Reason";
+    public const string SourceKey = "HdrPlayback.Source";
+    public const string SourceHeader = "X-Jellyfin-Hdr-Source";
     public const string NegotiationKey = "HdrPlayback.Negotiation";
 
     public static Guid UserId(ClaimsPrincipal user)

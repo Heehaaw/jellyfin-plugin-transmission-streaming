@@ -5,6 +5,7 @@ using DotNet.Testcontainers.Containers;
 using FluentAssertions;
 using Hosting;
 using Microsoft.Playwright;
+using System.Text.Json.Nodes;
 using static Microsoft.Playwright.Assertions;
 
 /// <summary>Exercises Jellyfin's real player menu in an isolated Chromium container.</summary>
@@ -18,6 +19,7 @@ internal sealed class HdrPlayerBrowser : IAsyncDisposable
     public async Task VerifyMenuAsync(HdrJellyfinFixture server, CancellationToken cancellationToken)
     {
         await StartAsync(server, cancellationToken);
+        await VerifyVideoSelectionAsync(server);
         await using var context = await browser!.NewContextAsync(new BrowserNewContextOptions
         {
             ViewportSize = new ViewportSize
@@ -54,7 +56,78 @@ internal sealed class HdrPlayerBrowser : IAsyncDisposable
         await MenuItem(page, "Quality").ClickAsync();
         await Expect(MenuItem(page, "Auto").First).ToBeVisibleAsync();
         await MenuItem(page, "Auto").First.ClickAsync();
+        await Expect(MenuItem(page, "Auto")).ToHaveCountAsync(0);
+        await page.CloseAsync();
+        await using var convertedContext = await browser.NewContextAsync();
+        var convertedPage = await convertedContext.NewPageAsync();
+        convertedPage.PageError += (_, error) => errors.Add(error);
+        // Isolate the UI contract from this CPU-only server's hardware rejection. Real HDR encoding is a separate GPU check.
+        await convertedPage.RouteAsync("**/PlaybackInfo", async route =>
+        {
+            var response = await route.FetchAsync();
+            var headers = new Dictionary<string, string>(response.Headers, StringComparer.OrdinalIgnoreCase)
+            {
+                ["X-Jellyfin-Hdr-Source"] = "true"
+            };
+            await route.FulfillAsync(new RouteFulfillOptions
+            {
+                Response = response,
+                Headers = headers
+            });
+        });
+        await PlayAsync(convertedPage, server);
+        await convertedPage.Mouse.MoveAsync(800, 500);
+        await convertedPage.Locator(".btnVideoOsdSettings:visible").ClickAsync();
+        await Expect(MenuItem(convertedPage, "Quality")).ToBeVisibleAsync();
+        await Expect(MenuItem(convertedPage, "HDR conversion")).ToHaveCountAsync(0);
         errors.Should().BeEmpty("the extended native menu must run without JavaScript exceptions");
+    }
+
+    private async Task VerifyVideoSelectionAsync(HdrJellyfinFixture server)
+    {
+        await using var context = await browser!.NewContextAsync();
+        var page = await context.NewPageAsync();
+        page.SetDefaultTimeout(10_000);
+        // The real CPU-only host hides conversion choices. Supply the advertised DTO to exercise its real details view.
+        await page.RouteAsync("**/Items/" + server.MovieId + "*", async route =>
+        {
+            var response = await route.FetchAsync();
+            var body = JsonNode.Parse(await response.TextAsync())!;
+            var sources = body["MediaSources"]?.AsArray();
+            if (sources is { Count: > 0 })
+            {
+                var converted = sources[0]!.DeepClone();
+                converted["Id"] = "hdr-conversion:" + sources[0]!["Id"]!.GetValue<string>();
+                converted["Name"] = "HDR (converted)";
+                converted["SupportsDirectPlay"] = false;
+                converted["SupportsDirectStream"] = false;
+                converted["TranscodingUrl"] = null;
+                sources.Add(converted);
+                body["MediaSourceCount"] = sources.Count;
+            }
+
+            var headers = new Dictionary<string, string>(response.Headers, StringComparer.OrdinalIgnoreCase);
+            headers.Remove("content-length");
+            headers.Remove("content-encoding");
+            await route.FulfillAsync(new RouteFulfillOptions { Response = response, Headers = headers, Body = body.ToJsonString() });
+        });
+        await SignInAsync(page, server);
+        await page.GotoAsync($"{HdrJellyfinFixture.InternalAddress}/web/#/details?id={server.MovieId}&serverId={server.ServerId}");
+        var video = page.Locator(".selectVideo:visible");
+        await Expect(video).ToBeEnabledAsync();
+        await Expect(video.Locator("option")).ToHaveCountAsync(2);
+        var originalTrack = await video.InputValueAsync();
+        var source = page.Locator(".selectSource");
+        var originalSource = await source.InputValueAsync();
+        var audio = await page.Locator(".selectAudio").InputValueAsync();
+        var subtitles = await page.Locator(".selectSubtitles").InputValueAsync();
+        await video.SelectOptionAsync(new SelectOptionValue { Label = "HDR (converted)" });
+        await Expect(source).ToHaveValueAsync("hdr-conversion:" + originalSource);
+        await Expect(page.Locator(".selectAudio")).ToHaveValueAsync(audio);
+        await Expect(page.Locator(".selectSubtitles")).ToHaveValueAsync(subtitles);
+        await video.SelectOptionAsync(originalTrack);
+        await Expect(source).ToHaveValueAsync(originalSource);
+        await Expect(video.Locator("option")).ToHaveCountAsync(2);
     }
 
     private async Task StartAsync(HdrJellyfinFixture server, CancellationToken cancellationToken)
@@ -73,7 +146,7 @@ internal sealed class HdrPlayerBrowser : IAsyncDisposable
         browser = await playwright.Chromium.ConnectAsync(endpoint.AbsoluteUri);
     }
 
-    private static async Task PlayAsync(IPage page, HdrJellyfinFixture server)
+    private static async Task SignInAsync(IPage page, HdrJellyfinFixture server)
     {
         await page.GotoAsync(HdrJellyfinFixture.InternalAddress + "/web/#/login");
         await page.Locator("input[name=Username], #txtManualName").FillAsync("hdr-test-admin");
@@ -87,6 +160,11 @@ internal sealed class HdrPlayerBrowser : IAsyncDisposable
             }
         ).ClickAsync();
         await page.WaitForURLAsync("**/home*");
+    }
+
+    private static async Task PlayAsync(IPage page, HdrJellyfinFixture server)
+    {
+        await SignInAsync(page, server);
         await page.GotoAsync($"{HdrJellyfinFixture.InternalAddress}/web/#/details?id={server.MovieId}&serverId={server.ServerId}");
         await page.Locator(".btnPlay:visible").First.ClickAsync();
         try

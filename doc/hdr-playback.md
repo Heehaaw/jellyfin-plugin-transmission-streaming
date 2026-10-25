@@ -1,7 +1,12 @@
 # HDR Playback
 
-HDR Playback adds an **HDR conversion** option to Jellyfin's native player settings, beside Quality. It starts off for each movie or episode. Selecting it requests a normal
-Jellyfin transcode and adds SDR-to-HDR inverse tone mapping to that same FFmpeg process. No alternate movie, source, generated library file, or second encoder is created.
+HDR Playback adds **HDR (converted)** to the pre-playback **Video** box beside Audio and Subtitles. The existing video name stays unchanged. The choice uses a transient
+source identity on the same movie or episode, then negotiates a normal Jellyfin transcode against the original file. It creates no library entry or encoded file.
+Audio and subtitle selections survive switching between the original and converted video. A movie with multiple physical versions keeps its native Version selector.
+
+The bundled web frontend also has an **HDR conversion** toggle beside Quality in player settings. That toggle is hidden when **HDR (converted)** was selected before playback;
+choose the original video to turn conversion off. For playback started from the original source, the toggle starts off and can request conversion during playback.
+Both paths extend the same native FFmpeg process; neither starts a second encoder.
 
 This is synthesized HDR from SDR, not recovery of information missing from the source. Existing HDR sources stay on Jellyfin's normal playback path.
 
@@ -15,7 +20,8 @@ HDR Playback uses Jellyfin's existing encoding configuration. Conversion paramet
 - Jellyfin must serve its bundled web assets. The menu extension recognizes the tested 12.3 asset structure; an unknown frontend leaves the menu untouched.
 
 The webOS client uses the server web frontend. A C4 playback trial is still required before claiming that client's compatibility. Native clients with their own frontend do not
-receive this menu automatically. The option reports an unavailable reason when the server, source, permissions, or player profile cannot support conversion.
+receive the web Video-box enhancement or settings toggle automatically. Clients that expose the advertised source/version choice can select it through normal PlaybackInfo
+negotiation; their UI and HDR output still require client-specific verification. The option reports an unavailable reason when the server, source, permissions, or player profile cannot support conversion.
 
 ## Build and review
 
@@ -45,7 +51,7 @@ same HEVC VA-API encoder. The output URL requests Main10 and the HLS master play
 ID so simultaneous players do not share selection or reuse each other's output.
 
 Any input resolved by Jellyfin can reach this path, including Transmission's guarded HTTP stream. HDR Playback does not call Transmission RPC or open incomplete torrent files.
-Native streaming continues to own range requests and missing-piece waits. Unsupported encoders or filter graph layouts fail rather than emitting SDR labelled as HDR.
+Native streaming continues to own range requests and missing-piece waits. The native labelled and unlabelled VA-API subtitle graphs are supported. Unsupported encoders or filter graph layouts fail rather than emitting SDR labelled as HDR.
 
 ## Verification
 
@@ -60,10 +66,10 @@ Unit and integration checks cover eligibility, native command preservation, sess
 Disposable Jellyfin/Chromium tests exercise the actual frontend, native playback, reverse-proxy base paths, and coexistence. CPU-only container checks reject unavailable GPU
 conversion; they cannot establish HDR display quality. A bounded synthetic encode has exercised the conversion chain on the Ryzen iGPU.
 
-Before deployment, test HDR on/off and the TV's HDR indication, quality changes, seek, subtitles, stop, and simultaneous SDR playback on the intended C4. Compare image quality
-with native SDR. No plugin installation on the home Jellyfin server is part of the uncommitted implementation review.
+The home Ryzen LXC check verifies actual HEVC Main10 BT.2020/PQ segments with native subtitle burn-in and a single VA-API encode, plus source selection and transcoding guards.
+The native pre-playback Video box and the selected-source settings-menu behavior have separate frontend checks. These do not establish a particular Android client's HDR
+output or the LG C4's display activation and image quality. Test those on the intended device, including quality changes, seek, subtitles, stop and simultaneous SDR playback.
 
 ## Release
 
-Use `hdr-v1.2.3` for HDR Playback and `v1.2.3` for Transmission Streaming. Each tag promotes that plugin's artifact from successful main CI. The combined catalog retains both
-plugin records and their prior versions. Publication remains subject to the [release workflow](release-guidelines.md).
+Both plugins share the manually prepared release and version. See [installation and releases](installation.md) and [release guidelines](release-guidelines.md).

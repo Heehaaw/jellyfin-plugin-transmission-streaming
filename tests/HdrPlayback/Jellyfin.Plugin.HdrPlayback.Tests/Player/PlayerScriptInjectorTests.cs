@@ -36,7 +36,7 @@ public sealed class PlayerScriptInjectorTests
         var result = PlayerScriptInjector.InjectMenu(script);
 
         // Assert
-        result.Should().Contain("JellyfinHdrPlayback.menu(n.f,t)");
+        result.Should().Contain("!window.JellyfinHdrPlayback.sourceSelected(n.f,t)&&l.push(window.JellyfinHdrPlayback.menu(n.f,t))");
         result.Should().Contain("JellyfinHdrPlayback.toggle(n.f,arguments[2])");
         result.Should().Contain("case\"quality\":return " + source);
         PlayerScriptInjector.InjectMenu(result).Should().Be(result);

@@ -8,10 +8,13 @@ internal sealed class HdrUiMiddleware(RequestDelegate next)
     public async Task InvokeAsync(HttpContext context)
     {
         var path = context.Request.Path.Value ?? "";
-        if (HttpMethods.IsGet(context.Request.Method) && path.EndsWith("/HdrPlayback/player.js", StringComparison.OrdinalIgnoreCase))
+        foreach (var script in new[] { "player.js", "source-selector.js" })
         {
-            await ServePlayerScript(context).ConfigureAwait(false);
-            return;
+            if (HttpMethods.IsGet(context.Request.Method) && path.EndsWith("/HdrPlayback/" + script, StringComparison.OrdinalIgnoreCase))
+            {
+                await ServePlayerScript(context, script).ConfigureAwait(false);
+                return;
+            }
         }
 
         var index = path.EndsWith("/web/", StringComparison.OrdinalIgnoreCase) || path.EndsWith("/web/index.html", StringComparison.OrdinalIgnoreCase);
@@ -58,9 +61,9 @@ internal sealed class HdrUiMiddleware(RequestDelegate next)
         await original.WriteAsync(bytes, context.RequestAborted).ConfigureAwait(false);
     }
 
-    private static async Task ServePlayerScript(HttpContext context)
+    private static async Task ServePlayerScript(HttpContext context, string script)
     {
-        await using var resource = typeof(Plugin).Assembly.GetManifestResourceStream("Jellyfin.Plugin.HdrPlayback.Player.player.js")
+        await using var resource = typeof(Plugin).Assembly.GetManifestResourceStream("Jellyfin.Plugin.HdrPlayback.Player." + script)
                                    ?? throw new InvalidOperationException("The HDR playback script is missing from the plugin bundle.");
         context.Response.ContentType = "application/javascript; charset=utf-8";
         context.Response.Headers.CacheControl = "no-store";

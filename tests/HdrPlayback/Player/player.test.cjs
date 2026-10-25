@@ -13,11 +13,12 @@ const itemId = '57fa5792d4d64de8b357fb97c516dbb9';
 function environment() {
     const requests = [];
     let available = true;
+    let selectedSource = false;
     class Xhr {
         open(method, url) { this.url = url; }
         setRequestHeader(key, value) { (this.headers ||= {})[key] = value; }
         addEventListener(name, callback) { this.loaded = callback; }
-        getResponseHeader(name) { return name === 'X-Jellyfin-Hdr-Available' ? String(available) : 'Hardware unavailable'; }
+        getResponseHeader(name) { return name === 'X-Jellyfin-Hdr-Available' ? String(available) : name === 'X-Jellyfin-Hdr-Source' ? String(selectedSource) : 'Hardware unavailable'; }
         send() { requests.push(this); this.loaded?.(); }
     }
     const window = {
@@ -26,7 +27,7 @@ function environment() {
         alert(message) { throw new Error(message); },
         fetch: async (url, init) => {
             requests.push({ url, init });
-            return new Response('{}', { headers: { 'X-Jellyfin-Hdr-Available': String(available), 'X-Jellyfin-Hdr-Reason': 'Hardware unavailable' } });
+            return new Response('{}', { headers: { 'X-Jellyfin-Hdr-Available': String(available), 'X-Jellyfin-Hdr-Reason': 'Hardware unavailable', 'X-Jellyfin-Hdr-Source': String(selectedSource) } });
         }
     };
     const context = vm.createContext({ window, XMLHttpRequest: Xhr, URL, Headers, Request, Response, console });
@@ -40,7 +41,7 @@ function environment() {
         setMaxStreamingBitrate: options => restarts.push(options)
     };
     const player = {};
-    return { window, requests, manager, player, restarts, setAvailability: value => { available = value; }, setCurrent: value => { current = value; } };
+    return { window, requests, manager, player, restarts, setAvailability: value => { available = value; }, setSelectedSource: value => { selectedSource = value; }, setCurrent: value => { current = value; } };
 }
 
 test('HDR remains off until selected and preserves quality on restart', async () => {
@@ -128,4 +129,20 @@ test('selected HDR can be turned off after availability changes', async () => {
     await env.window.fetch(url);
     assert.equal(env.requests.at(-1).init, undefined);
     assert.equal(env.restarts.length, 2);
+});
+
+
+test('a selected HDR video version hides the settings toggle and returning to Original restores it', async () => {
+    const env = environment();
+    env.setSelectedSource(true);
+    await env.window.fetch(`http://jellyfin/Items/${itemId}/PlaybackInfo`);
+    let reason;
+    env.window.alert = message => { reason = message; };
+    assert.equal(env.window.JellyfinHdrPlayback.sourceSelected(env.manager, env.player), true);
+    await env.window.JellyfinHdrPlayback.toggle(env.manager, env.player);
+    assert.match(reason, /original video version/);
+    assert.equal(env.restarts.length, 0);
+    env.setSelectedSource(false);
+    await env.window.fetch(`http://jellyfin/Items/${itemId}/PlaybackInfo`);
+    assert.equal(env.window.JellyfinHdrPlayback.sourceSelected(env.manager, env.player), false);
 });

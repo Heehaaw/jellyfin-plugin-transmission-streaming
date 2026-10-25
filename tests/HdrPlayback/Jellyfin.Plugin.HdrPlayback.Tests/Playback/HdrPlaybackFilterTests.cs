@@ -260,6 +260,117 @@ public sealed class HdrPlaybackFilterTests
         context.HttpContext.Request.Body.Should().BeSameAs(original);
     }
 
+    [Theory, AutoMoqData]
+    internal async Task Should_NegotiateSelectedConversionAgainstTheOriginalSource(
+        PlaybackRequest source,
+        User user,
+        Movie item,
+        MediaSourceInfo media,
+        EncodingOptions encoding,
+        HdrSessionKey key,
+        ResourceExecutingContext context,
+        [Frozen] Mock<ILibraryManager> library,
+        [Frozen] Mock<IUserManager> users,
+        [Frozen] Mock<IMediaSourceManager> sources,
+        [Frozen] Mock<IServerConfigurationManager> configuration,
+        [Frozen] Mock<ISender> sender,
+        HdrPlaybackFilter sut)
+    {
+        // Arrange
+        Authenticate(context.HttpContext, key);
+        context.HttpContext.Request.Method = "POST";
+        context.HttpContext.Request.Path = "/Items/" + item.Id + "/PlaybackInfo";
+        context.RouteData.Values["itemId"] = item.Id;
+        source.DeviceProfile.TranscodingProfiles[0].Type = DlnaProfileType.Video;
+        var selectedId = HdrMediaSourceVariants.Prefix + source.MediaSourceId;
+        var body = JsonSerializer.SerializeToNode(source)!.AsObject();
+        body["MediaSourceId"] = selectedId;
+        context.HttpContext.Request.Body = new MemoryStream(Encoding.UTF8.GetBytes(body.ToJsonString()));
+        users.Setup(manager => manager.GetUserById(key.UserId)).Returns(user);
+        library.Setup(manager => manager.GetItemById<BaseItem>(item.Id, user)).Returns(item);
+        sources.Setup(manager => manager.GetMediaSource(item, source.MediaSourceId, null, true, It.IsAny<CancellationToken>())).ReturnsAsync(media);
+        configuration.Setup(manager => manager.GetConfiguration("encoding")).Returns(encoding);
+        sender.Setup(dispatcher => dispatcher.Send(It.IsAny<SelectHdrMode.Query>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new HdrPlaybackDecision(true, true, null));
+        JsonNode? bound = null;
+
+        // Act
+        await sut.OnResourceExecutionAsync(
+            context: context,
+            next: async () =>
+            {
+                bound = await JsonNode.ParseAsync(context.HttpContext.Request.Body);
+                return new ResourceExecutedContext(context, context.Filters);
+            }
+        );
+
+        // Assert
+        bound!["MediaSourceId"]!.GetValue<string>().Should().Be(source.MediaSourceId);
+        bound["StartTimeTicks"]!.GetValue<long>().Should().Be(source.StartTimeTicks);
+        bound["AudioStreamIndex"]!.GetValue<int>().Should().Be(source.AudioStreamIndex);
+        bound["SubtitleStreamIndex"]!.GetValue<int>().Should().Be(source.SubtitleStreamIndex);
+        bound["DeviceProfile"]!["TranscodingProfiles"]![0]!["VideoCodec"]!.GetValue<string>().Should().Be("hevc");
+        context.HttpContext.Items[HdrRequest.SourceKey].Should().Be(selectedId);
+        sender.Verify(dispatcher => dispatcher.Send(It.Is<SelectHdrMode.Query>(query => query.Context.Requested), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Theory, AutoMoqData]
+    internal async Task Should_ReportConversionPlaybackAgainstTheOriginalSource(
+        PlaybackRequest source,
+        ResourceExecutingContext context,
+        HdrPlaybackFilter sut)
+    {
+        // Arrange
+        context.HttpContext.Request.Method = "POST";
+        context.HttpContext.Request.Path = "/Sessions/Playing/Progress";
+        var body = JsonSerializer.SerializeToNode(source)!.AsObject();
+        body["MediaSourceId"] = HdrMediaSourceVariants.Prefix + source.MediaSourceId;
+        context.HttpContext.Request.Body = new MemoryStream(Encoding.UTF8.GetBytes(body.ToJsonString()));
+        JsonNode? bound = null;
+
+        // Act
+        await sut.OnResourceExecutionAsync(
+            context: context,
+            next: async () =>
+            {
+                bound = await JsonNode.ParseAsync(context.HttpContext.Request.Body);
+                return new ResourceExecutedContext(context, context.Filters);
+            }
+        );
+
+        // Assert
+        bound!["MediaSourceId"]!.GetValue<string>().Should().Be(source.MediaSourceId);
+        bound["AudioStreamIndex"]!.GetValue<int>().Should().Be(source.AudioStreamIndex);
+        bound["SubtitleStreamIndex"]!.GetValue<int>().Should().Be(source.SubtitleStreamIndex);
+    }
+
+    [Theory, AutoMoqData]
+    internal async Task Should_MapBoundLegacyArgumentsWithoutChangingQuality(
+        string source,
+        int bitrate,
+        ActionExecutingContext context,
+        HdrPlaybackFilter sut)
+    {
+        // Arrange
+        context.HttpContext.Items[HdrRequest.NegotiationKey] = new HdrPlaybackDecision(true, true, null);
+        context.HttpContext.Items[HdrRequest.SourceKey] = HdrMediaSourceVariants.Prefix + source;
+        context.ActionArguments["mediaSourceId"] = HdrMediaSourceVariants.Prefix + source;
+        context.ActionArguments["enableDirectPlay"] = true;
+        context.ActionArguments["enableDirectStream"] = true;
+        context.ActionArguments["allowVideoStreamCopy"] = true;
+        context.ActionArguments["maxStreamingBitrate"] = bitrate;
+
+        // Act
+        await sut.OnActionExecutionAsync(context, () => Task.FromResult(new ActionExecutedContext(context, context.Filters, context.Controller)));
+
+        // Assert
+        context.ActionArguments["mediaSourceId"].Should().Be(source);
+        context.ActionArguments["enableDirectPlay"].Should().Be(false);
+        context.ActionArguments["enableDirectStream"].Should().Be(false);
+        context.ActionArguments["allowVideoStreamCopy"].Should().Be(false);
+        context.ActionArguments["maxStreamingBitrate"].Should().Be(bitrate);
+    }
+
     internal sealed record PlaybackRequest(
         string MediaSourceId,
         long MaxStreamingBitrate,
@@ -296,6 +407,7 @@ public sealed class HdrPlaybackFilterTests
         fixture.Customize<FileContentResult>(composer => composer.OmitAutoProperties());
         fixture.Customize<ResultExecutingContext>(composer => composer.OmitAutoProperties());
         fixture.Customize<ResourceExecutingContext>(composer => composer.OmitAutoProperties());
+        fixture.Customize<ActionExecutingContext>(composer => composer.OmitAutoProperties());
         fixture.Customize<User>(composer => composer.OmitAutoProperties().With(value => value.Id));
         fixture.Customize<Movie>(composer => composer.OmitAutoProperties().With(value => value.Id));
         fixture.Customize<PlaybackInfoResponse>(composer => composer.Without(response => response.ErrorCode));

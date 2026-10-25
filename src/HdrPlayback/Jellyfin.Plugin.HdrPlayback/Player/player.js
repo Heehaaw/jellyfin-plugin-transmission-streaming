@@ -33,7 +33,8 @@
         if (reported !== null) {
             availability.set(itemId, {
                 available: reported === 'true',
-                reason: getHeader('X-Jellyfin-Hdr-Reason') || ''
+                reason: getHeader('X-Jellyfin-Hdr-Reason') || '',
+                selectedSource: getHeader('X-Jellyfin-Hdr-Source') === 'true'
             });
         }
     }
@@ -78,6 +79,11 @@
     }
 
     window.JellyfinHdrPlayback = {
+        sourceSelected(manager, player) {
+            const item = manager.currentItem(player);
+            const status = availability.get(normalize(item && item.Id));
+            return !!(status && status.selectedSource);
+        },
         menu(manager, player) {
             const item = manager.currentItem(player);
             const itemId = normalize(item && item.Id);
@@ -88,12 +94,16 @@
             return {
                 name: 'HDR conversion',
                 id: 'hdr-playback',
-                asideText: active.enabled ? 'On' : (status && !status.available ? 'Unavailable' : 'Off')
+                asideText: (active.enabled || (status && status.selectedSource)) ? 'On' : (status && !status.available ? 'Unavailable' : 'Off')
             };
         },
         toggle(manager, player) {
             this.menu(manager, player);
             const status = availability.get(active.itemId);
+            if (status && status.selectedSource) {
+                window.alert('Select the original video version to turn off HDR conversion.');
+                return Promise.resolve();
+            }
             if (!active.enabled && (!status || !status.available)) {
                 window.alert(status ? status.reason : 'HDR availability has not been reported for this playback.');
                 return Promise.resolve();

@@ -15,7 +15,7 @@ internal static class PlayerScriptInjector
 
     public static string InjectIndex(string html, string basePath)
     {
-        var tag = $"<script defer src=\"{basePath}/HdrPlayback/player.js\"></script>";
+        var tag = $"<script defer src=\"{basePath}/HdrPlayback/source-selector.js\"></script><script defer src=\"{basePath}/HdrPlayback/player.js\"></script>";
         return html.Contains("/HdrPlayback/player.js", StringComparison.Ordinal) ? html : html.Replace("<head>", "<head>" + tag, StringComparison.OrdinalIgnoreCase);
     }
 
@@ -39,7 +39,7 @@ internal static class PlayerScriptInjector
         var items = quality.Groups["items"].Value;
         var changed = Quality.Replace(
             input: script,
-            evaluator: match => match.Value + $",window.JellyfinHdrPlayback&&{items}.push(window.JellyfinHdrPlayback.menu({instance},{player}))",
+            evaluator: match => match.Value + $",window.JellyfinHdrPlayback&&!window.JellyfinHdrPlayback.sourceSelected({instance},{player})&&{items}.push(window.JellyfinHdrPlayback.menu({instance},{player}))",
             count: 1
         );
         return Selection.Replace(
