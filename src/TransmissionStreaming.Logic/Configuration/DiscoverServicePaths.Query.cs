@@ -91,9 +91,7 @@ public static class DiscoverServicePaths
             CancellationToken cancellationToken
         )
         {
-            var saved = configuration.PathMappings.FirstOrDefault(mapping => mapping.Service == service &&
-                                                                             mapping.RemoteRoot.TrimEnd('/') == remote.TrimEnd('/')
-            );
+            var saved = configuration.PathMappings.FirstOrDefault(mapping => mapping.Service == service && mapping.RemoteRoot.TrimEnd('/') == remote.TrimEnd('/'));
             if (saved is not null)
             {
                 return saved.LocalRoot;

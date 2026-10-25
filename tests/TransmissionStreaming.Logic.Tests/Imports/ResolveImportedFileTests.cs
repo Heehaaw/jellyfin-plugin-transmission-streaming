@@ -119,9 +119,7 @@ public sealed class ResolveImportedFileTests
         entry.Identity.Kind = MediaKind.Episode;
         options.SetupGet(value => value.CurrentValue).Returns(source.Options);
         arr.Setup(value => value.FindImportedFileAsync(
-                connection: It.Is<ArrConnection>(connection =>
-                    connection.Url == source.Options.SonarrUrl && connection.ApiKey == source.Options.SonarrApiKey
-                ),
+                connection: It.Is<ArrConnection>(connection => connection.Url == source.Options.SonarrUrl && connection.ApiKey == source.Options.SonarrApiKey),
                 identity: entry.Identity,
                 expectedSize: entry.Length,
                 cancellationToken: It.IsAny<CancellationToken>()
@@ -155,8 +153,7 @@ public sealed class ResolveImportedFileTests
         var entry = source.Query.Projection;
         entry.CompletedPath = null;
         options.SetupGet(value => value.CurrentValue).Returns(source.Options);
-        arr.Setup(value => value.FindImportedFileAsync(It.IsAny<ArrConnection>(), entry.Identity, entry.Length, It.IsAny<CancellationToken>())
-        ).ReturnsAsync(source.RemotePath);
+        arr.Setup(value => value.FindImportedFileAsync(It.IsAny<ArrConnection>(), entry.Identity, entry.Length, It.IsAny<CancellationToken>())).ReturnsAsync(source.RemotePath);
         paths.Setup(value => value.Send(It.Is<MapServicePath.Query>(request => request.Path == source.RemotePath), It.IsAny<CancellationToken>()))
             .Returns(ValueTask.FromResult<string?>(source.LocalPath));
         media.Setup(value => value.HasLength(source.LocalPath, entry.Length)).Returns(false);
@@ -191,10 +188,7 @@ public sealed class ResolveImportedFileTests
 
         // Assert
         result.Should().BeNull();
-        arr.Verify(
-            expression: value => value.FindImportedFileAsync(It.IsAny<ArrConnection>(), It.IsAny<MediaIdentity>(), It.IsAny<long>(), It.IsAny<CancellationToken>()),
-            times: Times.Never
-        );
+        arr.Verify(value => value.FindImportedFileAsync(It.IsAny<ArrConnection>(), It.IsAny<MediaIdentity>(), It.IsAny<long>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     private sealed class AutoMoqDataAttribute() : AutoDataAttribute(() =>

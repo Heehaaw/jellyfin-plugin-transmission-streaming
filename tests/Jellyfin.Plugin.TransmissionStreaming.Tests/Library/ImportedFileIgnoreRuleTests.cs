@@ -27,9 +27,7 @@ public sealed class ImportedFileIgnoreRuleTests
     {
         // Arrange
         mediator.Setup(value => value.Send(
-                query: It.Is<ShouldIgnoreImportedFile.Query>(query =>
-                    query.Path == source.FullName && query.IsDirectory == source.IsDirectory
-                ),
+                query: It.Is<ShouldIgnoreImportedFile.Query>(query => query.Path == source.FullName && query.IsDirectory == source.IsDirectory),
                 cancellationToken: It.IsAny<CancellationToken>()
             )
         ).Returns(ValueTask.FromResult(expected));

@@ -276,11 +276,7 @@ public sealed class StreamControllerTests
 
     private static void Authorize(Mock<IMediator> mediator, Projection source)
     {
-        mediator.Setup(value => value.Send(
-                    query: It.Is<GetStream.Query>(query => query.Id == source.Id && query.Key == source.Secret),
-                    cancellationToken: It.IsAny<CancellationToken>()
-                )
-            )
+        mediator.Setup(value => value.Send(It.Is<GetStream.Query>(query => query.Id == source.Id && query.Key == source.Secret), It.IsAny<CancellationToken>()))
             .Returns(ValueTask.FromResult<Projection?>(source));
     }
 

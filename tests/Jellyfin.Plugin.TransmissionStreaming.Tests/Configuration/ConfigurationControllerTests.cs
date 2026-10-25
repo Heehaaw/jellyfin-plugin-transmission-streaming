@@ -41,10 +41,7 @@ public sealed class ConfigurationControllerTests
     {
         // Arrange
         var service = MediaService.Transmission;
-        mediator.Setup(value => value.Send(
-                query: It.Is<DiscoverServicePaths.Query>(query => query.Service == service && query.Connection == connection),
-                cancellationToken: It.IsAny<CancellationToken>()
-            )
+        mediator.Setup(value => value.Send(It.Is<DiscoverServicePaths.Query>(query => query.Service == service && query.Connection == connection), It.IsAny<CancellationToken>())
         ).Returns(ValueTask.FromResult(source));
 
         // Act

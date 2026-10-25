@@ -245,9 +245,7 @@ public sealed class PruneOrphanedProjectionTests
         media.Setup(value => value.Exists(source.Entry.CompletedPath!)).Returns(false);
         options.SetupGet(value => value.CurrentValue).Returns(configuration);
         arr.Setup(value => value.IsMediaTrackedAsync(
-                    connection: It.Is<ArrConnection>(connection =>
-                        connection.Url == configuration.SonarrUrl && connection.ApiKey == configuration.SonarrApiKey
-                    ),
+                    connection: It.Is<ArrConnection>(connection => connection.Url == configuration.SonarrUrl && connection.ApiKey == configuration.SonarrApiKey),
                     identity: source.Entry.Identity,
                     cancellationToken: It.IsAny<CancellationToken>()
                 )
@@ -275,9 +273,7 @@ public sealed class PruneOrphanedProjectionTests
         operations.Should().Equal(hostStep, filesStep, storeStep);
         arr.Verify(
             expression: value => value.IsMediaTrackedAsync(
-                connection: It.Is<ArrConnection>(connection =>
-                    connection.Url == configuration.SonarrUrl && connection.ApiKey == configuration.SonarrApiKey
-                ),
+                connection: It.Is<ArrConnection>(connection => connection.Url == configuration.SonarrUrl && connection.ApiKey == configuration.SonarrApiKey),
                 identity: source.Entry.Identity,
                 cancellationToken: It.IsAny<CancellationToken>()
             ),

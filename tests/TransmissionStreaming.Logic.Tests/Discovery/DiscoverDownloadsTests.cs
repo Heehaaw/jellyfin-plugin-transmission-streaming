@@ -102,10 +102,7 @@ public sealed class DiscoverDownloadsTests
         );
         transmission.Setup(value => value.GetTorrentsAsync(It.IsAny<TransmissionConnection>(), It.IsAny<CancellationToken>())).ReturnsAsync([]);
         store.Setup(value => value.All()).Returns([source.Existing]);
-        mediator.Setup(value => value.Send(
-                query: It.Is<IQuery<string?>>(query => query is ResolveImportedFile.Query),
-                cancellationToken: It.IsAny<CancellationToken>()
-            )
+        mediator.Setup(value => value.Send(It.Is<IQuery<string?>>(query => query is ResolveImportedFile.Query), It.IsAny<CancellationToken>())
         ).Returns(ValueTask.FromResult<string?>(source.ImportedPath));
 
         // Act
@@ -284,9 +281,7 @@ public sealed class DiscoverDownloadsTests
         store.Setup(value => value.All()).Returns([source.Existing]);
         mediator.Setup(value => value.Send(It.IsAny<IQuery<string?>>(), It.IsAny<CancellationToken>())).Returns(ValueTask.FromResult<string?>(null));
         mediator.Setup(value => value.Send(
-                command: It.Is<PruneOrphanedProjection.Command>(command =>
-                    command.Entry == source.Existing && !command.TorrentPresent
-                ),
+                command: It.Is<PruneOrphanedProjection.Command>(command => command.Entry == source.Existing && !command.TorrentPresent),
                 cancellationToken: It.IsAny<CancellationToken>()
             )
         ).Returns(ValueTask.FromResult(true));

@@ -67,12 +67,7 @@ internal sealed class TorrentScenario(DownloadServices services, string workspac
     public async Task AllowFirstPieceAsync(CancellationToken cancellationToken)
     {
         await ControlAsync("first", new { }, cancellationToken);
-        await Poll.UntilAsync(
-            probe: () => ProgressAsync(cancellationToken),
-            ready: state => state.FirstPieceAvailable,
-            description: "Transmission to verify the first seeded piece",
-            cancellationToken: cancellationToken
-        );
+        await Poll.UntilAsync(() => ProgressAsync(cancellationToken), state => state.FirstPieceAvailable, "Transmission to verify the first seeded piece", cancellationToken);
     }
 
     public async Task AllowAllPiecesAsync(CancellationToken cancellationToken)
