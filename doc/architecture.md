@@ -1,0 +1,32 @@
+# Architecture rules
+
+Application policy belongs in Logic. An adapter obtains facts or performs an operation; it does not decide which media to own, when to retire it, or how to merge watch history.
+
+| Layer | Owns | Keep out |
+| --- | --- | --- |
+| Core | Host-neutral contracts, domain data, and shared value types | Jellyfin types, HTTP framework types, DI setup, external I/O |
+| Logic | Ownership, selection, playback progression, import acceptance, reconciliation, handoff, and cleanup decisions | Jellyfin packages, concrete adapters, direct filesystem or network calls |
+| Infrastructure | Transmission/arr protocol mapping, SQLite, physical file operations, and path confinement | Cross-service sequencing and product rules |
+| Plugin | Jellyfin facts and I/O, HTTP translation, lifecycle hooks, settings bridge, UI assets, and composition | History merge algorithms and media lifecycle policy |
+
+Dependencies point toward Core. Plugin composes Logic and Infrastructure. Logic calls Core contracts and other use cases through Mediator. Infrastructure implements Core contracts without referencing Logic.
+
+## Use cases and composition
+
+Use a public static container with a nested public Query or Command and an internal Handler. Queries return facts or calculated results; commands perform work. Keep the request and handler in the matching feature folder, in a `Name.Query.cs` or `Name.Command.cs` file.
+
+Inject interfaces for external behavior. DI creates services; code creates data records. Per-playback state may cache facts and timestamps, but it must not capture services or delegates. Avoid factories whose only purpose is passing a service graph into a request-specific object.
+
+Register generated handlers once at the composition root. Feature bootstrappers compose adapter registrations only when there are registrations to own. Small internal interfaces can live beside their implementation; shared Core contracts remain separate.
+
+## State and failure boundaries
+
+Use `IOptionsMonitor` for current settings. Rebuild independent snapshots after a Jellyfin save, including copied mapping rows. Do not mutate old snapshots.
+
+Use monotonic TimeProvider timestamps for durations, cache expiry, and stalls. Use UTC wall time for recorded events. Propagate cancellation and bound waits for external processes.
+
+History transfer must succeed before deleting the source host entry. Retire active state only after native handoff and generated-file cleanup succeed. Retrying must be safe. Keep history retention policy in Logic and pass the limit to persistence.
+
+Treat physical confinement, symlink refusal, ownership markers, and metadata-only host deletion as adapter safety guarantees. Preserve state when an upstream response cannot prove absence.
+
+See the [current audit](architecture-audit.md) for remaining boundary debt and [design](design.md) for the playback flow.
