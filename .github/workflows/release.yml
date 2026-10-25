@@ -35,9 +35,8 @@ jobs:
         with:
           ref: ${{ github.sha }}
           fetch-depth: 0
-      - uses: actions/setup-dotnet@v6
-        with:
-          dotnet-version: '10.0.x'
+      - name: Use runner's preinstalled .NET SDK
+        run: dotnet --version
       - name: Verify selected branch commit and retained artifacts
         id: source
         shell: bash

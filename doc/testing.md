@@ -8,6 +8,9 @@ See [category rules](testing-guidelines.md#choose-the-category) for deciding whe
 
 ## Prerequisites
 
+Hosted CI uses the .NET SDK already installed on the Ubuntu runner. `global.json` allows the latest installed .NET 10 feature band, and `dotnet --version` checks that policy
+without fetching a newer SDK. Dependency restore and container image pulls still occur as needed.
+
 Install the .NET 10 SDK. The container suites also need a running local Docker-compatible daemon. Their first run pulls pinned Jellyfin, Transmission, and .NET SDK images.
 The catalog-install case also pulls a pinned Playwright image for headless Chromium.
 
