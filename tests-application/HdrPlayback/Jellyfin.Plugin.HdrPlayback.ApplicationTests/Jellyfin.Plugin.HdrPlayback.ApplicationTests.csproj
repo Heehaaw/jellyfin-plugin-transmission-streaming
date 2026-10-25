@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <IsPackable>false</IsPackable>
+        <IsTestProject>true</IsTestProject>
+        <OutputType>Exe</OutputType>
+    </PropertyGroup>
+    <ItemGroup>
+        <ProjectReference Include="../../../src/HdrPlayback/Jellyfin.Plugin.HdrPlayback/Jellyfin.Plugin.HdrPlayback.csproj" ReferenceOutputAssembly="false" />
+        <ProjectReference Include="../../../src/TransmissionStreaming/Jellyfin.Plugin.TransmissionStreaming/Jellyfin.Plugin.TransmissionStreaming.csproj" ReferenceOutputAssembly="false" />
+        <PackageReference Include="Testcontainers" />
+        <PackageReference Include="Microsoft.Playwright" />
+        <PackageReference Include="Microsoft.NET.Test.Sdk" />
+        <PackageReference Include="xunit.v3" />
+        <PackageReference Include="xunit.runner.visualstudio" PrivateAssets="all" />
+        <PackageReference Include="AutoFixture" />
+        <PackageReference Include="AutoFixture.AutoMoq" />
+        <PackageReference Include="FluentAssertions" />
+    </ItemGroup>
+    <Target Name="CopyPluginBundles" AfterTargets="Build">
+        <ItemGroup>
+            <HdrBundle Include="../../../src/HdrPlayback/Jellyfin.Plugin.HdrPlayback/bin/$(Configuration)/$(TargetFramework)/Jellyfin.Plugin.HdrPlayback.dll;../../../src/HdrPlayback/Jellyfin.Plugin.HdrPlayback/bin/$(Configuration)/$(TargetFramework)/HdrPlayback.*.dll;../../../src/HdrPlayback/Jellyfin.Plugin.HdrPlayback/bin/$(Configuration)/$(TargetFramework)/Mediator.dll;../../../src/HdrPlayback/Jellyfin.Plugin.HdrPlayback/bin/$(Configuration)/$(TargetFramework)/meta.json" />
+            <TransmissionBundle Include="../../../src/TransmissionStreaming/Jellyfin.Plugin.TransmissionStreaming/bin/$(Configuration)/$(TargetFramework)/Jellyfin.Plugin.TransmissionStreaming.dll;../../../src/TransmissionStreaming/Jellyfin.Plugin.TransmissionStreaming/bin/$(Configuration)/$(TargetFramework)/TransmissionStreaming.*.dll;../../../src/TransmissionStreaming/Jellyfin.Plugin.TransmissionStreaming/bin/$(Configuration)/$(TargetFramework)/Mediator.dll;../../../src/TransmissionStreaming/Jellyfin.Plugin.TransmissionStreaming/bin/$(Configuration)/$(TargetFramework)/meta.json" />
+        </ItemGroup>
+        <Copy SourceFiles="@(HdrBundle)" DestinationFolder="$(OutDir)Plugins/HdrPlayback" />
+        <Copy SourceFiles="@(TransmissionBundle)" DestinationFolder="$(OutDir)Plugins/TransmissionStreaming" />
+    </Target>
+</Project>

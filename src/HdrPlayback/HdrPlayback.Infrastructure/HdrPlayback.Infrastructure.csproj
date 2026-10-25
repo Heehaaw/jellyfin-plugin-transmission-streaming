@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Extensions.Options" />
+        <ProjectReference Include="../HdrPlayback.Core/HdrPlayback.Core.csproj" />
+        <PackageReference Include="Microsoft.Extensions.Http" />
+    </ItemGroup>
+    <ItemGroup>
+        <InternalsVisibleTo Include="HdrPlayback.Infrastructure.Tests" />
+        <InternalsVisibleTo Include="HdrPlayback.IntegrationTests" />
+    </ItemGroup>
+</Project>

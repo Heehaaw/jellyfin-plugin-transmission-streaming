@@ -2,7 +2,9 @@ namespace TransmissionStreaming.Packaging;
 
 internal sealed record PackageOptions(Uri? SourceUrl, Uri? PreviousManifestUrl, string? ReleaseTag, string? ArchivePath)
 {
-    private const string Usage = "Usage: Package.cs [--archive EXISTING_ZIP] [--source-url HTTPS_ZIP_URL] " +
+    public string Plugin { get; init; } = "transmission-streaming";
+
+    private const string Usage = "Usage: Package.cs [--plugin transmission-streaming|hdr-playback] [--archive EXISTING_ZIP] [--source-url HTTPS_ZIP_URL] " +
                                  "[--previous-manifest-url HTTPS_JSON_URL] [--release-tag VERSION_TAG]";
     private const string VersionMismatch = "The release tag must match the version in plugin metadata.";
 
@@ -12,6 +14,7 @@ internal sealed record PackageOptions(Uri? SourceUrl, Uri? PreviousManifestUrl, 
         Uri? previousManifest = null;
         string? releaseTag = null;
         string? archivePath = null;
+        var plugin = "transmission-streaming";
         for (var index = 0; index < arguments.Length; index += 2)
         {
             if (index + 1 >= arguments.Length)
@@ -39,6 +42,13 @@ internal sealed record PackageOptions(Uri? SourceUrl, Uri? PreviousManifestUrl, 
                 case "--release-tag":
                     releaseTag = arguments[index + 1];
                     break;
+                case "--plugin":
+                    plugin = arguments[index + 1];
+                    _ = new RepositoryLayout("")
+                    {
+                        Plugin = plugin
+                    }.Scope;
+                    break;
                 default:
                     throw new ArgumentException(Usage);
             }
@@ -49,7 +59,10 @@ internal sealed record PackageOptions(Uri? SourceUrl, Uri? PreviousManifestUrl, 
             throw new ArgumentException("A previous manifest can only be merged when --source-url is supplied.");
         }
 
-        return new PackageOptions(source, previousManifest, releaseTag, archivePath);
+        return new PackageOptions(source, previousManifest, releaseTag, archivePath)
+        {
+            Plugin = plugin
+        };
     }
 
     private static Uri HttpsUrl(string value)
@@ -71,7 +84,18 @@ internal sealed record PackageOptions(Uri? SourceUrl, Uri? PreviousManifestUrl, 
                 return null;
             }
 
-            var value = ReleaseTag.StartsWith('v') ? ReleaseTag[1..] : ReleaseTag;
+            var tag = ReleaseTag;
+            if (tag.StartsWith("hdr-v", StringComparison.Ordinal))
+            {
+                if (Plugin != "hdr-playback")
+                {
+                    throw new ArgumentException("HDR release tags require --plugin hdr-playback.");
+                }
+
+                tag = tag[4..];
+            }
+
+            var value = tag.StartsWith('v') ? tag[1..] : tag;
             if (!Version.TryParse(value, out var version))
             {
                 throw new ArgumentException("Release tags must contain a numeric version, optionally prefixed with v.");

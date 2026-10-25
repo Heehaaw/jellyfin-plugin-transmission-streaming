@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <IsPackable>false</IsPackable>
+        <IsTestProject>true</IsTestProject>
+        <OutputType>Exe</OutputType>
+    </PropertyGroup>
+    <ItemGroup>
+        <FrameworkReference Include="Microsoft.AspNetCore.App" />
+        <PackageReference Include="Jellyfin.Controller" />
+        <PackageReference Include="Jellyfin.Model" />
+        <ProjectReference Include="../../../src/HdrPlayback/Jellyfin.Plugin.HdrPlayback/Jellyfin.Plugin.HdrPlayback.csproj" />
+        <ProjectReference Include="../../../src/TransmissionStreaming/Jellyfin.Plugin.TransmissionStreaming/Jellyfin.Plugin.TransmissionStreaming.csproj" />
+        <PackageReference Include="Microsoft.NET.Test.Sdk" />
+        <PackageReference Include="xunit.v3" />
+        <PackageReference Include="xunit.runner.visualstudio" PrivateAssets="all" />
+        <PackageReference Include="AutoFixture" />
+        <PackageReference Include="AutoFixture.AutoMoq" />
+        <PackageReference Include="Moq" />
+        <PackageReference Include="FluentAssertions" />
+        <Compile Include="../../../scripts/Packaging/*.cs" Link="Packaging/%(Filename)%(Extension)" />
+    </ItemGroup>
+</Project>

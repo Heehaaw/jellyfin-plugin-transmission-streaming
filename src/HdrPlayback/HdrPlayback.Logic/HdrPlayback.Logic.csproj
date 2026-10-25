@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Extensions.Options" />
+        <ProjectReference Include="../HdrPlayback.Core/HdrPlayback.Core.csproj" />
+        <PackageReference Include="Mediator.Abstractions" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+        <PackageReference Include="Mediator.SourceGenerator" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
+    </ItemGroup>
+    <ItemGroup>
+        <InternalsVisibleTo Include="HdrPlayback.Logic.Tests" />
+        <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
+    </ItemGroup>
+</Project>

@@ -18,4 +18,21 @@
         <Project Path="tests/TransmissionStreaming/TransmissionStreaming.Infrastructure.Tests/TransmissionStreaming.Infrastructure.Tests.csproj" />
         <Project Path="tests/TransmissionStreaming/TransmissionStreaming.Logic.Tests/TransmissionStreaming.Logic.Tests.csproj" />
     </Folder>
+    <Folder Name="/src/HdrPlayback/">
+        <Project Path="src/HdrPlayback/HdrPlayback.Core/HdrPlayback.Core.csproj" />
+        <Project Path="src/HdrPlayback/HdrPlayback.Logic/HdrPlayback.Logic.csproj" />
+        <Project Path="src/HdrPlayback/HdrPlayback.Infrastructure/HdrPlayback.Infrastructure.csproj" />
+        <Project Path="src/HdrPlayback/Jellyfin.Plugin.HdrPlayback/Jellyfin.Plugin.HdrPlayback.csproj" />
+    </Folder>
+    <Folder Name="/tests/HdrPlayback/">
+        <Project Path="tests/HdrPlayback/HdrPlayback.Logic.Tests/HdrPlayback.Logic.Tests.csproj" />
+        <Project Path="tests/HdrPlayback/HdrPlayback.Infrastructure.Tests/HdrPlayback.Infrastructure.Tests.csproj" />
+        <Project Path="tests/HdrPlayback/Jellyfin.Plugin.HdrPlayback.Tests/Jellyfin.Plugin.HdrPlayback.Tests.csproj" />
+    </Folder>
+    <Folder Name="/tests-integration/HdrPlayback/">
+        <Project Path="tests-integration/HdrPlayback/HdrPlayback.IntegrationTests/HdrPlayback.IntegrationTests.csproj" />
+    </Folder>
+    <Folder Name="/tests-application/HdrPlayback/">
+        <Project Path="tests-application/HdrPlayback/Jellyfin.Plugin.HdrPlayback.ApplicationTests/Jellyfin.Plugin.HdrPlayback.ApplicationTests.csproj" />
+    </Folder>
 </Solution>

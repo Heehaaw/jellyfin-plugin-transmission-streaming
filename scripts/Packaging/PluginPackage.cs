@@ -20,6 +20,12 @@ internal static class PluginPackage
             var metadataPath = Path.Combine(staging.FullName, PluginDescriptor.FileName);
             var descriptor = await PluginBuild.GenerateMetadataAsync(layout, releaseVersion, metadataPath, cancellationToken);
             var archivePath = await PluginBundle.RepackAsync(source.ArchivePath, metadataPath, descriptor, layout.ArtifactsDirectory, cancellationToken);
+            var expectedAssembly = $"Jellyfin.Plugin.{layout.Scope}.dll";
+            if (!descriptor.Assemblies.Contains(expectedAssembly, StringComparer.Ordinal))
+            {
+                throw new InvalidDataException("The supplied artifact does not belong to the selected plugin.");
+            }
+
             return new PackagedPlugin(archivePath, descriptor);
         }
         finally
@@ -33,6 +39,12 @@ internal static class PluginPackage
         if (archivePath is not null)
         {
             var descriptor = await PluginBundle.ReadDescriptorAsync(archivePath, cancellationToken);
+            var expectedAssembly = $"Jellyfin.Plugin.{layout.Scope}.dll";
+            if (!descriptor.Assemblies.Contains(expectedAssembly, StringComparer.Ordinal))
+            {
+                throw new InvalidDataException("The supplied artifact does not belong to the selected plugin.");
+            }
+
             return new PackagedPlugin(archivePath, descriptor);
         }
 

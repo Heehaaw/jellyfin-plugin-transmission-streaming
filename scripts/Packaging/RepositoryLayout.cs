@@ -4,7 +4,16 @@ using System.Runtime.CompilerServices;
 
 internal sealed record RepositoryLayout(string Root)
 {
-    public string ProjectPath => Path.Combine(Root, "src", "TransmissionStreaming", "Jellyfin.Plugin.TransmissionStreaming", "Jellyfin.Plugin.TransmissionStreaming.csproj");
+    public string Plugin { get; init; } = "transmission-streaming";
+
+    public string Scope => Plugin switch
+    {
+        "transmission-streaming" => "TransmissionStreaming",
+        "hdr-playback" => "HdrPlayback",
+        _ => throw new ArgumentException("Plugin must be transmission-streaming or hdr-playback.")
+    };
+
+    public string ProjectPath => Path.Combine(Root, "src", Scope, $"Jellyfin.Plugin.{Scope}", $"Jellyfin.Plugin.{Scope}.csproj");
 
     public string ArtifactsDirectory => Path.Combine(Root, "artifacts");
 

@@ -7,7 +7,10 @@ using TransmissionStreaming.Packaging;
 return await ScriptHost.RunAsync(async cancellationToken =>
 {
     var options = PackageOptions.Parse(args);
-    var layout = RepositoryLayout.FromEntry();
+    var layout = RepositoryLayout.FromEntry() with
+    {
+        Plugin = options.Plugin
+    };
     var package = await PluginPackage.CreateAsync(options, layout, cancellationToken);
     options.ValidateVersion(package.Descriptor.Version);
     Console.WriteLine($"Plugin ZIP: {package.ArchivePath}");

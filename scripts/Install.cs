@@ -7,7 +7,10 @@ using TransmissionStreaming.Packaging;
 return await ScriptHost.RunAsync(async cancellationToken =>
 {
     var options = InstallOptions.Parse(args);
-    var layout = RepositoryLayout.FromEntry();
+    var layout = RepositoryLayout.FromEntry() with
+    {
+        Plugin = options.Plugin
+    };
     var bundle = await PluginBuild.BuildAsync(layout, options.Configuration, cancellationToken);
     var destination = PluginBundle.Install(bundle, options.PluginsDirectory);
 

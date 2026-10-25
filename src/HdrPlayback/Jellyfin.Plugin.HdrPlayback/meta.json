@@ -1,0 +1,18 @@
+{
+    "guid": "0427c746-6050-41ce-9441-d51e8d790182",
+    "name": "HDR Playback",
+    "description": "Optional SDR-to-HDR conversion in Jellyfin video transcoding.",
+    "owner": "Heehaaw",
+    "category": "General",
+    "targetAbi": "12.3.0.0",
+    "version": "@VERSION@",
+    "status": "Active",
+    "autoUpdate": false,
+    "assemblies": [
+        "Jellyfin.Plugin.HdrPlayback.dll",
+        "HdrPlayback.Core.dll",
+        "HdrPlayback.Logic.dll",
+        "HdrPlayback.Infrastructure.dll",
+        "Mediator.dll"
+    ]
+}
