@@ -25,10 +25,37 @@ internal sealed class HdrCapabilities(IServerConfigurationManager configuration,
         }
 
         var hevc = (profile.CodecProfiles ?? []).Where(codec => codec.Type == CodecType.Video && HasHevc(codec.Codec));
-        return hevc.SelectMany(codec => codec.Conditions ?? []).Any(condition =>
-            condition.Property == ProfileConditionValue.VideoRangeType
+        return hevc.Any(SupportsHdr10);
+    }
+
+    private static bool SupportsHdr10(CodecProfile codec)
+    {
+        var conditions = codec.Conditions ?? [];
+        var ranges = conditions.Where(condition => condition.Property == ProfileConditionValue.VideoRangeType).ToArray();
+        // Android declares hardware-supported Main10/HDR10 profiles, but its legacy profile omits VideoRangeType.
+        var main10 = conditions.Any(condition =>
+            condition.Property == ProfileConditionValue.VideoProfile
             && condition.Condition is ProfileConditionType.Equals or ProfileConditionType.EqualsAny
-            && (condition.Value ?? "").Split(['|', ','], StringSplitOptions.TrimEntries).Any(value => value.Equals("HDR10", StringComparison.OrdinalIgnoreCase)));
+            && Values(condition).Any(value => value.Replace(" ", "", StringComparison.Ordinal).ToLowerInvariant() is "main10" or "main10hdr10" or "main10hdr10plus"));
+        if (ranges.Length == 0)
+        {
+            return main10;
+        }
+
+        var permitted = ranges.All(condition => condition.Condition switch
+        {
+            ProfileConditionType.Equals or ProfileConditionType.EqualsAny => Values(condition).Contains("HDR10", StringComparer.OrdinalIgnoreCase),
+            ProfileConditionType.NotEquals => !Values(condition).Contains("HDR10", StringComparer.OrdinalIgnoreCase),
+            _ => false
+        });
+        return permitted && (main10 || ranges.Any(condition =>
+            condition.Condition is ProfileConditionType.Equals or ProfileConditionType.EqualsAny
+            && Values(condition).Contains("HDR10", StringComparer.OrdinalIgnoreCase)));
+    }
+
+    private static string[] Values(ProfileCondition condition)
+    {
+        return (condition.Value ?? "").Split(['|', ','], StringSplitOptions.TrimEntries);
     }
 
     private static bool HasHevc(string? codecs)

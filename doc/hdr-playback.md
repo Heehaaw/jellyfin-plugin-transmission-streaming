@@ -16,7 +16,8 @@ HDR Playback uses Jellyfin's existing encoding configuration. Conversion paramet
 
 - Jellyfin server and bundled web client 12.3, with jellyfin-ffmpeg 8.
 - Linux with an AMD GPU, configured VA-API hardware encoding, HEVC encoding enabled, and working Vulkan/DRM interop plus libplacebo.
-- A player profile explicitly advertising HEVC HDR10, and a user allowed to transcode video.
+- A player profile advertising HEVC HDR10, or a legacy native profile advertising HEVC Main10 without a range field, and a user allowed to transcode video.
+  Explicit SDR-only and HDR10-exclusion conditions remain enforced. Main10 decoding capability alone does not establish HDR display output.
 - Jellyfin must serve its bundled web assets. The menu extension recognizes the tested 12.3 asset structure; an unknown frontend leaves the menu untouched.
 
 The webOS client uses the server web frontend. A C4 playback trial is still required before claiming that client's compatibility. Native clients with their own frontend do not
